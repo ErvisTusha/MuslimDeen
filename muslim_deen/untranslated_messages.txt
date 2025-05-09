@@ -1,0 +1,60 @@
+{
+  "ar": [
+    "useDeviceLocation",
+    "searchCity",
+    "search",
+    "noLocationsFound",
+    "searchError"
+  ],
+
+  "es": [
+    "useDeviceLocation",
+    "searchCity",
+    "search",
+    "noLocationsFound",
+    "searchError"
+  ],
+
+  "fr": [
+    "useDeviceLocation",
+    "searchCity",
+    "search",
+    "noLocationsFound",
+    "searchError"
+  ],
+
+  "pt": [
+    "aboutAppDescription",
+    "useDeviceLocation",
+    "searchCity",
+    "search",
+    "noLocationsFound",
+    "searchError",
+    "deviceLocation",
+    "errorSetLocation"
+  ],
+
+  "pt_BR": [
+    "useDeviceLocation",
+    "searchCity",
+    "search",
+    "noLocationsFound",
+    "searchError"
+  ],
+
+  "sq": [
+    "useDeviceLocation",
+    "searchCity",
+    "search",
+    "noLocationsFound",
+    "searchError"
+  ],
+
+  "tr": [
+    "useDeviceLocation",
+    "searchCity",
+    "search",
+    "noLocationsFound",
+    "searchError"
+  ]
+}

@@ -1,0 +1,133 @@
+import 'package:adhan_dart/adhan_dart.dart' as adhan;
+import 'package:flutter/material.dart';
+
+import '../services/notification_service.dart';
+
+enum PrayerNotification { fajr, sunrise, dhuhr, asr, maghrib, isha }
+
+enum TimeFormat { twelveHour, twentyFourHour }
+
+enum DateFormatOption { dayMonthYear, monthDayYear, yearMonthDay }
+
+class AppSettings {
+  final String calculationMethod;
+  final String madhab;
+  final ThemeMode themeMode;
+  final String language;
+  final Map<PrayerNotification, bool> notifications;
+  final NotificationPermissionStatus notificationPermissionStatus;
+  final TimeFormat timeFormat;
+  final DateFormatOption dateFormatOption;
+
+  AppSettings({
+    this.calculationMethod = 'MuslimWorldLeague',
+    this.madhab = adhan.Madhab.hanafi,
+    this.themeMode = ThemeMode.system,
+    this.language = 'en',
+    Map<PrayerNotification, bool>? notifications,
+    this.notificationPermissionStatus =
+        NotificationPermissionStatus.notDetermined,
+    this.timeFormat = TimeFormat.twelveHour,
+    this.dateFormatOption = DateFormatOption.dayMonthYear,
+  }) : notifications =
+           notifications ??
+           {for (var prayer in PrayerNotification.values) prayer: true};
+
+  AppSettings copyWith({
+    String? calculationMethod,
+    String? madhab,
+    ThemeMode? themeMode,
+    String? language,
+    Map<PrayerNotification, bool>? notifications,
+    NotificationPermissionStatus? notificationPermissionStatus,
+    TimeFormat? timeFormat,
+    DateFormatOption? dateFormatOption,
+  }) {
+    return AppSettings(
+      calculationMethod: calculationMethod ?? this.calculationMethod,
+      madhab: madhab ?? this.madhab,
+      themeMode: themeMode ?? this.themeMode,
+      language: language ?? this.language,
+      notifications: notifications ?? Map.from(this.notifications),
+      notificationPermissionStatus:
+          notificationPermissionStatus ?? this.notificationPermissionStatus,
+      timeFormat: timeFormat ?? this.timeFormat,
+      dateFormatOption: dateFormatOption ?? this.dateFormatOption,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'calculationMethod': calculationMethod,
+      'madhab': madhab,
+      'themeMode': themeMode.index,
+      'language': language,
+      'notificationPermissionStatus': notificationPermissionStatus.index,
+      'notifications': notifications.map(
+        (key, value) => MapEntry(key.name, value),
+      ),
+      'timeFormat': timeFormat.name,
+      'dateFormatOption': dateFormatOption.name,
+    };
+  }
+
+  factory AppSettings.fromJson(Map<String, dynamic> json) {
+    final validNotificationKeys =
+        PrayerNotification.values.map((e) => e.name).toSet();
+    final notificationsJson = json['notifications'] as Map<String, dynamic>;
+
+    return AppSettings(
+      calculationMethod: json['calculationMethod'] as String,
+      madhab: json['madhab'] as String,
+      themeMode: () {
+        // Use a closure to handle logic cleanly inline
+        final index = json['themeMode'] as int?;
+        if (index != null && index >= 0 && index < ThemeMode.values.length) {
+          return ThemeMode.values[index];
+        }
+        return ThemeMode.system; // Default value
+      }(),
+      language: json['language'] as String,
+      notificationPermissionStatus: () {
+        final index = json['notificationPermissionStatus'] as int?;
+        if (index != null &&
+            index >= 0 &&
+            index < NotificationPermissionStatus.values.length) {
+          return NotificationPermissionStatus.values[index];
+        }
+        return NotificationPermissionStatus.notDetermined;
+      }(),
+      notifications: Map.fromEntries(
+        notificationsJson.entries
+            .where(
+              (entry) => validNotificationKeys.contains(entry.key),
+            ) // Filter valid keys
+            .map(
+              (entry) => MapEntry(
+                PrayerNotification.values.firstWhere(
+                  (e) => e.name == entry.key,
+                ), // Now safe
+                entry.value as bool,
+              ),
+            ),
+      ),
+      timeFormat: () {
+        final name = json['timeFormat'] as String?;
+        if (name != null && TimeFormat.values.any((e) => e.name == name)) {
+          return TimeFormat.values.firstWhere((e) => e.name == name);
+        }
+        return TimeFormat.twelveHour;
+      }(),
+      dateFormatOption: () {
+        final name = json['dateFormatOption'] as String?;
+        if (name != null &&
+            DateFormatOption.values.any((e) => e.name == name)) {
+          return DateFormatOption.values.firstWhere((e) => e.name == name);
+        }
+        return DateFormatOption.dayMonthYear;
+      }(),
+    );
+  }
+
+  static AppSettings get defaults => AppSettings();
+}

@@ -1,0 +1,166 @@
+{
+  "qiblaAligned": "Qibla aligned!",
+  "qiblaNoCompassData": "No compass data",
+  "qiblaDirectionNorth": "N",
+  "qiblaDirectionEast": "E",
+  "qiblaDirectionSouth": "S",
+  "qiblaDirectionWest": "W",
+  "qiblaNotAvailable": "N/A",
+  "qiblaDirectionLabel": "Qibla Direction",
+  "qiblaDistance": "Distance to Kaaba",
+  "qiblaHelpTitle": "How to Use Qibla Finder",
+  "qiblaHelpStep1": "Hold your phone flat and level.",
+  "qiblaHelpStep2": "Rotate slowly until the arrow points to the Kaaba.",
+  "qiblaHelpStep3": "When aligned, you'll see a confirmation message.",
+  "qiblaHelpStep4": "If compass data is inaccurate, tap the calibrate button.",
+  "qiblaGotIt": "Got it",
+  "qiblaCalibrate": "Calibrate Compass",
+  "qiblaCalibrating": "Rotate your phone in a figure-8 pattern to calibrate",
+  "startCalibration": "Start Calibration",
+  "@startCalibration": {
+    "description": "Button text to begin compass calibration process"
+  },
+  "qiblaTurnRight": "Turn right to find Qibla",
+  "qiblaTurnLeft": "Turn left to find Qibla",
+  "@qiblaTurnRight": {
+    "description": "Instruction to turn right to find Qibla direction"
+  },
+  "@qiblaTurnLeft": {
+    "description": "Instruction to turn left to find Qibla direction"
+  },
+  "qiblaAlmostThere": "Almost there!",
+  "@qiblaAlmostThere": {
+    "description": "Message when the Qibla direction is very close but not perfectly aligned"
+  },
+  "qiblaCurrentDirection": "Current Direction",
+  "qiblaLabel": "Qibla Finder",
+  "qiblaErrorPermission": "Location permission denied. Please grant permission to use this feature.",
+  "qiblaErrorSensor": "Compass sensor not available on this device.",
+  "qiblaErrorLocation": "Could not determine your location.",
+  "qiblaInstruction": "Point your phone towards the Kaaba",
+  "retry": "Try Again",
+
+  "tesbihSetTarget": "Set Counter Target",
+  "tesbihTarget": "Target",
+  "tesbihEnterTarget": "Enter target count",
+  "tesbihOk": "OK",
+  "tesbihSave": "Save",
+  "tesbihVibration": "Vibration",
+  "tesbihSound": "Sound",
+  "tesbihTodaySessions": "Today's Sessions",
+  "tesbihNoSessions": "No sessions recorded today",
+  "tesbihReminder": "Set Reminder",
+  "@tesbihReminder": {
+    "description": "Label for the reminder button in Tesbih view"
+  },
+  "tesbihSetReminder": "Set Tesbih Reminder",
+  "@tesbihSetReminder": {
+    "description": "Title for the reminder settings dialog"
+  },
+  "tesbihReminderTime": "Daily Reminder Time",
+  "@tesbihReminderTime": {
+    "description": "Label for the reminder time setting"
+  },
+  "tesbihSelectTime": "Select Time",
+  "@tesbihSelectTime": {
+    "description": "Button text for selecting reminder time"
+  },
+  "tesbihReminderBody": "Time for your daily Tesbih practice",
+  "@tesbihReminderBody": {
+    "description": "Notification content for Tesbih reminder"
+  },
+
+  "errorOpeningMap": "Could not open map application",
+  "@errorOpeningMap": {
+    "description": "Error message when map application cannot be opened"
+  },
+  "qiblaCurrentDirectionLabel": "Current Direction",
+  "@qiblaCurrentDirectionLabel": {
+    "description": "Label for the current direction in Qibla compass"
+  },
+  "aboutAppSubtitle": "Learn more about Muslim Deen app",
+  "@aboutAppSubtitle": {
+    "description": "Subtitle for the About settings item"
+  },
+  "dubai": "Dubai",
+  "@dubai": {
+    "description": "Prayer calculation method: Dubai"
+  },
+  "moonsightingCommittee": "Moonsighting Committee Worldwide",
+  "@moonsightingCommittee": {
+    "description": "Prayer calculation method: Moonsighting Committee"
+  },
+  "kuwait": "Kuwait",
+  "@kuwait": {
+    "description": "Prayer calculation method: Kuwait"
+  },
+  "qatar": "Qatar",
+  "@qatar": {
+    "description": "Prayer calculation method: Qatar"
+  },
+  "singapore": "Singapore",
+  "@singapore": {
+    "description": "Prayer calculation method: Singapore"
+  },
+  "turkey": "Turkey (Diyanet)",
+  "@turkey": {
+    "description": "Prayer calculation method: Turkey"
+  },
+  
+  "settings": "Settings",
+  "appearance": "Appearance",
+  "language": "Language",
+  "theme": "Theme",
+  "prayerCalculation": "Prayer Calculation",
+  "calculationMethod": "Calculation Method",
+  "asrTime": "Asr Calculation",
+  "settingsSound": "Sound",
+  "@settingsSound": {
+    "description": "Label for the sound settings section"
+  },
+  "settingsReminder": "Reminder",
+  "@settingsReminder": {
+    "description": "Label for the prayer reminder settings section"
+  },
+  "location": "Location",
+  "other": "Other",
+  "about": "About",
+  "system": "System Default",
+  "light": "Light",
+  "dark": "Dark",
+  "selectLanguage": "Select Language",
+  "cancel": "Cancel",
+  "muslimWorldLeague": "Muslim World League",
+  "egyptian": "Egyptian General Authority",
+  "karachi": "University of Islamic Sciences, Karachi",
+  "ummAlQura": "Umm al-Qura University, Makkah",
+  "northAmerica": "Islamic Society of North America",
+  "tehran": "Institute of Geophysics, University of Tehran",
+  "shafi": "Shafi (Standard)",
+  "hanafi": "Hanafi",
+  "fajr": "Fajr",
+  "sunrise": "Sunrise",
+  "dhuhr": "Dhuhr",
+  "asr": "Asr",
+  "maghrib": "Maghrib",
+  "isha": "Isha",
+  "loading": "Loading...",
+  "unknownLocation": "Unknown Location",
+  "notSet": "Not Set",
+  "setLocationManually": "Set Location Manually",
+  "notificationsBlocked": "Notifications are blocked. Enable them in system settings.",
+  "@notificationsBlocked": {
+    "description": "Message shown when notifications are blocked by system settings"
+  },
+  "dateTime": "Date & Time",
+  "dateFormat": "Date Format",
+  "timeFormat": "Time Format",
+  "distanceUnit": "Distance Unit",
+  "dayMonthYear": "Day Month Year",
+  "monthDayYear": "Month Day Year",
+  "yearMonthDay": "Year Month Day",
+  "twelveHour": "12-hour",
+  "twentyFourHour": "24-hour",
+  "kilometers": "Kilometers",
+  "miles": "Miles"
+}
