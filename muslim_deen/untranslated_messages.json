@@ -35,20 +35,7 @@
     "twelveHour",
     "twentyFourHour",
     "kilometers",
-    "miles",
-    "useNativeOSNotifications",
-    "useNativeOSNotificationsDesc",
-    "adhanSettings",
-    "selectAdhanSound",
-    "adhanInfo"
-  ],
-
-  "es": [
-    "useNativeOSNotifications",
-    "useNativeOSNotificationsDesc",
-    "adhanSettings",
-    "selectAdhanSound",
-    "adhanInfo"
+    "miles"
   ],
 
   "fr": [
@@ -86,12 +73,7 @@
     "twelveHour",
     "twentyFourHour",
     "kilometers",
-    "miles",
-    "useNativeOSNotifications",
-    "useNativeOSNotificationsDesc",
-    "adhanSettings",
-    "selectAdhanSound",
-    "adhanInfo"
+    "miles"
   ],
 
   "pt": [
@@ -129,12 +111,7 @@
     "twelveHour",
     "twentyFourHour",
     "kilometers",
-    "miles",
-    "useNativeOSNotifications",
-    "useNativeOSNotificationsDesc",
-    "adhanSettings",
-    "selectAdhanSound",
-    "adhanInfo"
+    "miles"
   ],
 
   "pt_BR": [
@@ -189,12 +166,7 @@
     "twelveHour",
     "twentyFourHour",
     "kilometers",
-    "miles",
-    "useNativeOSNotifications",
-    "useNativeOSNotificationsDesc",
-    "adhanSettings",
-    "selectAdhanSound",
-    "adhanInfo"
+    "miles"
   ],
 
   "sq": [
@@ -232,12 +204,7 @@
     "twelveHour",
     "twentyFourHour",
     "kilometers",
-    "miles",
-    "useNativeOSNotifications",
-    "useNativeOSNotificationsDesc",
-    "adhanSettings",
-    "selectAdhanSound",
-    "adhanInfo"
+    "miles"
   ],
 
   "tr": [
@@ -278,11 +245,6 @@
     "twelveHour",
     "twentyFourHour",
     "kilometers",
-    "miles",
-    "useNativeOSNotifications",
-    "useNativeOSNotificationsDesc",
-    "adhanSettings",
-    "selectAdhanSound",
-    "adhanInfo"
+    "miles"
   ]
 }
