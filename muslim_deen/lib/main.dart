@@ -1,22 +1,38 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 
 import 'l10n/app_localizations.dart';
-import 'providers/settings_provider.dart';
+import 'providers/providers.dart';
 import 'service_locator.dart';
+import 'services/error_handler_service.dart';
 import 'services/logger_service.dart';
 import 'views/home_view.dart';
 import 'views/mosque_view.dart';
 import 'views/qibla_view.dart';
 import 'views/settings_view.dart';
 import 'views/tesbih_view.dart';
+import 'widgets/error_boundary.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   tz.initializeTimeZones();
   await setupLocator();
-  runApp(const MuslimDeenApp());
+
+  // Set up error handling for Flutter framework errors
+  FlutterError.onError = (details) {
+    final errorHandler = ErrorHandlerService();
+    errorHandler.reportError(
+      AppError(
+        message: 'Flutter framework error',
+        details: details.exceptionAsString(),
+        stackTrace: details.stack,
+        originalException: details.exception,
+      ),
+    );
+  };
+
+  runApp(const ProviderScope(child: ErrorBoundary(child: MuslimDeenApp())));
 }
 
 class MuslimDeenApp extends StatelessWidget {
@@ -41,33 +57,32 @@ class MuslimDeenApp extends StatelessWidget {
     // Log app start
     locator<LoggerService>().info('Application started');
 
-    return ChangeNotifierProvider(
-      create: (context) => SettingsProvider(),
-      child: Consumer<SettingsProvider>(
-        builder:
-            (context, settings, _) => MaterialApp(
-              onGenerateTitle:
-                  (context) => AppLocalizations.of(context)!.appTitle,
-              theme: ThemeData(
-                primarySwatch: Colors.green,
-                visualDensity: VisualDensity.adaptivePlatformDensity,
-              ),
-              darkTheme: ThemeData(
-                brightness: Brightness.dark,
-                primarySwatch: Colors.green,
-                visualDensity: VisualDensity.adaptivePlatformDensity,
-              ),
-              themeMode: settings.settings.themeMode,
-              locale: _parseLocale(settings.settings.language),
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
-              home: const MainScreen(),
-              navigatorObservers: [
-                // Add navigation observer for route logging
-                _NavigationObserver(),
-              ],
-            ),
-      ),
+    return Consumer(
+      builder: (context, ref, _) {
+        final settingsState = ref.watch(settingsProvider);
+
+        return MaterialApp(
+          onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
+          theme: ThemeData(
+            primarySwatch: Colors.green,
+            visualDensity: VisualDensity.adaptivePlatformDensity,
+          ),
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            primarySwatch: Colors.green,
+            visualDensity: VisualDensity.adaptivePlatformDensity,
+          ),
+          themeMode: settingsState.themeMode,
+          locale: _parseLocale(settingsState.language),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const MainScreen(),
+          navigatorObservers: [
+            // Add navigation observer for route logging
+            _NavigationObserver(),
+          ],
+        );
+      },
     );
   }
 }
@@ -108,7 +123,7 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 2;
   final LoggerService _logger = locator<LoggerService>();
 
-  static const List<Widget> _widgetOptions = <Widget>[
+  static final List<Widget> _widgetOptions = <Widget>[
     TesbihView(),
     QiblaView(),
     HomeView(),

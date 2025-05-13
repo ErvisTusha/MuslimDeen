@@ -336,40 +336,66 @@ class NotificationService {
     if (defaultTargetPlatform != TargetPlatform.android || _disposed) {
       return defaultTargetPlatform != TargetPlatform.android;
     }
+
     final prefs = await SharedPreferences.getInstance();
+    
     try {
-      final androidPlugin =
-          _notificationsPlugin
-              .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin
-              >();
+      final androidPlugin = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
 
       if (androidPlugin != null) {
+        // First check if we can schedule exact alarms
         final bool? canScheduleExact =
             await androidPlugin.canScheduleExactNotifications();
+            
         _hasExactAlarmPermission = canScheduleExact ?? false;
+        
         if (_hasExactAlarmPermission) {
           await prefs.setBool(_exactAlarmPermissionKey, true);
-          _logger.info('Exact alarm permission is currently granted.');
+          _logger.info('Exact alarm permission is granted.');
+          return true;
+        }
+
+        // Permission not granted, try to request it if not in checkOnly mode
+        if (!checkOnly) {
+          _logger.info('Requesting exact alarm permission...');
+          
+          // Try requesting SCHEDULE_EXACT_ALARM permission first
+          bool? exactRequested = await androidPlugin.requestExactAlarmsPermission();
+          _hasExactAlarmPermission = exactRequested ?? false;
+          
+          if (!_hasExactAlarmPermission) {
+            // If SCHEDULE_EXACT_ALARM failed, try USE_EXACT_ALARM for Android 13+
+            try {
+              exactRequested = await androidPlugin.requestExactAlarmsPermission();
+              _hasExactAlarmPermission = exactRequested ?? false;
+            } catch (e) {
+              _logger.warning(
+                'Failed to request USE_EXACT_ALARM permission: $e',
+              );
+            }
+          }
+
+          if (_hasExactAlarmPermission) {
+            await prefs.setBool(_exactAlarmPermissionKey, true);
+            _logger.info('Exact alarm permission GRANTED after request.');
+          } else {
+            await prefs.remove(_exactAlarmPermissionKey);
+            _logger.warning(
+              'Exact alarm permission DENIED. User needs to enable in settings.',
+            );
+          }
         } else {
           await prefs.remove(_exactAlarmPermissionKey);
           _logger.warning('Exact alarm permission is NOT granted.');
-          if (!checkOnly) {
-            _logger.info('Requesting exact alarm permission.');
-            final bool? exactRequested =
-                await androidPlugin.requestExactAlarmsPermission();
-            _hasExactAlarmPermission = exactRequested ?? false;
-            if (_hasExactAlarmPermission) {
-              await prefs.setBool(_exactAlarmPermissionKey, true);
-              _logger.info('Exact alarm permission GRANTED after request.');
-            } else {
-              _logger.warning('Exact alarm permission DENIED after request.');
-            }
-          }
         }
+        
         return _hasExactAlarmPermission;
       }
 
+      // Non-Android platforms don't need exact alarm permission
       if (defaultTargetPlatform == TargetPlatform.iOS ||
           defaultTargetPlatform == TargetPlatform.macOS) {
         _hasExactAlarmPermission = true;
@@ -384,8 +410,8 @@ class NotificationService {
         stackTrace: s,
       );
       await prefs.remove(_exactAlarmPermissionKey);
+      return false;
     }
-    return false;
   }
 
   Future<void> displayInstantNotification(NotificationConfig config) async {

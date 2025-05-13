@@ -82,7 +82,13 @@ class _QiblaViewState extends State<QiblaView>
       final hasPermission = await _locationService.hasLocationPermission();
       if (!hasPermission) {
         _logger.error('Location permission not granted for Qibla finder');
-        throw Exception('Location permission not granted');
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Location permission denied. Please enable it in settings.';
+            _isLoading = false;
+          });
+        }
+        return;
       }
 
       final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -238,7 +244,9 @@ class _QiblaViewState extends State<QiblaView>
 
   Widget _buildErrorView(AppLocalizations localizations) {
     String msg = _errorMessage ?? '';
-    if (msg.contains('permission')) {
+    if (msg == 'Location permission denied. Please enable it in settings.') {
+      msg = 'Location permission is required for Qibla finder. Please enable it in your browser/device settings.';
+    } else if (msg.contains('permission')) {
       msg =
           '${localizations.qiblaErrorLocation}\n\nThe qibla view requires access to your live location.';
     } else if (msg.contains('service is disabled')) {

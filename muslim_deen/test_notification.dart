@@ -19,7 +19,7 @@ void main() async {
 }
 
 class NotificationTestApp extends StatelessWidget {
-  const NotificationTestApp({Key? key}) : super(key: key);
+  const NotificationTestApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +34,7 @@ class NotificationTestApp extends StatelessWidget {
 }
 
 class NotificationTestScreen extends StatefulWidget {
-  const NotificationTestScreen({Key? key}) : super(key: key);
+  const NotificationTestScreen({super.key});
 
   @override
   State<NotificationTestScreen> createState() => _NotificationTestScreenState();
@@ -69,7 +69,7 @@ class _NotificationTestScreenState extends State<NotificationTestScreen> {
       await _notificationsPlugin.initialize(
         initSettings,
         onDidReceiveNotificationResponse: (NotificationResponse details) {
-          print('Notification tapped: ${details.payload}');
+          debugPrint('Notification tapped: ${details.payload}');
         },
       );
       
@@ -136,7 +136,7 @@ class _NotificationTestScreenState extends State<NotificationTestScreen> {
         _status = 'Error: $e';
         _isInitializing = false;
       });
-      print('Error testing notifications: $e');
+      debugPrint('Error testing notifications: $e');
     }
   }
 

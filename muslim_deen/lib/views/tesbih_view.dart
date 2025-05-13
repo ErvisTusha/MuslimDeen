@@ -4,26 +4,27 @@ import 'dart:async';
 // Third-party package imports
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // Changed
 import 'package:get_it/get_it.dart';
-import 'package:provider/provider.dart';
+// import 'package:provider/provider.dart'; // Removed
 
 // Local application imports
 import '../l10n/app_localizations.dart';
-import '../providers/settings_provider.dart';
+import '../providers/providers.dart'; // Changed to access Riverpod's settingsProvider
 import '../service_locator.dart';
 import '../services/logger_service.dart';
 import '../services/notification_service.dart' show NotificationService;
 import '../services/storage_service.dart';
 import '../styles/app_styles.dart';
 
-class TesbihView extends StatefulWidget {
+class TesbihView extends ConsumerStatefulWidget { // Changed
   const TesbihView({super.key});
 
   @override
-  State<TesbihView> createState() => _TesbihViewState();
+  ConsumerState<TesbihView> createState() => _TesbihViewState(); // Changed
 }
 
-class _TesbihViewState extends State<TesbihView> {
+class _TesbihViewState extends ConsumerState<TesbihView> { // Changed
   int _count = 0;
   String _currentDhikr = 'Subhanallah'; // Default Dhikr
   bool _vibrationEnabled = true;
@@ -36,14 +37,13 @@ class _TesbihViewState extends State<TesbihView> {
   late final NotificationService _notificationService =
       GetIt.I<NotificationService>();
   late final StorageService _storageService = GetIt.I<StorageService>();
-  late final SettingsProvider _settingsProvider =
-      context.read<SettingsProvider>();
+  // late final SettingsProvider _settingsProvider = context.read<SettingsProvider>(); // Removed
   final LoggerService _logger = locator<LoggerService>();
 
   void _startPermissionCheck() {
     _permissionCheckTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
-        _settingsProvider.checkNotificationPermissionStatus();
+        ref.read(settingsProvider.notifier).checkNotificationPermissionStatus(); // Changed
       }
     });
   }
@@ -78,8 +78,7 @@ class _TesbihViewState extends State<TesbihView> {
     _logger.info('TesbihView initialized');
     _loadPreferences();
     // Wait to initialize any localization-dependent operations until didChangeDependencies
-    _settingsProvider
-        .checkNotificationPermissionStatus(); // Check initial permission status
+    ref.read(settingsProvider.notifier).checkNotificationPermissionStatus(); // Changed: Use ref to read Riverpod provider
     _startPermissionCheck(); // Start periodic permission check
   }
 
@@ -679,7 +678,7 @@ class _TesbihViewState extends State<TesbihView> {
                     Icons.notifications_active_rounded,
                     _reminderEnabled,
                     (value) async {
-                      if (_settingsProvider.areNotificationsBlocked) {
+                      if (ref.read(settingsProvider.notifier).areNotificationsBlocked) { // Changed
                         if (!mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -786,7 +785,7 @@ class _TesbihViewState extends State<TesbihView> {
     bool isNotificationToggle =
         title == AppLocalizations.of(context)!.notifications;
     bool isDisabled =
-        isNotificationToggle && _settingsProvider.areNotificationsBlocked;
+        isNotificationToggle && ref.watch(settingsProvider.notifier).areNotificationsBlocked; // Changed
 
     return InkWell(
       onTap: isDisabled ? null : () => onChanged(!value),
@@ -812,7 +811,7 @@ class _TesbihViewState extends State<TesbihView> {
             Switch(
               value:
                   isNotificationToggle
-                      ? (value && !_settingsProvider.areNotificationsBlocked)
+                      ? (value && !ref.watch(settingsProvider.notifier).areNotificationsBlocked) // Changed
                       : value,
               onChanged: isDisabled ? null : onChanged,
               activeColor: AppColors.primary,

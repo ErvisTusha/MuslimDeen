@@ -105,5 +105,25 @@
   "twelveHour": "TODO: twelveHour",
   "twentyFourHour": "TODO: twentyFourHour",
   "kilometers": "TODO: kilometers",
-  "miles": "TODO: miles"
+  "miles": "TODO: miles",
+  "useDeviceLocation": "Usar ubicación del dispositivo",
+  "@useDeviceLocation": {
+    "description": "Botón u opción para usar la ubicación actual del dispositivo"
+  },
+  "searchCity": "Buscar ciudad",
+  "@searchCity": {
+    "description": "Marcador de posición o etiqueta para un campo de entrada de búsqueda de ciudad"
+  },
+  "search": "Buscar",
+  "@search": {
+    "description": "Texto del botón para iniciar una búsqueda"
+  },
+  "noLocationsFound": "No se encontraron ubicaciones",
+  "@noLocationsFound": {
+    "description": "Mensaje que se muestra cuando una búsqueda de ubicación no arroja resultados"
+  },
+  "searchError": "Error al buscar la ubicación",
+  "@searchError": {
+    "description": "Mensaje de error que se muestra cuando falla una búsqueda de ubicación"
+  }
 }

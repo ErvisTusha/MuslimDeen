@@ -68,5 +68,28 @@
   "qiblaTurnLeft": "Vire à esquerda para encontrar a Qibla",
   "@qiblaTurnLeft": {"description": "Instruction to turn left to find Qibla direction"},
   "qiblaAlmostThere": "Quase lá!",
-  "@qiblaAlmostThere": {"description": "Message when the Qibla direction is very close but not perfectly aligned"}
+  "@qiblaAlmostThere": {"description": "Message when the Qibla direction is very close but not perfectly aligned"},
+  "useDeviceLocation": "Usar localização do dispositivo",
+  "@useDeviceLocation": {
+    "description": "Botão ou opção para usar a localização atual do dispositivo"
+  },
+  "searchCity": "Pesquisar cidade",
+  "@searchCity": {
+    "description": "Espaço reservado ou rótulo para um campo de entrada de pesquisa de cidade"
+  },
+  "search": "Pesquisar",
+  "@search": {
+    "description": "Texto do botão para iniciar uma pesquisa"
+  },
+  "noLocationsFound": "Nenhum local encontrado",
+  "@noLocationsFound": {
+    "description": "Mensagem exibida quando uma pesquisa de local não retorna resultados"
+  },
+  "searchError": "Erro ao pesquisar local",
+  "@searchError": {
+    "description": "Mensagem de erro exibida quando uma pesquisa de local falha"
+  },
+  "aboutAppDescription": "TODO: aboutAppDescription",
+  "deviceLocation": "TODO: deviceLocation",
+  "errorSetLocation": "TODO: errorSetLocation"
 }

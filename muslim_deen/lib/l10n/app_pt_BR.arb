@@ -50,5 +50,25 @@
   "kuwait": "Kuwait",
   "qatar": "Catar",
   "singapore": "Singapura",
-  "turkey": "Turquia (Diyanet)"
+  "turkey": "Turquia (Diyanet)",
+  "useDeviceLocation": "Usar localização do dispositivo",
+  "@useDeviceLocation": {
+    "description": "Botão ou opção para usar a localização atual do dispositivo"
+  },
+  "searchCity": "Pesquisar cidade",
+  "@searchCity": {
+    "description": "Espaço reservado ou rótulo para um campo de entrada de pesquisa de cidade"
+  },
+  "search": "Pesquisar",
+  "@search": {
+    "description": "Texto do botão para iniciar uma pesquisa"
+  },
+  "noLocationsFound": "Nenhum local encontrado",
+  "@noLocationsFound": {
+    "description": "Mensagem exibida quando uma pesquisa de local não retorna resultados"
+  },
+  "searchError": "Erro ao pesquisar local",
+  "@searchError": {
+    "description": "Mensagem de erro exibida quando uma pesquisa de local falha"
+  }
 }

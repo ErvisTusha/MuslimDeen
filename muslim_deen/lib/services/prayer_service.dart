@@ -7,6 +7,17 @@ import '../service_locator.dart';
 import '../services/logger_service.dart';
 
 class PrayerService {
+  /// Resets the service state, clearing cached prayer times and calculation data
+  void reset() {
+    _currentPrayerTimes = null;
+    _lastCalculationTime = null;
+    _lastParamsUsed = null;
+    _lastCalculationDate = null;
+    _lastCalculationMethodString = null;
+    _isInitialized = false;
+    _logger.debug('PrayerService state reset');
+  }
+
   final LocationService _locationService;
   adhan.PrayerTimes? _currentPrayerTimes;
   DateTime? _lastCalculationTime;

@@ -68,5 +68,25 @@
   "light": "فاتح",
   "dark": "داكن",
   "selectLanguage": "اختر اللغة",
-  "cancel": "إلغاء"
+  "cancel": "إلغاء",
+  "useDeviceLocation": "استخدام موقع الجهاز",
+  "@useDeviceLocation": {
+    "description": "زر أو خيار لاستخدام الموقع الحالي للجهاز"
+  },
+  "searchCity": "ابحث عن مدينة",
+  "@searchCity": {
+    "description": "عنصر نائب أو تسمية لحقل إدخال البحث عن مدينة"
+  },
+  "search": "بحث",
+  "@search": {
+    "description": "نص الزر لبدء البحث"
+  },
+  "noLocationsFound": "لم يتم العثور على مواقع",
+  "@noLocationsFound": {
+    "description": "رسالة معروضة عندما لا يسفر البحث عن موقع عن أي نتائج"
+  },
+  "searchError": "خطأ في البحث عن الموقع",
+  "@searchError": {
+    "description": "رسالة خطأ معروضة عند فشل البحث عن موقع"
+  }
 }

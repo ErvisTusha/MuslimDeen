@@ -68,5 +68,25 @@
   "light": "Clair",
   "dark": "Sombre",
   "selectLanguage": "Sélectionner la langue",
-  "cancel": "Annuler"
+  "cancel": "Annuler",
+  "useDeviceLocation": "Utiliser la position de l'appareil",
+  "@useDeviceLocation": {
+    "description": "Bouton ou option pour utiliser la position actuelle de l'appareil"
+  },
+  "searchCity": "Rechercher une ville",
+  "@searchCity": {
+    "description": "Texte indicatif ou étiquette pour un champ de saisie de recherche de ville"
+  },
+  "search": "Rechercher",
+  "@search": {
+    "description": "Texte du bouton pour lancer une recherche"
+  },
+  "noLocationsFound": "Aucun lieu trouvé",
+  "@noLocationsFound": {
+    "description": "Message affiché lorsqu'une recherche de lieu ne donne aucun résultat"
+  },
+  "searchError": "Erreur lors de la recherche du lieu",
+  "@searchError": {
+    "description": "Message d'erreur affiché lorsqu'une recherche de lieu échoue"
+  }
 }

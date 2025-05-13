@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:provider/provider.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/app_settings.dart';
-import '../providers/settings_provider.dart';
+import '../providers/providers.dart';
+import '../providers/settings_notifier.dart';
 import '../service_locator.dart';
 import '../services/location_service.dart';
 import '../services/logger_service.dart';
@@ -13,7 +14,7 @@ import '../styles/app_styles.dart';
 import 'about_view.dart';
 import 'city_search_screen.dart';
 
-class SettingsView extends StatefulWidget {
+class SettingsView extends ConsumerStatefulWidget {
   // Add constructor parameters to indicate where to scroll initially
   final bool scrollToNotifications;
   final bool scrollToLocation;
@@ -27,10 +28,10 @@ class SettingsView extends StatefulWidget {
   });
 
   @override
-  State<SettingsView> createState() => _SettingsViewState();
+  ConsumerState<SettingsView> createState() => _SettingsViewState();
 }
 
-class _SettingsViewState extends State<SettingsView> {
+class _SettingsViewState extends ConsumerState<SettingsView> {
   final LocationService _locationService = locator<LocationService>();
   final LoggerService _logger = locator<LoggerService>();
   Position? _currentPosition;
@@ -45,7 +46,7 @@ class _SettingsViewState extends State<SettingsView> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    Provider.of<SettingsProvider>(context, listen: false);
+    // No need for explicit Provider.of call - Riverpod manages this
   }
 
   @override
@@ -165,7 +166,9 @@ class _SettingsViewState extends State<SettingsView> {
   void _scrollToDateSection() {
     _logger.debug('Attempting to scroll to Date & Time section');
     if (!mounted) {
-      _logger.warning('_scrollToDateSection: Widget not mounted when trying to scroll.');
+      _logger.warning(
+        '_scrollToDateSection: Widget not mounted when trying to scroll.',
+      );
       return;
     }
     if (_dateKey.currentContext != null && _scrollController.hasClients) {
@@ -176,7 +179,9 @@ class _SettingsViewState extends State<SettingsView> {
           curve: Curves.easeInOut,
           alignment: 0.0, // Align to the top of the viewport
         );
-        _logger.debug('Successfully initiated scroll to Date & Time section using ensureVisible.');
+        _logger.debug(
+          'Successfully initiated scroll to Date & Time section using ensureVisible.',
+        );
       } catch (e, s) {
         _logger.error(
           'Error in _scrollToDateSection using ensureVisible',
@@ -195,22 +200,32 @@ class _SettingsViewState extends State<SettingsView> {
     }
     // Show date format dialog after scrolling if requested
     if (widget.scrollToDate && mounted) {
+      // This if statement was missing its closing brace
       Future.delayed(const Duration(milliseconds: 600), () {
         if (mounted) {
-          final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-          _showDateFormatDialog(context, settingsProvider);
+          final settingsNotifierInstance = ref.read(settingsProvider.notifier);
+          // Get the current settings to pass the dateFormatOption
+          final currentSettings = ref.read(settingsProvider);
+          _showDateFormatDialog(
+            context,
+            currentSettings.dateFormatOption,
+            settingsNotifierInstance,
+          );
         }
       });
-    }
+    } // <-- Added missing closing brace for the if statement on line 197
   }
 
   // Method to scroll to notifications section
   void _scrollToNotificationsSection() {
     if (!mounted) {
-      _logger.warning('_scrollToNotificationsSection: Widget not mounted when trying to scroll.');
+      _logger.warning(
+        '_scrollToNotificationsSection: Widget not mounted when trying to scroll.',
+      );
       return;
     }
-    if (_notificationsKey.currentContext != null && _scrollController.hasClients) {
+    if (_notificationsKey.currentContext != null &&
+        _scrollController.hasClients) {
       Scrollable.ensureVisible(
         _notificationsKey.currentContext!,
         duration: const Duration(milliseconds: 500),
@@ -223,7 +238,9 @@ class _SettingsViewState extends State<SettingsView> {
   // Method to scroll to location section
   void _scrollToLocationSection() {
     if (!mounted) {
-      _logger.warning('_scrollToLocationSection: Widget not mounted when trying to scroll.');
+      _logger.warning(
+        '_scrollToLocationSection: Widget not mounted when trying to scroll.',
+      );
       return;
     }
     // Try to scroll the location section into view
@@ -243,7 +260,7 @@ class _SettingsViewState extends State<SettingsView> {
         curve: Curves.easeInOut,
       );
     }
-    
+
     // Add a small delay before showing the location options dialog
     if (widget.scrollToLocation) {
       Future.delayed(const Duration(milliseconds: 600), () {
@@ -255,10 +272,15 @@ class _SettingsViewState extends State<SettingsView> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
+    // Corrected signature
     final appLocalizations = AppLocalizations.of(context)!;
-    final settingsProvider = Provider.of<SettingsProvider>(context);
-    final settings = settingsProvider.settings;
+    // Access ref as an instance member of ConsumerState
+    final settings = ref.watch(settingsProvider); // AppSettings
+    final settingsNotifier = ref.read(
+      settingsProvider.notifier,
+    ); // SettingsNotifier
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -289,7 +311,11 @@ class _SettingsViewState extends State<SettingsView> {
                 'Change language',
                 data: {'current': settings.language},
               );
-              _showLanguageSelectionDialog(context, settingsProvider);
+              _showLanguageSelectionDialog(
+                context,
+                settings.language,
+                settingsNotifier,
+              );
             },
           ),
 
@@ -303,7 +329,11 @@ class _SettingsViewState extends State<SettingsView> {
                 'Change theme',
                 data: {'current': settings.themeMode.toString()},
               );
-              _showThemeSelectionDialog(context, settingsProvider);
+              _showThemeSelectionDialog(
+                context,
+                settings.themeMode,
+                settingsNotifier,
+              );
             },
           ),
 
@@ -312,7 +342,7 @@ class _SettingsViewState extends State<SettingsView> {
           _buildSectionHeader(
             appLocalizations.notifications,
             trailing:
-                context.watch<SettingsProvider>().areNotificationsBlocked
+                ref.watch(settingsProvider.notifier).areNotificationsBlocked
                     ? Icon(
                       Icons.notifications_off,
                       size: 16,
@@ -332,7 +362,7 @@ class _SettingsViewState extends State<SettingsView> {
                   'Toggle prayer notification',
                   data: {'prayer': prayer.toString(), 'enabled': value},
                 );
-                settingsProvider.setPrayerNotification(prayer, value);
+                settingsNotifier.setPrayerNotification(prayer, value);
               },
               appLocalizations: appLocalizations,
             ),
@@ -353,7 +383,11 @@ class _SettingsViewState extends State<SettingsView> {
                 'Change calculation method',
                 data: {'current': settings.calculationMethod},
               );
-              _showCalculationMethodDialog(context, settingsProvider);
+              _showCalculationMethodDialog(
+                context,
+                settings.calculationMethod,
+                settingsNotifier,
+              );
             },
           ),
 
@@ -367,7 +401,11 @@ class _SettingsViewState extends State<SettingsView> {
                 'Change madhab',
                 data: {'current': settings.madhab},
               );
-              _showMadhabSelectionDialog(context, settingsProvider);
+              _showMadhabSelectionDialog(
+                context,
+                settings.madhab,
+                settingsNotifier,
+              );
             },
           ),
 
@@ -404,7 +442,11 @@ class _SettingsViewState extends State<SettingsView> {
                     'Change date format',
                     data: {'current': settings.dateFormatOption.toString()},
                   );
-                  _showDateFormatDialog(context, settingsProvider);
+                  _showDateFormatDialog(
+                    context,
+                    settings.dateFormatOption,
+                    settingsNotifier,
+                  );
                 },
               ),
               _buildSettingsItem(
@@ -420,7 +462,11 @@ class _SettingsViewState extends State<SettingsView> {
                     'Change time format',
                     data: {'current': settings.timeFormat.toString()},
                   );
-                  _showTimeFormatDialog(context, settingsProvider);
+                  _showTimeFormatDialog(
+                    context,
+                    settings.timeFormat,
+                    settingsNotifier,
+                  );
                 },
               ),
             ],
@@ -499,8 +545,8 @@ class _SettingsViewState extends State<SettingsView> {
     required ValueChanged<bool> onChanged,
     required AppLocalizations appLocalizations,
   }) {
-    final settingsProvider = Provider.of<SettingsProvider>(context);
-    final bool isBlocked = settingsProvider.areNotificationsBlocked;
+    final localSettingsNotifier = ref.read(settingsProvider.notifier);
+    final bool isBlocked = localSettingsNotifier.areNotificationsBlocked;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -550,7 +596,7 @@ class _SettingsViewState extends State<SettingsView> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      "Notifications are blocked. Enable them in system settings.", // TODO: Replace with appLocalizations.notificationsBlocked once localization is generated
+                      "Notifications are blocked. Enable them in system settings.",
                       style: AppTextStyles.label.copyWith(
                         color: Colors.orange,
                         fontSize: 12,
@@ -723,7 +769,8 @@ class _SettingsViewState extends State<SettingsView> {
 
   void _showLanguageSelectionDialog(
     BuildContext context,
-    SettingsProvider settingsProvider,
+    String currentLanguage,
+    SettingsNotifier settingsNotifier,
   ) {
     final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
     final Map<String, String> languages = {
@@ -755,11 +802,11 @@ class _SettingsViewState extends State<SettingsView> {
                 return RadioListTile<String>(
                   title: Text(entry.value, style: AppTextStyles.prayerName),
                   value: entry.key,
-                  groupValue: settingsProvider.settings.language,
+                  groupValue: currentLanguage,
                   activeColor: AppColors.primary,
                   onChanged: (value) {
                     if (value != null) {
-                      settingsProvider.updateLanguage(value);
+                      settingsNotifier.updateLanguage(value);
                       Navigator.pop(context);
                     }
                   },
@@ -781,7 +828,8 @@ class _SettingsViewState extends State<SettingsView> {
 
   void _showThemeSelectionDialog(
     BuildContext context,
-    SettingsProvider settingsProvider,
+    ThemeMode currentThemeMode,
+    SettingsNotifier settingsNotifier,
   ) {
     final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
     final Map<ThemeMode, String> themes = {
@@ -809,11 +857,11 @@ class _SettingsViewState extends State<SettingsView> {
                 return RadioListTile<ThemeMode>(
                   title: Text(entry.value, style: AppTextStyles.prayerName),
                   value: entry.key,
-                  groupValue: settingsProvider.settings.themeMode,
+                  groupValue: currentThemeMode,
                   activeColor: AppColors.primary,
                   onChanged: (value) {
                     if (value != null) {
-                      settingsProvider.updateThemeMode(value);
+                      settingsNotifier.updateThemeMode(value);
                       Navigator.pop(context);
                     }
                   },
@@ -835,7 +883,8 @@ class _SettingsViewState extends State<SettingsView> {
 
   void _showCalculationMethodDialog(
     BuildContext context,
-    SettingsProvider settingsProvider,
+    String currentCalculationMethod,
+    SettingsNotifier settingsNotifier,
   ) {
     final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
     final Map<String, String> calculationMethods = {
@@ -872,11 +921,11 @@ class _SettingsViewState extends State<SettingsView> {
                 return RadioListTile<String>(
                   title: Text(entry.value, style: AppTextStyles.prayerName),
                   value: entry.key,
-                  groupValue: settingsProvider.settings.calculationMethod,
+                  groupValue: currentCalculationMethod,
                   activeColor: AppColors.primary,
                   onChanged: (value) {
                     if (value != null) {
-                      settingsProvider.updateCalculationMethod(value);
+                      settingsNotifier.updateCalculationMethod(value);
                       Navigator.pop(context);
                     }
                   },
@@ -898,7 +947,8 @@ class _SettingsViewState extends State<SettingsView> {
 
   void _showMadhabSelectionDialog(
     BuildContext context,
-    SettingsProvider settingsProvider,
+    String currentMadhab,
+    SettingsNotifier settingsNotifier,
   ) {
     final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
     final Map<String, String> madhabs = {
@@ -925,11 +975,11 @@ class _SettingsViewState extends State<SettingsView> {
                 return RadioListTile<String>(
                   title: Text(entry.value, style: AppTextStyles.prayerName),
                   value: entry.key,
-                  groupValue: settingsProvider.settings.madhab,
+                  groupValue: currentMadhab,
                   activeColor: AppColors.primary,
                   onChanged: (value) {
                     if (value != null) {
-                      settingsProvider.updateMadhab(value);
+                      settingsNotifier.updateMadhab(value);
                       Navigator.pop(context);
                     }
                   },
@@ -1069,7 +1119,11 @@ class _SettingsViewState extends State<SettingsView> {
     }
   }
 
-  void _showDateFormatDialog(BuildContext context, SettingsProvider provider) {
+  void _showDateFormatDialog(
+    BuildContext context,
+    DateFormatOption currentDateFormatOption,
+    SettingsNotifier notifier,
+  ) {
     final loc = AppLocalizations.of(context)!;
     showDialog(
       context: context,
@@ -1091,10 +1145,10 @@ class _SettingsViewState extends State<SettingsView> {
                             style: AppTextStyles.prayerName,
                           ),
                           value: opt,
-                          groupValue: provider.settings.dateFormatOption,
+                          groupValue: currentDateFormatOption,
                           activeColor: AppColors.primary,
                           onChanged: (v) {
-                            if (v != null) provider.updateDateFormatOption(v);
+                            if (v != null) notifier.updateDateFormatOption(v);
                             Navigator.pop(ctx);
                           },
                         ),
@@ -1105,7 +1159,11 @@ class _SettingsViewState extends State<SettingsView> {
     );
   }
 
-  void _showTimeFormatDialog(BuildContext context, SettingsProvider provider) {
+  void _showTimeFormatDialog(
+    BuildContext context,
+    TimeFormat currentTimeFormat,
+    SettingsNotifier notifier,
+  ) {
     final loc = AppLocalizations.of(context)!;
     showDialog(
       context: context,
@@ -1127,10 +1185,10 @@ class _SettingsViewState extends State<SettingsView> {
                             style: AppTextStyles.prayerName,
                           ),
                           value: fmt,
-                          groupValue: provider.settings.timeFormat,
+                          groupValue: currentTimeFormat,
                           activeColor: AppColors.primary,
                           onChanged: (v) {
-                            if (v != null) provider.updateTimeFormat(v);
+                            if (v != null) notifier.updateTimeFormat(v);
                             Navigator.pop(ctx);
                           },
                         ),

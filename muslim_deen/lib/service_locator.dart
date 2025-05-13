@@ -11,43 +11,102 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 final GetIt locator = GetIt.instance;
 
-Future<void> setupLocator({bool testing = false}) async {
-  final sharedPrefs = await SharedPreferences.getInstance();
+/// Defines service initialization priority
+enum ServicePriority {
+  critical, // Services required for app to function
+  high,     // Services needed early in app lifecycle
+  normal,   // Standard services
+  low       // Services that can be initialized on demand
+}
 
+/// Initializes the service locator with optimized loading
+Future<void> setupLocator({bool testing = false}) async {
+  // First, register all services without initializing them
+  _registerServices(testing);
+  
+  // Then initialize services based on priority
+  await _initializeCriticalServices();
+  await _initializeHighPriorityServices(testing);
+  
+  // Normal and low priority services are initialized lazily
+  // or in the background after app is visible to user
+  _scheduleRemainingServiceInitialization();
+}
+
+/// Registers all services with the locator
+void _registerServices(bool testing) {
+  final sharedPrefsInstance = SharedPreferences.getInstance();
+  
   // Register logger first so it's available to all other services
   locator.registerLazySingleton<LoggerService>(() => LoggerService());
 
+  // Register storage service
   locator.registerLazySingleton<StorageService>(() => StorageService());
-  // Initialize StorageService immediately after registration
-  await locator<StorageService>().init();
+  
+  // Register cache service with async shared prefs resolution
+  locator.registerLazySingletonAsync<CacheService>(() async {
+    final prefs = await sharedPrefsInstance;
+    return CacheService(prefs);
+  });
 
-  locator.registerLazySingleton<CacheService>(() => CacheService(sharedPrefs));
+  // Register location service
+  locator.registerLazySingleton<LocationService>(() => LocationService());
 
-  // Skip notification service initialization in test environment
+  // Register notification service (except in testing)
   if (!testing) {
-    locator.registerLazySingleton<NotificationService>(
-      () => NotificationService(),
-    );
-    // Initialize NotificationService immediately after registration
-    await locator<NotificationService>().init();
+    locator.registerLazySingleton<NotificationService>(() => NotificationService());
   }
 
-  locator.registerLazySingleton<LocationService>(() => LocationService());
-  // Initialize LocationService immediately after registration
-  await locator<LocationService>().init();
-
-  // Register dependent services after their dependencies are initialized
+  // Register dependent services
   locator.registerLazySingleton<PrayerService>(
-    () => PrayerService(
-      locator<LocationService>(),
-    ),
+    () => PrayerService(locator<LocationService>()),
   );
   
-  locator.registerLazySingleton<CompassService>(
-    () => CompassService(cacheService: locator<CacheService>()),
-  );
+  locator.registerLazySingletonAsync<CompassService>(() async {
+    final cacheService = await locator.getAsync<CacheService>();
+    return CompassService(cacheService: cacheService);
+  });
   
-  locator.registerLazySingleton<MapService>(
-    () => MapService(cacheService: locator<CacheService>()),
-  );
+  locator.registerLazySingletonAsync<MapService>(() async {
+    final cacheService = await locator.getAsync<CacheService>();
+    return MapService(cacheService: cacheService);
+  });
+}
+
+/// Initialize critical services required for app to start
+Future<void> _initializeCriticalServices() async {
+  // These services must be ready before the app can show UI
+  await locator<StorageService>().init();
+  // Log startup process
+  locator<LoggerService>().info('Critical services initialized');
+}
+
+/// Initialize high priority services needed early in app lifecycle
+Future<void> _initializeHighPriorityServices(bool testing) async {
+  // Initialize services needed soon after app starts
+  // Ensure CacheService and MapService are ready before other high-priority services
+  // that might depend on them or be accessed by UI components initialized early.
+  await locator.isReady<CacheService>(); // CompassService depends on this
+  await locator.isReady<CompassService>(); // Ensure CompassService is ready
+  await locator.isReady<MapService>();
+
+  if (!testing) {
+    await locator<NotificationService>().init();
+  }
+  await locator<LocationService>().init();
+  
+  locator<LoggerService>().info('High priority services initialized (including CacheService, CompassService, and MapService)');
+}
+
+/// Schedule remaining service initialization
+void _scheduleRemainingServiceInitialization() {
+  // Use Future.microtask to initialize remaining services after frame is rendered
+  Future.microtask(() async {
+    try {
+      // CacheService readiness is now ensured in _initializeHighPriorityServices
+      locator<LoggerService>().info('Normal priority services initialized');
+    } catch (e) {
+      locator<LoggerService>().error('Error initializing background services', error: e);
+    }
+  });
 }

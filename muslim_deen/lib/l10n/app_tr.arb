@@ -61,5 +61,25 @@
   "light": "Açık",
   "dark": "Koyu",
   "selectLanguage": "Dil Seçin",
-  "cancel": "İptal"
+  "cancel": "İptal",
+  "useDeviceLocation": "Cihaz Konumunu Kullan",
+  "@useDeviceLocation": {
+    "description": "Cihazın mevcut konumunu kullanma düğmesi veya seçeneği"
+  },
+  "searchCity": "Şehir Ara",
+  "@searchCity": {
+    "description": "Bir şehir arama giriş alanı için yer tutucu veya etiket"
+  },
+  "search": "Ara",
+  "@search": {
+    "description": "Bir arama başlatmak için düğme metni"
+  },
+  "noLocationsFound": "Konum Bulunamadı",
+  "@noLocationsFound": {
+    "description": "Bir konum araması sonuç vermediğinde görüntülenen mesaj"
+  },
+  "searchError": "Konum Aranırken Hata Oluştu",
+  "@searchError": {
+    "description": "Bir konum araması başarısız olduğunda görüntülenen hata mesajı"
+  }
 }

@@ -111,25 +111,47 @@ class _MosqueViewState extends State<MosqueView> {
     _logger.info('MosqueView initialized');
     _startLocationCheck();
     _locationService.locationStatus.listen((hasPermission) {
-      if (mounted && !hasPermission) {
-        _logger.warning('Location permission denied in MosqueView');
+      if (!mounted) return;
+      // The 'localizations' variable previously defined here was unused.
+      // If context-dependent operations (like accessing AppLocalizations)
+      // are needed in this listener in the future, ensure context is accessed safely,
+      // potentially using WidgetsBinding.instance.addPostFrameCallback if the
+      // listener can fire before the first frame is complete.
+
+      if (!hasPermission) {
+        _logger.warning('Location permission denied in MosqueView (listener)');
         setState(() {
-          _errorMessage = 'Location permission denied';
+          // Use a more informative, localized message
+          _errorMessage = "Location permission is required to find nearby mosques. Please enable it in your browser settings and try again.";
+          _isLoading = false; // Ensure loading indicator stops
+          _nearbyMosques = []; // Clear any potentially stale mosque data
         });
-      } else if (mounted &&
-          hasPermission &&
-          _errorMessage == 'Location permission denied') {
-        _logger.info('Location permission granted, reloading nearby mosques.');
-        _loadNearbyMosques(); // Retry when permission is granted
+      } else { // Permission is now true
+        // Determine if a reload is needed:
+        // 1. If the specific permission error was previously shown.
+        // 2. Or if it's an initial state where mosques haven't loaded and position is unknown.
+        final bool hadPermissionError = _errorMessage == "Location permission is required to find nearby mosques. Please enable it in your browser settings and try again.";
+        final bool needsLoadAttempt = _nearbyMosques.isEmpty && _currentPosition == null;
+
+        if (hadPermissionError || needsLoadAttempt) {
+          _logger.info('Location permission now available, attempting to load/reload nearby mosques.');
+          setState(() {
+            _errorMessage = null; // Clear previous error message before new load attempt
+          });
+          _loadNearbyMosques();
+        }
       }
     });
     _loadNearbyMosques();
   }
 
   Future<void> _loadNearbyMosques() async {
+    // Localizations will be fetched safely inside the catch block if an error occurs,
+    // and the state update will be scheduled after the current frame.
+
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
+      _errorMessage = null; // Clear previous errors at the start of a load attempt
       _nearbyMosques = [];
     });
     _logger.info('Loading nearby mosques...');
@@ -137,8 +159,12 @@ class _MosqueViewState extends State<MosqueView> {
     try {
       await _locationService.checkLocationPermission();
       if (_locationService.isLocationBlocked) {
-        _logger.warning('Location permission is blocked.');
-        throw Exception('Location permission denied');
+        _logger.warning('Location permission is blocked. User needs to enable it.');
+        setState(() {
+          _errorMessage = "Location permission is required to find nearby mosques. Please enable it in your browser settings and try again."; // Set informative message
+          _isLoading = false; // Stop loading
+        });
+        return; // Exit early, preventing the exception
       }
       _currentPosition = await _locationService.getLocation();
       if (_currentPosition == null) {
@@ -159,9 +185,17 @@ class _MosqueViewState extends State<MosqueView> {
         'Error loading nearby mosques',
         data: {'error': e.toString(), 'stackTrace': s.toString()},
       );
-      setState(() {
-        _errorMessage = 'Error finding mosques: ${e.toString()}';
-      });
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) { // Re-check mounted as callback is asynchronous
+            // Safely get localizations and update state after the frame
+            final localizations = AppLocalizations.of(context)!;
+            setState(() {
+              _errorMessage = localizations.mosquesError(e.toString());
+            });
+          }
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {

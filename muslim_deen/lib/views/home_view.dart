@@ -5,15 +5,16 @@ import 'package:adhan_dart/adhan_dart.dart' as adhan;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // Added
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hijri/hijri_calendar.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
+// import 'package:provider/provider.dart'; // Removed
 
 import '../l10n/app_localizations.dart';
 import '../models/app_settings.dart';
-import '../providers/settings_provider.dart';
+import '../providers/providers.dart'; // Changed for Riverpod
 import '../service_locator.dart';
 import '../services/location_service.dart';
 import '../services/logger_service.dart';
@@ -35,14 +36,16 @@ String _formatDuration(Duration duration) {
   return "$twoDigitHours:$twoDigitMinutes:$twoDigitSeconds";
 }
 
-class HomeView extends StatefulWidget {
+class HomeView extends ConsumerStatefulWidget {
+  // Changed
   const HomeView({super.key});
 
   @override
-  State<HomeView> createState() => _HomeViewState();
+  ConsumerState<HomeView> createState() => _HomeViewState(); // Changed
 }
 
-class _HomeViewState extends State<HomeView> {
+class _HomeViewState extends ConsumerState<HomeView> {
+  // Changed
   final LocationService _locationService = locator<LocationService>();
   final PrayerService _prayerService = locator<PrayerService>();
   final NotificationService _notificationService =
@@ -52,16 +55,18 @@ class _HomeViewState extends State<HomeView> {
   static const double _prayerItemHeight = 80.0;
   Timer? _permissionCheckTimer;
   Timer? _dailyRefreshTimer;
-  VoidCallback? _settingsListener; // Listener for settings changes
-  AppSettings? _previousSettings; // Store previous settings for comparison
+  // VoidCallback? _settingsListener; // Removed
+  // AppSettings? _previousSettings; // Removed
   String? _lastKnownCity; // Store last known location details for loading state
   String? _lastKnownCountry;
-  late final SettingsProvider _settingsProvider; // cache provider for safe disposal
+  // late final SettingsProvider _settingsProvider; // Removed
 
   void _startPermissionCheck() {
     _permissionCheckTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
-        context.read<SettingsProvider>().checkNotificationPermissionStatus();
+        ref
+            .read(settingsProvider.notifier)
+            .checkNotificationPermissionStatus(); // Changed
       }
     });
   }
@@ -76,19 +81,18 @@ class _HomeViewState extends State<HomeView> {
   void initState() {
     super.initState();
     _logger.info('HomeView initialized');
-    // Cache SettingsProvider to avoid context lookup in dispose
-    _settingsProvider = context.read<SettingsProvider>();
     // Initial data load and scheduling
     _dataLoadingFuture = _fetchDataAndScheduleNotifications();
 
     // Initial permission check and start periodic check
-    _settingsProvider.checkNotificationPermissionStatus();
+    ref
+        .read(settingsProvider.notifier)
+        .checkNotificationPermissionStatus(); // Changed
     _startPermissionCheck();
 
-    // Store initial settings and add listener
-    _previousSettings = _settingsProvider.settings;
-    _settingsListener = () => _handleSettingsChange(_settingsProvider.settings);
-    _settingsProvider.addListener(_settingsListener!);
+    // Listen to settings changes using Riverpod
+    // Defer the listener setup until after the first frame
+    // Settings listening is now handled in build method
 
     // Start daily refresh timer
     _startDailyRefreshTimer();
@@ -96,18 +100,36 @@ class _HomeViewState extends State<HomeView> {
 
   @override
   void dispose() {
-    _logger.debug('HomeView disposed');
+    _logger.debug('HomeView dispose started');
+    
+    // First, stop any active timers to prevent new location/notification requests
     _permissionCheckTimer?.cancel();
     _dailyRefreshTimer?.cancel();
+
+    // Clear UI-related state immediately
+    _prayerTimes = null;
+    _nextPrayerDateTime = null;
+
+    // Cancel notifications before cleaning up services
+    // This ensures no new notifications are scheduled during cleanup
+    _notificationService.cancelAllNotifications().then((_) {
+      _logger.debug('Notifications cancelled during dispose');
+    });
+
+    // Clean up location service first to stop any active location streams
+    // This addresses the Geolocator foreground service issue
+    _locationService.dispose();
     
-    final listener = _settingsListener;
-    _settingsListener = null;
-    if (listener != null) {
-      _settingsProvider.removeListener(listener);
-    }
+    // Reset prayer service after location service
+    // since prayer calculations depend on location
+    _prayerService.reset();
     
+    // Clean up UI controllers last
     _scrollController.dispose();
+    
     super.dispose();
+    
+    _logger.info('HomeView cleanup completed');
   }
 
   /// Starts a timer to refresh prayer times daily around midnight.
@@ -145,28 +167,37 @@ class _HomeViewState extends State<HomeView> {
   }
 
   /// Handles changes detected by the SettingsProvider listener.
-  void _handleSettingsChange(AppSettings newSettings) {
+  void _handleSettingsChange(
+    AppSettings newSettings,
+    AppSettings? oldSettings,
+  ) {
+    // Signature changed
     _logger.debug(
       'Settings changed in HomeView',
-      data: {'newSettings': newSettings.toJson()},
+      data: {
+        'newSettings': newSettings.toJson(),
+        'oldSettings': oldSettings?.toJson(),
+      },
     );
     // No need to check _prayerTimes == null here, rescheduling only happens if it's not null anyway.
-    if (!mounted || _previousSettings == null) return;
+    if (!mounted || oldSettings == null) return; // Changed
 
     bool needsReschedule = false;
     bool needsReload = false;
 
     // Check relevant settings for changes that require reloading prayer times
-    if (newSettings.calculationMethod != _previousSettings!.calculationMethod ||
-        newSettings.madhab != _previousSettings!.madhab) {
+    if (newSettings.calculationMethod !=
+            oldSettings.calculationMethod || // Changed
+        newSettings.madhab != oldSettings.madhab) {
+      // Changed
       needsReload = true;
       needsReschedule = true; // Reload implies reschedule
       _logger.info(
         "Calculation method or Madhab change detected, reloading data...",
         data: {
-          'oldMethod': _previousSettings!.calculationMethod,
+          'oldMethod': oldSettings.calculationMethod, // Changed
           'newMethod': newSettings.calculationMethod,
-          'oldMadhab': _previousSettings!.madhab,
+          'oldMadhab': oldSettings.madhab, // Changed
           'newMadhab': newSettings.madhab,
         },
       );
@@ -174,13 +205,14 @@ class _HomeViewState extends State<HomeView> {
     // Check for changes that only require rescheduling notifications
     else if (!mapEquals(
       newSettings.notifications,
-      _previousSettings!.notifications,
+      oldSettings.notifications, // Changed
     )) {
       needsReschedule = true;
       _logger.info(
         "Notification settings change detected, rescheduling notifications...",
         data: {
-          'oldNotifications': _previousSettings!.notifications.map(
+          'oldNotifications': oldSettings.notifications.map(
+            // Changed
             (key, value) => MapEntry(key.toString(), value),
           ),
           'newNotifications': newSettings.notifications.map(
@@ -190,8 +222,7 @@ class _HomeViewState extends State<HomeView> {
       );
     }
 
-    // Update previous settings regardless
-    _previousSettings = newSettings;
+    // _previousSettings = newSettings; // Removed, Riverpod manages state
 
     if (needsReload) {
       // Trigger data reload, which will then reschedule notifications upon completion
@@ -528,7 +559,7 @@ class _HomeViewState extends State<HomeView> {
       String? logSettingsJson;
       if (mounted) {
         try {
-          final currentSettings = context.read<SettingsProvider>().settings;
+          final currentSettings = ref.read(settingsProvider); // Changed
           logSettingsJson = jsonEncode(currentSettings.toJson());
         } catch (e, s) {
           _logger.warning(
@@ -553,7 +584,7 @@ class _HomeViewState extends State<HomeView> {
       );
 
       if (!mounted) return {};
-      final settings = context.read<SettingsProvider>().settings;
+      final settings = ref.read(settingsProvider); // Changed
 
       adhan.PrayerTimes calculatedPrayerTimes = await _prayerService
           .calculatePrayerTimesForToday(settings);
@@ -660,8 +691,8 @@ class _HomeViewState extends State<HomeView> {
     // Use read here as this function is called from post-frame callbacks or FutureBuilder,
     // and we don't want this specific function call to trigger rebuilds on settings change.
     // The watch() in the build method handles reacting to settings changes.
-    final settingsProvider = context.read<SettingsProvider>();
-    final settings = settingsProvider.settings;
+    final appSettings = ref.read(settingsProvider); // Changed
+    // final settings = settingsProvider.settings; // Removed, use appSettings
 
     _logger.info("Scheduling/Rescheduling notifications...");
 
@@ -702,7 +733,8 @@ class _HomeViewState extends State<HomeView> {
       }
 
       // Get enabled status from SettingsProvider, default to false if not found
-      final bool isEnabled = settings.notifications[prayer] ?? false;
+      final bool isEnabled =
+          appSettings.notifications[prayer] ?? false; // Changed
 
       // Only schedule if we have a valid time and notifications are enabled
       if (prayerTime != null && isEnabled) {
@@ -749,8 +781,20 @@ class _HomeViewState extends State<HomeView> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen for settings changes
+    ref.listen<AppSettings>(settingsProvider, (previous, next) {
+      _logger.debug(
+        'Settings changed (via ref.listen)',
+        data: {
+          'newSettings': next.toJson(),
+          'previousSettings': previous?.toJson(),
+        },
+      );
+      _handleSettingsChange(next, previous);
+    });
+    
     // Use watch to rebuild on any settings change
-    final settingsProvider = context.watch<SettingsProvider>();
+    final appSettings = ref.watch(settingsProvider);
     final localizations = AppLocalizations.of(context)!;
 
     return Scaffold(
@@ -776,7 +820,7 @@ class _HomeViewState extends State<HomeView> {
               prayerTimes: _prayerTimes,
               displayCity: _lastKnownCity ?? localizations.loading,
               displayCountry: _lastKnownCountry,
-              settingsProvider: settingsProvider,
+              appSettings: appSettings, // Changed
               localizations: localizations,
             );
           } else if (snapshot.hasError) {
@@ -828,7 +872,7 @@ class _HomeViewState extends State<HomeView> {
               prayerTimes: _prayerTimes!,
               displayCity: loadedCity,
               displayCountry: loadedCountry,
-              settingsProvider: settingsProvider,
+              appSettings: appSettings, // Changed
               localizations: localizations,
             );
           } else {
@@ -847,11 +891,11 @@ class _HomeViewState extends State<HomeView> {
     required adhan.PrayerTimes? prayerTimes,
     required String? displayCity,
     required String? displayCountry,
-    required SettingsProvider settingsProvider,
+    required AppSettings appSettings, // Changed
     required AppLocalizations localizations,
   }) {
     // Dynamic settings and formatting within content build
-    final settings = settingsProvider.settings;
+    final settings = appSettings; // Changed (or use appSettings directly)
     final now = DateTime.now();
     // Choose date pattern based on user setting
     final datePattern =
@@ -1132,7 +1176,7 @@ class _HomeViewState extends State<HomeView> {
                     timeFormat,
                     isCurrent,
                     isEnabled, // Pass enabled status
-                    settingsProvider, // Pass provider for updates
+                    // settingsProvider, // Removed: No longer needed by _buildPrayerItemWithSwitch
                   );
                 },
               ),
@@ -1153,7 +1197,7 @@ class _HomeViewState extends State<HomeView> {
     DateFormat format,
     bool isCurrent,
     bool isEnabled,
-    SettingsProvider settingsProvider,
+    // SettingsProvider settingsProvider, // Removed
   ) {
     return GestureDetector(
       onDoubleTap: () {

@@ -68,5 +68,25 @@
   "light": "E ndritshme",
   "dark": "E errët",
   "selectLanguage": "Zgjidh Gjuhën",
-  "cancel": "Anulo"
+  "cancel": "Anulo",
+  "useDeviceLocation": "Përdor Vendndodhjen e Pajisjes",
+  "@useDeviceLocation": {
+    "description": "Buton ose opsion për të përdorur vendndodhjen aktuale të pajisjes"
+  },
+  "searchCity": "Kërko Qytet",
+  "@searchCity": {
+    "description": "Placeholder ose etiketë për një fushë kërkimi të qytetit"
+  },
+  "search": "Kërko",
+  "@search": {
+    "description": "Teksti i butonit për të filluar një kërkim"
+  },
+  "noLocationsFound": "Nuk u Gjetën Vendndodhje",
+  "@noLocationsFound": {
+    "description": "Mesazh i shfaqur kur një kërkim vendndodhjeje nuk jep rezultate"
+  },
+  "searchError": "Gabim në Kërkimin e Vendndodhjes",
+  "@searchError": {
+    "description": "Mesazh gabimi i shfaqur kur një kërkim vendndodhjeje dështon"
+  }
 }
