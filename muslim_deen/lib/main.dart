@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 
 import 'l10n/app_localizations.dart';
@@ -16,8 +17,9 @@ import 'widgets/error_boundary.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await setupLocator(); // Initialize service locator first
+  await _requestPermissions(); // Then request permissions
   tz.initializeTimeZones();
-  await setupLocator();
 
   // Set up error handling for Flutter framework errors
   FlutterError.onError = (details) {
@@ -33,6 +35,27 @@ Future<void> main() async {
   };
 
   runApp(const ProviderScope(child: ErrorBoundary(child: MuslimDeenApp())));
+}
+
+Future<void> _requestPermissions() async {
+  final LoggerService logger = locator<LoggerService>();
+
+  // Request location permission
+  // var locationStatus = await Permission.location.status;
+  // logger.info('Initial location permission status: $locationStatus');
+  // if (!locationStatus.isGranted) {
+  //   locationStatus = await Permission.location.request();
+  //   logger.info('Location permission status after request: $locationStatus');
+  // }
+  logger.info('Location permission request is now handled by LocationService.startPermissionFlow()');
+
+  // Request notification permission
+  var notificationStatus = await Permission.notification.status;
+  logger.info('Initial notification permission status: $notificationStatus');
+  if (!notificationStatus.isGranted) {
+    notificationStatus = await Permission.notification.request();
+    logger.info('Notification permission status after request: $notificationStatus');
+  }
 }
 
 class MuslimDeenApp extends StatelessWidget {

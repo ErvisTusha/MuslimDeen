@@ -65,7 +65,6 @@ class LocationService {
   static const String _locationNameKey = 'location_name';
   static const String _useManualLocationKey = 'use_manual_location';
   static const String _lastKnownPositionKey = 'last_known_position';
-
   LocationService();
 
   // Initialize with debouncing to prevent multiple rapid initializations
@@ -81,6 +80,10 @@ class LocationService {
 
       _prefs = await SharedPreferences.getInstance();
       await _loadLastPosition();
+
+      // Set device location as default if not already set
+      await setDefaultToDeviceLocation();
+
       await startPermissionFlow();
       _isInitialized = true;
       _logger.info('LocationService initialized successfully.');
@@ -140,10 +143,10 @@ class LocationService {
         await notificationService.requestPermission();
 
     if (!hasNotificationPermission) {
-      _updatePermissionState(PermissionRequestState.denied);
-      _logger.info('Notification permission denied.');
-      await _handlePermissionDenied();
-      return;
+      // _updatePermissionState(PermissionRequestState.denied); // Consider if this state update is still appropriate here for notifications, or if it should only apply to location denial.
+      _logger.info('Notification permission denied. Proceeding to request location permission.');
+      // DO NOT call await _handlePermissionDenied(); here for notification denial.
+      // DO NOT return; here. Allow the flow to continue to request location permissions.
     }
 
     _updatePermissionState(PermissionRequestState.notificationRequested);
@@ -465,5 +468,26 @@ class LocationService {
 
   Future<bool> openAppSettings() async {
     return await Geolocator.openAppSettings();
+  }
+
+  /// Sets device location as default if no location preference exists
+  Future<void> setDefaultToDeviceLocation() async {
+    try {
+      // Only set default if _prefs is initialized
+      if (_prefs != null) {
+        // Check if the manual location flag has never been set (is null)
+        if (!_prefs!.containsKey(_useManualLocationKey)) {
+          // Set the flag to false to use device location by default
+          await _prefs!.setBool(_useManualLocationKey, false);
+          _logger.info('Default location set to use device location');
+        }
+      }
+    } catch (e, s) {
+      _logger.error(
+        'Error setting default to device location',
+        error: e,
+        stackTrace: s,
+      );
+    }
   }
 }
