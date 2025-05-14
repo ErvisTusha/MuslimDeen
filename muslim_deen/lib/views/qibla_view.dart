@@ -34,9 +34,7 @@ class _QiblaViewState extends State<QiblaView>
   late Animation<double> _rotationAnimation;
 
   double? _magneticHeading; // Raw heading from compass
-  double? _trueHeading; // Magnetic heading + declination
   double? _qiblaDirection; // True Qibla direction
-  double? _magneticDeclination;
   StreamSubscription<CompassEvent>? _compassSubscription;
   bool _isLoading = true;
   String? _errorMessage;
@@ -104,22 +102,7 @@ class _QiblaViewState extends State<QiblaView>
         ),
       );
       
-      // First, get magnetic declination
-      _magneticDeclination = await _compassService.getMagneticDeclination(
-        position.latitude,
-        position.longitude,
-        altitude: position.altitude,
-      );
-
-      if (_magneticDeclination == null) {
-        _logger.error('Failed to get magnetic declination. Qibla direction might be less accurate.');
-        // Optionally, inform the user or use a default/last known declination.
-        // For now, we'll proceed, and Qibla will be based on magnetic north if declination is null.
-      } else {
-        _logger.info('Magnetic declination: $_magneticDeclination');
-      }
-
-      // Then, get Qibla direction (which is already true Qibla from the service)
+      // Get Qibla direction (which is already true Qibla from the service)
       _qiblaDirection = await _compassService.getQiblaDirection(position);
       // Optionally fetch current city name via reverse geocoding
       try {
@@ -175,13 +158,7 @@ class _QiblaViewState extends State<QiblaView>
       _lastCompassUpdate = now;
       setState(() {
         _magneticHeading = event.heading;
-        if (_magneticHeading != null && _magneticDeclination != null) {
-          _trueHeading = (_magneticHeading! + _magneticDeclination!) % 360;
-          _logger.debug('[DEBUG-QIBLA] Updated headings: magnetic=$_magneticHeading°, true=$_trueHeading° (declination=$_magneticDeclination°)');
-        } else {
-          _trueHeading = _magneticHeading; // Fallback if declination is not available
-          _logger.debug('[DEBUG-QIBLA] Updated heading (no declination): magnetic/true=$_magneticHeading°');
-        }
+        _logger.debug('[DEBUG-QIBLA] Updated magnetic heading: $_magneticHeading°');
       });
     }
   }
@@ -192,7 +169,6 @@ class _QiblaViewState extends State<QiblaView>
       setState(() {
         _errorMessage = 'Compass sensor error: $error';
         _magneticHeading = null;
-        _trueHeading = null;
       });
     }
   }
@@ -330,9 +306,11 @@ class _QiblaViewState extends State<QiblaView>
   }
 
   bool _isQiblaAligned() {
-    if (_trueHeading == null || _qiblaDirection == null) return false;
-    // Use trueHeading for alignment check
-    final diff = (_trueHeading! - _qiblaDirection!).abs() % 360;
+    if (_magneticHeading == null || _qiblaDirection == null) return false;
+    // Compare magnetic heading with True Qibla direction
+    // The painter will handle displaying this correctly.
+    // Alignment means the device's magnetic north is pointing towards True Qibla.
+    final diff = (_magneticHeading! - _qiblaDirection!).abs() % 360;
     final err = diff > 180 ? 360 - diff : diff;
     return err <= 5; // 5 degrees tolerance
   }
@@ -344,8 +322,10 @@ class _QiblaViewState extends State<QiblaView>
 
     Color arrowColor = Colors.red;
     // Alignment color logic should use trueHeading against true Qibla direction
-    if (_trueHeading != null && _qiblaDirection != null) {
-      final diff = (_trueHeading! - _qiblaDirection!).abs() % 360;
+    if (_magneticHeading != null && _qiblaDirection != null) {
+      // Difference between magnetic heading and True Qibla.
+      // This difference determines the arrow color based on how far off the user is.
+      final diff = (_magneticHeading! - _qiblaDirection!).abs() % 360;
       final err = diff > 180 ? 360 - diff : diff;
       arrowColor = err <= 5 // 5 degrees tolerance
           ? AppColors.primary
@@ -386,7 +366,7 @@ class _QiblaViewState extends State<QiblaView>
             painter: QiblaDirectionPainter(
               qiblaAngleFromTrueNorth: _qiblaDirection!,
               magneticDeviceHeading: _magneticHeading!,
-              magneticDeclination: _magneticDeclination ?? 0.0, // Pass declination
+              magneticDeclination: 0.0, // Pass 0.0 as declination is not used for True Qibla
               arrowColor: arrowColor,
             ),
           ),
@@ -467,11 +447,9 @@ class _QiblaViewState extends State<QiblaView>
               ),
               Text(
                 // Display true heading if available, otherwise magnetic, or N/A
-                _trueHeading != null
-                    ? '${_trueHeading!.toInt()}° (T)'
-                    : _magneticHeading != null
-                        ? '${_magneticHeading!.toInt()}° (M)'
-                        : localizations.qiblaNotAvailable,
+                _magneticHeading != null
+                    ? '${_magneticHeading!.toInt()}° (M)'
+                    : localizations.qiblaNotAvailable,
                 textAlign: TextAlign.center,
                 style: AppTextStyles.currentPrayer,
               ),
@@ -518,10 +496,11 @@ class _QiblaViewState extends State<QiblaView>
 
   String _getAlignmentHelpText(AppLocalizations localizations) {
     // Use trueHeading for alignment help text
-    if (_trueHeading == null || _qiblaDirection == null) return '';
+    if (_magneticHeading == null || _qiblaDirection == null) return '';
     if (_isQiblaAligned()) return localizations.qiblaAligned;
 
-    double diff = _qiblaDirection! - _trueHeading!; // Difference from true heading
+    // Calculate difference: how much to turn the device (magnetic heading) to align with True Qibla.
+    double diff = _qiblaDirection! - _magneticHeading!;
     while (diff <= -180) { diff += 360; }
     while (diff > 180)  { diff -= 360; }
 

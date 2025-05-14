@@ -19,7 +19,7 @@ class LoggerService {
         printEmojis: true,
         dateTimeFormat: DateTimeFormat.onlyTime,
       ),
-      level: Level.debug, // Set to Level.nothing in production
+      level: Level.warning, // Set to Level.nothing in production
     );
   }
 

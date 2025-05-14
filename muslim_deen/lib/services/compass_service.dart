@@ -1,9 +1,7 @@
 import 'dart:math' as math;
-import 'dart:convert';
 import 'dart:async';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
 import 'package:muslim_deen/services/cache_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/service_locator.dart';
@@ -30,139 +28,6 @@ class CompassService {
   /// Stream providing compass heading updates.
   Stream<CompassEvent>? get compassEvents => FlutterCompass.events;
 
-  /// Fetches magnetic declination for a given latitude, longitude, and altitude.
-  ///
-  /// Altitude is optional and defaults to 0 if not provided.
-  /// The year is determined automatically.
-  Future<double?> getMagneticDeclination(
-    double latitude,
-    double longitude, {
-    double altitude = 0.0,
-  }) async {
-    // Validate input parameters
-    if (latitude < -90 || latitude > 90) {
-      _logger.error('[DEBUG-QIBLA] Invalid latitude value: $latitude');
-      return null;
-    }
-    if (longitude < -180 || longitude > 180) {
-      _logger.error('[DEBUG-QIBLA] Invalid longitude value: $longitude');
-      return null;
-    }
-
-    // Round coordinates to 6 decimal places for consistency and to reduce API errors
-    final lat = double.parse(latitude.toStringAsFixed(6));
-    final lon = double.parse(longitude.toStringAsFixed(6));
-    final alt = double.parse(
-      altitude.toStringAsFixed(2),
-    ); // 2 decimals for altitude is sufficient
-
-    final cacheKey =
-        cacheService?.generateLocationCacheKey('declination', lat, lon) ??
-        'declination_${lat}_$lon';
-    final cachedDeclination = cacheService?.getCache<double>(cacheKey);
-
-    if (cachedDeclination != null) {
-      _logger.debug(
-        'Using cached magnetic declination: $cachedDeclination for $lat, $lon',
-      );
-      return cachedDeclination;
-    }
-
-    final now = DateTime.now();
-    final year = now.year;
-    final month = now.month;
-    final day = now.day;
-    //final date = '${year.toString()}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
-
-    // NOAA API endpoint for magnetic declination using Uri.https constructor
-    final uri = Uri.https(
-      'www.ngdc.noaa.gov',
-      '/geomag-web/calculators/calculateDeclination',
-      {
-        'lat1': lat.toString(),
-        'lon1': lon.toString(),
-        'elevation': alt.toString(),
-        'elevationUnits': 'M',
-        'model': 'WMM',
-        'startMonth': month.toString(),
-        'startDay': day.toString(),
-        'startYear': year.toString(),
-        'resultFormat': 'json',
-      },
-    );
-
-    _logger.info('[DEBUG-QIBLA] Requesting declination from NOAA API');
-    _logger.debug('[DEBUG-QIBLA] Request URL: ${uri.toString()}');
-
-    try {
-      final response = await http
-          .get(
-            uri,
-            headers: {
-              'Accept': 'application/json',
-              'User-Agent':
-                  'MuslimDeen/1.0', // Adding user agent for better request tracking
-            },
-          )
-          .timeout(
-            const Duration(seconds: 10), // Add timeout to prevent hanging
-            onTimeout: () {
-              _logger.error(
-                '[DEBUG-QIBLA] Request timeout fetching magnetic declination',
-              );
-              throw TimeoutException('Request timed out');
-            },
-          );
-
-      if (response.statusCode == 200) {
-        try {
-          final data = jsonDecode(response.body);
-          if (data != null &&
-              data['result'] != null &&
-              data['result'].isNotEmpty) {
-            final declinationData = data['result'][0];
-            if (declinationData != null &&
-                declinationData['declination'] != null) {
-              final declination = declinationData['declination'] as double;
-              _logger.info(
-                '[DEBUG-QIBLA] Successfully fetched magnetic declination: $declination for $lat, $lon',
-              );
-
-              // Cache the result
-              cacheService?.setCache(
-                cacheKey,
-                declination,
-                expirationMinutes: CacheService.oneDayInMinutes,
-              );
-              return declination;
-            }
-          }
-          _logger.error(
-            '[DEBUG-QIBLA] Invalid response format from NOAA API: ${response.body}',
-          );
-          return null;
-        } catch (e) {
-          _logger.error(
-            '[DEBUG-QIBLA] JSON parsing error',
-            error: e.toString(),
-          );
-          return null;
-        }
-      } else {
-        _logger.error(
-          '[DEBUG-QIBLA] HTTP error ${response.statusCode}: ${response.reasonPhrase}',
-        );
-        _logger.debug('[DEBUG-QIBLA] Error response body: ${response.body}');
-        return null;
-      }
-    } catch (e) {
-      _logger.error(
-        '[DEBUG-QIBLA] Network error fetching declination',
-        error: e.toString(),
-      );
-      return null;
-    }
-  }
 
   /// Calculates the bearing (angle) between two geographical points.
   double calculateBearing(
@@ -216,26 +81,6 @@ class CompassService {
       return cachedDirection;
     }
 
-    final declination = await getMagneticDeclination(
-      position.latitude,
-      position.longitude,
-      altitude: position.altitude,
-    );
-    _logger.info(
-      '[DEBUG-QIBLA] Obtained magnetic declination: ${declination ?? "NULL (unavailable)"}',
-    );
-
-    if (declination == null) {
-      _logger.error(
-        '[DEBUG-QIBLA] Could not get magnetic declination, falling back to magnetic north calculation',
-      );
-      // Fallback to calculation without declination or handle error appropriately
-      // For now, let's calculate with magnetic north if declination is unavailable
-      // This is not ideal but better than failing completely.
-      // A more robust solution might involve retrying or notifying the user.
-      return _calculateQiblaFromMagneticNorth(position);
-    }
-
     // Calculate user's location in radians
     final startLatRad = _degreesToRadians(position.latitude);
     final startLngRad = _degreesToRadians(position.longitude);
@@ -256,7 +101,7 @@ class CompassService {
     final result = (bearingDeg + 360) % 360; // This is bearing from True North
 
     _logger.info(
-      '[DEBUG-QIBLA] Calculated true Qibla direction: $result° (with declination: $declination°)',
+      '[DEBUG-QIBLA] Calculated true Qibla direction: $result°',
     );
     _logger.debug(
       '[DEBUG-QIBLA] Calculation details: y=$y, x=$x, bearingRad=$bearingRad, bearingDeg=$bearingDeg',
@@ -270,56 +115,65 @@ class CompassService {
     return result;
   }
 
-  /// Calculates Qibla direction using magnetic north (fallback if declination is not available).
-  double _calculateQiblaFromMagneticNorth(Position position) {
+
+/// Calculates the Qibla direction based on user's latitude and longitude.
+  ///
+  /// This method implements the Qibla calculation algorithm using spherical trigonometry.
+  ///
+  /// Parameters:
+  ///   [userLatitudeDegrees] - The user's current latitude in degrees.
+  ///   [userLongitudeDegrees] - The user's current longitude in degrees.
+  ///
+  /// Returns:
+  ///   The Qibla direction in degrees, normalized between 0 and 360.
+  double calculateQiblaDirection(
+    double userLatitudeDegrees,
+    double userLongitudeDegrees,
+  ) {
     _logger.info(
-      '[DEBUG-QIBLA] Calculating Qibla direction using magnetic north (declination unavailable)',
+      '[DEBUG-QIBLA] Calculating Qibla direction for user at: ($userLatitudeDegrees, $userLongitudeDegrees)',
     );
 
-    // Calculate user's location in radians
-    final startLatRad = _degreesToRadians(position.latitude);
-    final startLngRad = _degreesToRadians(position.longitude);
+    // 1. Define Constants and Convert Kaaba's Coordinates to Radians
+    // Kaaba's Coordinates (as per algorithm specification)
+    const double kaabaLatitudeDegrees = 21.4225;
+    const double kaabaLongitudeDegrees = 39.8262;
 
-    // Calculate difference in longitude
-    final dLng = _kaabaLngRad - startLngRad;
+    final double phiKRad = _degreesToRadians(kaabaLatitudeDegrees); // φ_K_rad
+    final double lambdaKRad = _degreesToRadians(kaabaLongitudeDegrees); // λ_K_rad
 
-    // Calculate bearing using optimized formula
-    final y = math.sin(dLng) * _cosKaabaLatRad;
-    final x =
-        math.cos(startLatRad) * _sinKaabaLatRad -
-        math.sin(startLatRad) * _cosKaabaLatRad * math.cos(dLng);
+    // 3. Convert user's coordinates to radians
+    final double phiURad = _degreesToRadians(userLatitudeDegrees); // φ_U_rad
+    final double lambdaURad = _degreesToRadians(userLongitudeDegrees); // λ_U_rad
 
-    final bearingRad = math.atan2(y, x);
-    final bearingDeg = _radiansToDegrees(bearingRad);
+    // 4. Calculate the Difference in Longitudes
+    final double deltaLambdaRad = lambdaKRad - lambdaURad; // Δλ_rad
 
-    final magneticQibla = (bearingDeg + 360) % 360;
+    // 5. Calculate the Qibla Direction using atan2
+    // Y = sin(Δλ_rad) * cos(φ_K_rad)
+    final double y = math.sin(deltaLambdaRad) * math.cos(phiKRad);
+    // X = cos(φ_U_rad) * sin(φ_K_rad) - sin(φ_U_rad) * cos(φ_K_rad) * cos(Δλ_rad)
+    final double x = math.cos(phiURad) * math.sin(phiKRad) -
+        math.sin(phiURad) * math.cos(phiKRad) * math.cos(deltaLambdaRad);
+    
+    // Q_rad = atan2(Y, X)
+    final double qiblaRad = math.atan2(y, x);
+
+    // 6. Convert Qibla Direction from Radians to Degrees
+    final double qiblaDeg = _radiansToDegrees(qiblaRad);
+
+    // 7. Normalize the Qibla Direction
+    final double qiblaNormalizedDeg = (qiblaDeg + 360) % 360;
 
     _logger.info(
-      '[DEBUG-QIBLA] Calculated magnetic Qibla direction: $magneticQibla° (no declination applied)',
+      '[DEBUG-QIBLA] Calculated Qibla direction (offline): $qiblaNormalizedDeg°',
     );
     _logger.debug(
-      '[DEBUG-QIBLA] Magnetic calculation details: y=$y, x=$x, bearingRad=$bearingRad, bearingDeg=$bearingDeg',
+      '[DEBUG-QIBLA] Offline calculation details: phiKRad=$phiKRad, lambdaKRad=$lambdaKRad, phiURad=$phiURad, lambdaURad=$lambdaURad, deltaLambdaRad=$deltaLambdaRad, Y=$y, X=$x, qiblaRad=$qiblaRad, qiblaDeg=$qiblaDeg',
     );
 
-    // Cache this magnetic Qibla direction separately if needed, or just return it.
-    // For simplicity, not caching the magnetic-only version here as the primary cache
-    // is for true Qibla.
-    final magneticCacheKey =
-        cacheService?.generateLocationCacheKey(
-          'qibla_magnetic_fallback',
-          position.latitude,
-          position.longitude,
-        ) ??
-        'qibla_magnetic_fallback_${position.latitude}_${position.longitude}';
-    cacheService?.setCache(
-      magneticCacheKey,
-      magneticQibla,
-      expirationMinutes: CacheService.qiblaExpirationMinutes,
-    );
-
-    return magneticQibla;
+    return qiblaNormalizedDeg;
   }
-
   /// Helper function to convert degrees to radians
   static double _degreesToRadians(double degrees) {
     return degrees * (math.pi / 180.0);
