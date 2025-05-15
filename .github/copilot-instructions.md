@@ -29,3 +29,5 @@
 - Ensure that all variable names are descriptive and follow a consistent naming convention.
 - Ensure that all functions and classes are properly organized and follow a consistent structure.
 - Ensure that all imports are necessary and organized in a standard way (e.g., standard library imports first, followed by third-party imports, and then local application/library-specific imports).
+
+This is still not right. Take a step back — what would John Carmack do?

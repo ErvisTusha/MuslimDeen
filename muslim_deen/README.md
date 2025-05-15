@@ -1,16 +1,33 @@
-# muslim_deen
+# Muslim Deen
 
-A new Flutter project.
+A comprehensive Islamic app providing essential tools for Muslims.
+
+## Features
+
+- 🕌 Prayer times calculation based on your location
+- 🧭 Qibla direction finder with compass
+- 📿 Digital tasbih (prayer beads) counter
+- 🔍 Nearby mosque finder
+- 📅 Hijri date converter
+- 🌙 Multiple calculation methods support
+- 🔔 Prayer time notifications
+- 🌐 Multilingual support (English, Arabic, Turkish, Albanian, French)
+- 🎨 Light/Dark/System theme modes
+
+## Technical Details
+
+Built with Flutter using:
+- Riverpod for state management
+- GetIt for service location
+- Adhan library for prayer time calculations
+- Geolocator for location services
+- Flutter Compass for qibla direction
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+To run this project:
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+1. Ensure Flutter (3.7.2+) is installed
+2. Clone the repository
+3. Run `flutter pub get`
+4. Run `flutter run`
