@@ -144,7 +144,9 @@ class LocationService {
 
     if (!hasNotificationPermission) {
       // _updatePermissionState(PermissionRequestState.denied); // Consider if this state update is still appropriate here for notifications, or if it should only apply to location denial.
-      _logger.info('Notification permission denied. Proceeding to request location permission.');
+      _logger.info(
+        'Notification permission denied. Proceeding to request location permission.',
+      );
       // DO NOT call await _handlePermissionDenied(); here for notification denial.
       // DO NOT return; here. Allow the flow to continue to request location permissions.
     }
@@ -354,46 +356,40 @@ class LocationService {
       return getManualLocation();
     } else {
       try {
-        final hasPermission = await hasLocationPermission();
+        // Check permission status first
+        final hasPermission = await _checkLocationPermission();
         if (!hasPermission) {
-          throw const LocationServiceException(
-            'Location permission not granted. Please enable location in settings.',
-          );
+          _logger.warning('Location permission denied');
+          return _getLastKnownLocationOrDefault();
         }
 
         final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
         if (!isServiceEnabled) {
-          throw const LocationServiceException(
-            'Location service is disabled. Please enable location services.',
-          );
+          _logger.warning('Location services disabled');
+          return _getLastKnownLocationOrDefault();
         }
 
-        // Always get fresh location when in automatic mode
+        // Set a shorter timeout and handle it properly
         final position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
             accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 10),
+            timeLimit: Duration(seconds: 5), // Reduced from 10 to 5 seconds
           ),
+        ).timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            _logger.warning('Location request timed out, using fallback');
+            throw TimeoutException('Location request timed out');
+          },
         );
 
         // Save position for future reference
-        await _saveLastPosition(position);
+        await cacheCurrentLocation(position);
 
         return position;
       } catch (e) {
         _logger.error('Error getting current location', error: e);
-        if (_lastKnownPosition != null) {
-          _logger.info('Using last known position as fallback');
-          return _lastKnownPosition!;
-        }
-
-        // If all else fails, fall back to manual location
-        try {
-          return getManualLocation();
-        } catch (_) {
-          // If even manual location fails, throw the original error
-          rethrow;
-        }
+        return _getLastKnownLocationOrDefault();
       }
     }
   }
@@ -488,6 +484,75 @@ class LocationService {
         error: e,
         stackTrace: s,
       );
+    }
+  }
+
+  /// Check if location permission is granted
+  Future<bool> _checkLocationPermission() async {
+    try {
+      final permission = await Geolocator.checkPermission();
+      return permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always;
+    } catch (e) {
+      _logger.error('Error checking location permission', error: e);
+      return false;
+    }
+  }
+
+  /// Gets last known location from shared preferences or returns default
+  Future<Position> _getLastKnownLocationOrDefault() async {
+    try {
+      // Try to get cached location from preferences
+      if (_lastKnownPosition != null) {
+        _logger.info('Using last known position as fallback');
+        return _lastKnownPosition!;
+      }
+
+      // Try to get manual location as fallback
+      if (_prefs?.containsKey(_manualLatKey) == true &&
+          _prefs?.containsKey(_manualLngKey) == true) {
+        _logger.info('Using manual location as fallback');
+        return getManualLocation();
+      }
+
+      // If no cached location, return a default location (Mecca)
+      _logger.info('Using default Mecca coordinates as fallback');
+      return Position(
+        latitude: 21.422487,
+        longitude: 39.826206,
+        timestamp: DateTime.now(),
+        accuracy: 0,
+        altitude: 0,
+        heading: 0,
+        speed: 0,
+        speedAccuracy: 0,
+        altitudeAccuracy: 0,
+        headingAccuracy: 0,
+      );
+    } catch (e) {
+      _logger.error('Error getting fallback location', error: e);
+      // Ultimate fallback to Mecca coordinates
+      return Position(
+        latitude: 21.422487,
+        longitude: 39.826206,
+        timestamp: DateTime.now(),
+        accuracy: 0,
+        altitude: 0,
+        heading: 0,
+        speed: 0,
+        speedAccuracy: 0,
+        altitudeAccuracy: 0,
+        headingAccuracy: 0,
+      );
+    }
+  }
+
+  /// Cache the current location when it's successfully retrieved
+  Future<void> cacheCurrentLocation(Position position) async {
+    try {
+      await _saveLastPosition(position);
+    } catch (e) {
+      _logger.error('Error caching location', error: e);
     }
   }
 }

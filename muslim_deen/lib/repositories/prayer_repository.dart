@@ -118,9 +118,15 @@ class PrayerRepository {
         coordinates,
         daysToFetch: 7, // Prefetch a week of prayer times
       );
-    } catch (e) {
-      // Log but don't crash if prefetching fails
-      // We'll fetch on-demand if needed
+    } catch (e, stackTrace) {
+      // Log the error but don't crash - we'll fetch on-demand when needed
+      _errorHandler.reportError(
+        AppError(
+          message: "Failed to prefetch prayer times",
+          originalException: e,
+          stackTrace: stackTrace,
+        ),
+      );
     }
   }
 }

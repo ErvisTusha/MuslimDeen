@@ -54,11 +54,11 @@ class _HomeViewState extends ConsumerState<HomeView> {
   final ScrollController _scrollController = ScrollController();
   static const double _prayerItemHeight = 80.0;
   Timer? _permissionCheckTimer;
-  Timer? _dailyRefreshTimer;
-  // VoidCallback? _settingsListener; // Removed
+  Timer? _dailyRefreshTimer; // VoidCallback? _settingsListener; // Removed
   // AppSettings? _previousSettings; // Removed
   String? _lastKnownCity; // Store last known location details for loading state
-  String? _lastKnownCountry;
+  String?
+  _lastKnownCountry; // Note: Loading/error states are managed through FutureBuilder
   // late final SettingsProvider _settingsProvider; // Removed
 
   void _startPermissionCheck() {
@@ -101,7 +101,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
   @override
   void dispose() {
     _logger.debug('HomeView dispose started');
-    
+
     // First, stop any active timers to prevent new location/notification requests
     _permissionCheckTimer?.cancel();
     _dailyRefreshTimer?.cancel();
@@ -119,16 +119,16 @@ class _HomeViewState extends ConsumerState<HomeView> {
     // Clean up location service first to stop any active location streams
     // This addresses the Geolocator foreground service issue
     _locationService.dispose();
-    
+
     // Reset prayer service after location service
     // since prayer calculations depend on location
     _prayerService.reset();
-    
+
     // Clean up UI controllers last
     _scrollController.dispose();
-    
+
     super.dispose();
-    
+
     _logger.info('HomeView cleanup completed');
   }
 
@@ -421,6 +421,8 @@ class _HomeViewState extends ConsumerState<HomeView> {
   Future<Map<String, dynamic>> _fetchDataAndScheduleNotifications() async {
     _logger.info('Starting _fetchDataAndScheduleNotifications...');
     try {
+      // Set loading state is handled by the FutureBuilder
+
       Position? position; // Keep as nullable: Position? position;
       String? locationNameToUse;
 
@@ -436,9 +438,11 @@ class _HomeViewState extends ConsumerState<HomeView> {
           data: {'locationName': locationNameToUse},
         );
       } else {
-        // Get current device location
+        // Get current device location with proper error handling
         try {
           position = await _locationService.getLocation();
+          // Cache successful location data
+          await _locationService.cacheCurrentLocation(position);
           _logger.info(
             "Fetched current device location",
             data: {
@@ -792,7 +796,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
       );
       _handleSettingsChange(next, previous);
     });
-    
+
     // Use watch to rebuild on any settings change
     final appSettings = ref.watch(settingsProvider);
     final localizations = AppLocalizations.of(context)!;
