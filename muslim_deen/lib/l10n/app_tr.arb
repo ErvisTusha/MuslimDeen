@@ -81,5 +81,9 @@
   "searchError": "Konum Aranırken Hata Oluştu",
   "@searchError": {
     "description": "Bir konum araması başarısız olduğunda görüntülenen hata mesajı"
+  },
+  "confirm": "Onayla",
+  "@confirm": {
+    "description": "Bir seçimi onaylamak için düğme metni"
   }
 }

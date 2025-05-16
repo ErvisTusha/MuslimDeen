@@ -41,6 +41,7 @@ final settingsProvider = StateNotifierProvider<SettingsNotifier, AppSettings>((r
     ref.watch(storageServiceProvider),
     ref.watch(notificationServiceProvider),
     ref.watch(loggerServiceProvider),
+    ref.watch(prayerServiceProvider), // Added prayerServiceProvider
   );
 });
 

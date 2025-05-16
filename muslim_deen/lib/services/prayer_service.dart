@@ -14,6 +14,7 @@ class PrayerService {
     _lastParamsUsed = null;
     _lastCalculationDate = null;
     _lastCalculationMethodString = null;
+    _lastAppSettingsUsed = null; // Reset AppSettings
     _isInitialized = false;
     _logger.debug('PrayerService state reset');
   }
@@ -26,6 +27,7 @@ class PrayerService {
   bool _isInitialized = false;
   final LoggerService _logger = locator<LoggerService>();
   String? _lastCalculationMethodString;
+  AppSettings? _lastAppSettingsUsed; // Added to store AppSettings for offsets
 
   PrayerService(this._locationService);
 
@@ -123,6 +125,7 @@ class PrayerService {
       date: date.toUtc(),
       calculationParameters: _getCalculationParams(settings),
     );
+    _lastAppSettingsUsed = settings ?? AppSettings.defaults; // Store AppSettings
 
     return _currentPrayerTimes!;
   }
@@ -202,6 +205,7 @@ class PrayerService {
     _lastParamsUsed = params;
     _lastCalculationMethodString = effectiveSettings.calculationMethod;
     _lastCalculationDate = DateTime.now();
+    _lastAppSettingsUsed = effectiveSettings; // Store AppSettings
     _logger.debug(
       'Prayer times calculated for today',
       data: {
@@ -250,23 +254,61 @@ class PrayerService {
       throw Exception('Prayer times have not been calculated yet.');
     }
 
-    // Use string literals for case statements to avoid potential const issues
+    DateTime? rawTime;
+    int offsetMinutes = 0;
+
+    if (_lastAppSettingsUsed == null) {
+      _logger.warning(
+        'Last AppSettings not available for applying offsets. Returning raw time for $prayer.',
+      );
+    }
+
     switch (prayer) {
       case 'fajr':
-        return _currentPrayerTimes!.fajr;
+        rawTime = _currentPrayerTimes!.fajr;
+        if (_lastAppSettingsUsed != null) {
+          offsetMinutes = _lastAppSettingsUsed!.fajrOffset;
+        }
+        break;
       case 'sunrise':
-        return _currentPrayerTimes!.sunrise;
+        rawTime = _currentPrayerTimes!.sunrise;
+        if (_lastAppSettingsUsed != null) {
+          offsetMinutes = _lastAppSettingsUsed!.sunriseOffset;
+        }
+        break;
       case 'dhuhr':
-        return _currentPrayerTimes!.dhuhr;
+        rawTime = _currentPrayerTimes!.dhuhr;
+        if (_lastAppSettingsUsed != null) {
+          offsetMinutes = _lastAppSettingsUsed!.dhuhrOffset;
+        }
+        break;
       case 'asr':
-        return _currentPrayerTimes!.asr;
+        rawTime = _currentPrayerTimes!.asr;
+        if (_lastAppSettingsUsed != null) {
+          offsetMinutes = _lastAppSettingsUsed!.asrOffset;
+        }
+        break;
       case 'maghrib':
-        return _currentPrayerTimes!.maghrib;
+        rawTime = _currentPrayerTimes!.maghrib;
+        if (_lastAppSettingsUsed != null) {
+          offsetMinutes = _lastAppSettingsUsed!.maghribOffset;
+        }
+        break;
       case 'isha':
-        return _currentPrayerTimes!.isha;
+        rawTime = _currentPrayerTimes!.isha;
+        if (_lastAppSettingsUsed != null) {
+          offsetMinutes = _lastAppSettingsUsed!.ishaOffset;
+        }
+        break;
       default:
+        _logger.warning('Invalid prayer name for getPrayerTime: $prayer');
         return null;
     }
+
+    if (rawTime != null && offsetMinutes != 0) {
+      return rawTime.add(Duration(minutes: offsetMinutes));
+    }
+    return rawTime;
   }
 
   /// Determines the current prayer based on the current time and cached prayer times.

@@ -1,4 +1,5 @@
 {
+  "@@locale": "pt",
   "qiblaAligned": "Qibla alinhada!",
   "qiblaNoCompassData": "Sem dados da bússola",
   "qiblaDirectionNorth": "N",
@@ -91,5 +92,9 @@
   },
   "aboutAppDescription": "TODO: aboutAppDescription",
   "deviceLocation": "TODO: deviceLocation",
-  "errorSetLocation": "TODO: errorSetLocation"
+  "errorSetLocation": "TODO: errorSetLocation",
+  "confirm": "Confirmar",
+  "@confirm": {
+    "description": "Texto do botão para confirmar uma seleção"
+  }
 }

@@ -430,5 +430,20 @@ class AppLocalizationsAr extends AppLocalizations {
   String get startCalibration => 'بدء المعايرة';
 
   @override
-  String get distanceUnit => 'كيلومتر بعيد';
+  String get distanceUnit => 'أميال';
+
+  @override
+  String get azanSound => 'Azan Sound';
+
+  @override
+  String get makkahAdhan => 'Makkah Adhan';
+
+  @override
+  String get madinahAdhan => 'Madinah Adhan';
+
+  @override
+  String get alAqsaAdhan => 'Al-Aqsa Adhan';
+
+  @override
+  String get turkishAdhan => 'Turkish Adhan';
 }

@@ -10,6 +10,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import '../service_locator.dart';
 import '../services/logger_service.dart';
+import '../models/app_settings.dart'; // Added for AppSettings
 
 /// Represents the current status of notification permissions
 enum NotificationPermissionStatus {
@@ -451,12 +452,13 @@ class NotificationService {
     required DateTime prayerTime,
     required bool isEnabled,
     String? payload,
+    AppSettings? appSettings, // Added to access Azan sound setting
   }) async {
     if (!isEnabled || _disposed) {
       if (isEnabled == false) await cancelNotification(id);
       return;
     }
-    
+
     // If the prayer time has already passed today, schedule for next day
     DateTime scheduledTime = prayerTime;
     if (prayerTime.isBefore(DateTime.now())) {
@@ -471,7 +473,7 @@ class NotificationService {
         },
       );
     }
-    
+
     if (!_isInitialized) await init();
     if (isBlocked) {
       _logger.warning(
@@ -492,8 +494,48 @@ class NotificationService {
       }
     }
 
-    final androidDetails = _createAndroidPrayerDetails();
-    final darwinDetails = _createDarwinPrayerDetails();
+    // Determine the sound based on the prayer type (id)
+    String? soundName;
+    bool useCustomSound = false;
+
+    // Assuming PrayerNotification enum values correspond to IDs:
+    // Fajr = 0, Sunrise = 1, Dhuhr = 2, Asr = 3, Maghrib = 4, Isha = 5
+    // Tespi notifications might have different IDs, adjust as needed.
+    // For this example, we'll use a simple mapping.
+    // A more robust solution would be to pass the PrayerNotification enum directly
+    // or have a clear mapping from id to PrayerNotification type.
+
+    PrayerNotification? prayerType;
+    if (id >= 0 && id < PrayerNotification.values.length) {
+      prayerType = PrayerNotification.values[id];
+    }
+
+    if (prayerType == PrayerNotification.dhuhr ||
+        prayerType == PrayerNotification.asr ||
+        prayerType == PrayerNotification.maghrib ||
+        prayerType == PrayerNotification.isha) {
+      // Use selected Azan for Dhuhr, Asr, Maghrib, Isha
+      // For now, using a default Azan from AppSettings or a hardcoded one
+      soundName = appSettings?.azanSoundForStandardPrayers ?? 'makkah_adhan.mp3';
+      useCustomSound = true;
+    } else if (prayerType == PrayerNotification.fajr ||
+               prayerType == PrayerNotification.sunrise) {
+      // Use default system sound for Fajr and Sunrise
+      soundName = null; // Indicates default system sound
+      useCustomSound = false;
+    } else {
+      // For other notifications like 'Tespi', use default system sound
+      // This assumes 'Tespi' notifications will have IDs outside the PrayerNotification enum range
+      // or a specific logic to identify them.
+      soundName = null;
+      useCustomSound = false;
+    }
+    
+    _logger.info('Notification sound determined', data: {'id': id, 'prayerType': prayerType?.toString(), 'soundName': soundName, 'useCustomSound': useCustomSound});
+
+
+    final androidDetails = _createAndroidPrayerDetails(soundName, useCustomSound);
+    final darwinDetails = _createDarwinPrayerDetails(soundName, useCustomSound);
 
     final platformDetails = NotificationDetails(
       android: androidDetails,
@@ -521,7 +563,7 @@ class NotificationService {
                 : AndroidScheduleMode.alarmClock,
         payload: effectivePayload,
       );
-      
+
       _logger.info(
         'Scheduled prayer notification',
         data: {
@@ -529,6 +571,7 @@ class NotificationService {
           'title': localizedTitle,
           'time': scheduledTime.toIso8601String(),
           'exact': useExact,
+          'sound': soundName ?? 'default',
         },
       );
     } catch (e, s) {
@@ -541,7 +584,12 @@ class NotificationService {
     }
   }
 
-  AndroidNotificationDetails _createAndroidPrayerDetails() {
+  AndroidNotificationDetails _createAndroidPrayerDetails(String? soundName, bool useCustomSound) {
+    // For Android, if using custom sound, it must be in res/raw and name without extension
+    final String? androidSound = useCustomSound && soundName != null
+        ? soundName.substring(0, soundName.lastIndexOf('.'))
+        : null;
+
     return AndroidNotificationDetails(
       NotificationChannel.prayer.id,
       NotificationChannel.prayer.name,
@@ -552,7 +600,8 @@ class NotificationService {
       ledColor: Colors.green,
       ledOnMs: 1000,
       ledOffMs: 500,
-      playSound: true,
+      playSound: true, // Always true, sound selection handles custom/default
+      sound: useCustomSound && androidSound != null ? RawResourceAndroidNotificationSound(androidSound) : null,
       showWhen: true,
       usesChronometer: false,
       visibility: NotificationVisibility.public,
@@ -560,11 +609,13 @@ class NotificationService {
     );
   }
 
-  DarwinNotificationDetails _createDarwinPrayerDetails() {
-    return const DarwinNotificationDetails(
+  DarwinNotificationDetails _createDarwinPrayerDetails(String? soundName, bool useCustomSound) {
+    // For iOS/macOS, if using custom sound, it's the full filename in the bundle
+    return DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
-      presentSound: true,
+      presentSound: true, // Always true, sound selection handles custom/default
+      sound: useCustomSound && soundName != null ? soundName : null, // Use null for default system sound
       categoryIdentifier: 'prayerTime',
     );
   }

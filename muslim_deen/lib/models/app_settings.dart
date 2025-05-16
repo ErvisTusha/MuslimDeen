@@ -18,6 +18,13 @@ class AppSettings {
   final NotificationPermissionStatus notificationPermissionStatus;
   final TimeFormat timeFormat;
   final DateFormatOption dateFormatOption;
+  final String azanSoundForStandardPrayers;
+  final int fajrOffset;
+  final int sunriseOffset;
+  final int dhuhrOffset;
+  final int asrOffset;
+  final int maghribOffset;
+  final int ishaOffset;
 
   AppSettings({
     this.calculationMethod = 'MuslimWorldLeague',
@@ -29,6 +36,13 @@ class AppSettings {
         NotificationPermissionStatus.notDetermined,
     this.timeFormat = TimeFormat.twelveHour,
     this.dateFormatOption = DateFormatOption.dayMonthYear,
+    this.azanSoundForStandardPrayers = 'makkah_adhan.mp3', // Default Azan sound
+    this.fajrOffset = 0,
+    this.sunriseOffset = 0,
+    this.dhuhrOffset = 0,
+    this.asrOffset = 0,
+    this.maghribOffset = 0,
+    this.ishaOffset = 0,
   }) : notifications =
            notifications ??
            {for (var prayer in PrayerNotification.values) prayer: true};
@@ -42,6 +56,13 @@ class AppSettings {
     NotificationPermissionStatus? notificationPermissionStatus,
     TimeFormat? timeFormat,
     DateFormatOption? dateFormatOption,
+    String? azanSoundForStandardPrayers,
+    int? fajrOffset,
+    int? sunriseOffset,
+    int? dhuhrOffset,
+    int? asrOffset,
+    int? maghribOffset,
+    int? ishaOffset,
   }) {
     return AppSettings(
       calculationMethod: calculationMethod ?? this.calculationMethod,
@@ -53,6 +74,14 @@ class AppSettings {
           notificationPermissionStatus ?? this.notificationPermissionStatus,
       timeFormat: timeFormat ?? this.timeFormat,
       dateFormatOption: dateFormatOption ?? this.dateFormatOption,
+      azanSoundForStandardPrayers:
+          azanSoundForStandardPrayers ?? this.azanSoundForStandardPrayers,
+      fajrOffset: fajrOffset ?? this.fajrOffset,
+      sunriseOffset: sunriseOffset ?? this.sunriseOffset,
+      dhuhrOffset: dhuhrOffset ?? this.dhuhrOffset,
+      asrOffset: asrOffset ?? this.asrOffset,
+      maghribOffset: maghribOffset ?? this.maghribOffset,
+      ishaOffset: ishaOffset ?? this.ishaOffset,
     );
   }
 
@@ -68,6 +97,13 @@ class AppSettings {
       ),
       'timeFormat': timeFormat.name,
       'dateFormatOption': dateFormatOption.name,
+      'azanSoundForStandardPrayers': azanSoundForStandardPrayers,
+      'fajrOffset': fajrOffset,
+      'sunriseOffset': sunriseOffset,
+      'dhuhrOffset': dhuhrOffset,
+      'asrOffset': asrOffset,
+      'maghribOffset': maghribOffset,
+      'ishaOffset': ishaOffset,
     };
   }
 
@@ -126,6 +162,14 @@ class AppSettings {
         }
         return DateFormatOption.dayMonthYear;
       }(),
+      azanSoundForStandardPrayers:
+          json['azanSoundForStandardPrayers'] as String? ?? 'makkah_adhan.mp3',
+      fajrOffset: json['fajrOffset'] as int? ?? 0,
+      sunriseOffset: json['sunriseOffset'] as int? ?? 0,
+      dhuhrOffset: json['dhuhrOffset'] as int? ?? 0,
+      asrOffset: json['asrOffset'] as int? ?? 0,
+      maghribOffset: json['maghribOffset'] as int? ?? 0,
+      ishaOffset: json['ishaOffset'] as int? ?? 0,
     );
   }
 

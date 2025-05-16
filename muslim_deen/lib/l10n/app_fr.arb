@@ -88,5 +88,9 @@
   "searchError": "Erreur lors de la recherche du lieu",
   "@searchError": {
     "description": "Message d'erreur affiché lorsqu'une recherche de lieu échoue"
+  },
+  "confirm": "Confirmer",
+  "@confirm": {
+    "description": "Texte du bouton pour confirmer une sélection"
   }
 }

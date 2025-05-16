@@ -118,7 +118,8 @@ class AppLocalizationsPt extends AppLocalizations {
   String get aboutTitle => 'Sobre';
 
   @override
-  String get aboutAppDescription => 'Muslim Deen App\nVersion 1.0.0\n\nDeveloped with Flutter.';
+  String get aboutAppDescription =>
+      'Muslim Deen App\nVersion 1.0.0\n\nDeveloped with Flutter.';
 
   @override
   String comingSoon(String feature) {
@@ -220,19 +221,23 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get qiblaErrorPermission => 'Permissão de localização necessária para determinar a direção da Qibla.';
+  String get qiblaErrorPermission =>
+      'Permissão de localização necessária para determinar a direção da Qibla.';
 
   @override
-  String get qiblaErrorSensor => 'Sensor de bússola não disponível ou não funciona.';
+  String get qiblaErrorSensor =>
+      'Sensor de bússola não disponível ou não funciona.';
 
   @override
-  String get qiblaErrorLocation => 'Não foi possível obter a localização atual.';
+  String get qiblaErrorLocation =>
+      'Não foi possível obter a localização atual.';
 
   @override
   String get qiblaCalibrate => 'Calibrar Bússola';
 
   @override
-  String get qiblaCalibrating => 'Por favor, mova o seu dispositivo num padrão em forma de 8 para calibrar a bússola.';
+  String get qiblaCalibrating =>
+      'Por favor, mova o seu dispositivo num padrão em forma de 8 para calibrar a bússola.';
 
   @override
   String tesbihCounter(int count) {
@@ -254,25 +259,32 @@ class AppLocalizationsPt extends AppLocalizations {
   String get mosquesOpenInMaps => 'Abrir nos Mapas';
 
   @override
-  String get mosquesNoResults => 'Nenhuma mesquita encontrada nas proximidades.';
+  String get mosquesNoResults =>
+      'Nenhuma mesquita encontrada nas proximidades.';
 
   @override
-  String get homeErrorLoading => 'Falha ao carregar os horários de oração. Verifique a ligação e as definições de localização.';
+  String get homeErrorLoading =>
+      'Falha ao carregar os horários de oração. Verifique a ligação e as definições de localização.';
 
   @override
-  String get homeErrorLocationDisabled => 'Os serviços de localização estão desativados. Ative-os nas definições do seu dispositivo.';
+  String get homeErrorLocationDisabled =>
+      'Os serviços de localização estão desativados. Ative-os nas definições do seu dispositivo.';
 
   @override
-  String get homeErrorPermissionDenied => 'Permissão de localização negada. Conceda permissão para mostrar os horários de oração.';
+  String get homeErrorPermissionDenied =>
+      'Permissão de localização negada. Conceda permissão para mostrar os horários de oração.';
 
   @override
-  String get homeErrorPermissionPermanent => 'Permissão de localização negada permanentemente. Ative-a nas definições da aplicação.';
+  String get homeErrorPermissionPermanent =>
+      'Permissão de localização negada permanentemente. Ative-a nas definições da aplicação.';
 
   @override
-  String get homeErrorLocationUnknown => 'Não foi possível determinar a sua localização. Certifique-se de que os serviços de localização estão ativados e as permissões concedidas.';
+  String get homeErrorLocationUnknown =>
+      'Não foi possível determinar a sua localização. Certifique-se de que os serviços de localização estão ativados e as permissões concedidas.';
 
   @override
-  String get homeErrorInitialization => 'Erro de inicialização. Reinicie a aplicação.';
+  String get homeErrorInitialization =>
+      'Erro de inicialização. Reinicie a aplicação.';
 
   @override
   String homeTimeIn(String duration) {
@@ -301,7 +313,8 @@ class AppLocalizationsPt extends AppLocalizations {
   String get deviceLocation => 'Current Device Location';
 
   @override
-  String get errorSetLocation => 'Erro ao definir a localização. Por favor, tente novamente.';
+  String get errorSetLocation =>
+      'Erro ao definir a localização. Por favor, tente novamente.';
 
   @override
   String get qiblaAligned => 'Qibla alinhada!';
@@ -337,13 +350,16 @@ class AppLocalizationsPt extends AppLocalizations {
   String get qiblaHelpStep1 => 'Segure seu telefone plano e nivelado.';
 
   @override
-  String get qiblaHelpStep2 => 'Gire lentamente até que a seta aponte para a Kaaba.';
+  String get qiblaHelpStep2 =>
+      'Gire lentamente até que a seta aponte para a Kaaba.';
 
   @override
-  String get qiblaHelpStep3 => 'Quando alinhado, você verá uma mensagem de confirmação.';
+  String get qiblaHelpStep3 =>
+      'Quando alinhado, você verá uma mensagem de confirmação.';
 
   @override
-  String get qiblaHelpStep4 => 'Se os dados da bússola forem imprecisos, toque no botão de calibração.';
+  String get qiblaHelpStep4 =>
+      'Se os dados da bússola forem imprecisos, toque no botão de calibração.';
 
   @override
   String get qiblaGotIt => 'Entendi';
@@ -407,7 +423,22 @@ class AppLocalizationsPt extends AppLocalizations {
   String get startCalibration => 'Iniciar Calibração';
 
   @override
-  String get distanceUnit => 'quilómetros de distância';
+  String get distanceUnit => 'milhas de distância';
+
+  @override
+  String get azanSound => 'Som do Azan';
+
+  @override
+  String get makkahAdhan => 'Adhan de Makkah';
+
+  @override
+  String get madinahAdhan => 'Adhan de Madinah';
+
+  @override
+  String get alAqsaAdhan => 'Adhan de Al-Aqsa';
+
+  @override
+  String get turkishAdhan => 'Adhan Turco';
 
   @override
   String get tesbihSetTarget => 'Definir Meta do Contador';
@@ -416,12 +447,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get tesbihTarget => 'Meta';
 
   @override
-  String get tesbihEnterTarget => 'Digite a contagem alvo';
+  String get tesbihEnterTarget => 'Insira a meta da contagem';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
 class AppLocalizationsPtBr extends AppLocalizationsPt {
-  AppLocalizationsPtBr(): super('pt_BR');
+  AppLocalizationsPtBr() : super('pt_BR');
 
   @override
   String get appTitle => 'Muslim Deen';
@@ -537,7 +568,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get aboutTitle => 'Sobre';
 
   @override
-  String get aboutAppDescription => 'Aplicativo Muslim Deen\nVersão 1.0.0\n\nDesenvolvido com Flutter.';
+  String get aboutAppDescription =>
+      'Aplicativo Muslim Deen\nVersão 1.0.0\n\nDesenvolvido com Flutter.';
 
   @override
   String comingSoon(String feature) {
@@ -639,19 +671,23 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get qiblaErrorPermission => 'Permissão de localização necessária para determinar a direção da Qibla.';
+  String get qiblaErrorPermission =>
+      'Permissão de localização necessária para determinar a direção da Qibla.';
 
   @override
-  String get qiblaErrorSensor => 'Sensor de bússola não disponível ou não funcionando.';
+  String get qiblaErrorSensor =>
+      'Sensor de bússola não disponível ou não funcionando.';
 
   @override
-  String get qiblaErrorLocation => 'Não foi possível obter a localização atual.';
+  String get qiblaErrorLocation =>
+      'Não foi possível obter a localização atual.';
 
   @override
   String get qiblaCalibrate => 'Calibrar Bússola';
 
   @override
-  String get qiblaCalibrating => 'Por favor, mova seu dispositivo em um padrão de 8 para calibrar a bússola.';
+  String get qiblaCalibrating =>
+      'Por favor, mova seu dispositivo em um padrão de 8 para calibrar a bússola.';
 
   @override
   String tesbihCounter(int count) {
@@ -673,25 +709,32 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get mosquesOpenInMaps => 'Abrir no Maps';
 
   @override
-  String get mosquesNoResults => 'Nenhuma mesquita encontrada nas proximidades.';
+  String get mosquesNoResults =>
+      'Nenhuma mesquita encontrada nas proximidades.';
 
   @override
-  String get homeErrorLoading => 'Falha ao carregar os horários de oração. Verifique a conexão e as configurações de localização.';
+  String get homeErrorLoading =>
+      'Falha ao carregar os horários de oração. Verifique a conexão e as configurações de localização.';
 
   @override
-  String get homeErrorLocationDisabled => 'Os serviços de localização estão desativados. Ative-os nas configurações do seu dispositivo.';
+  String get homeErrorLocationDisabled =>
+      'Os serviços de localização estão desativados. Ative-os nas configurações do seu dispositivo.';
 
   @override
-  String get homeErrorPermissionDenied => 'Permissão de localização negada. Conceda permissão para mostrar os horários de oração.';
+  String get homeErrorPermissionDenied =>
+      'Permissão de localização negada. Conceda permissão para mostrar os horários de oração.';
 
   @override
-  String get homeErrorPermissionPermanent => 'Permissão de localização negada permanentemente. Ative-a nas configurações do aplicativo.';
+  String get homeErrorPermissionPermanent =>
+      'Permissão de localização negada permanentemente. Ative-a nas configurações do aplicativo.';
 
   @override
-  String get homeErrorLocationUnknown => 'Não foi possível determinar sua localização. Certifique-se de que os serviços de localização estão ativados e as permissões concedidas.';
+  String get homeErrorLocationUnknown =>
+      'Não foi possível determinar sua localização. Certifique-se de que os serviços de localização estão ativados e as permissões concedidas.';
 
   @override
-  String get homeErrorInitialization => 'Erro de inicialização. Reinicie o aplicativo.';
+  String get homeErrorInitialization =>
+      'Erro de inicialização. Reinicie o aplicativo.';
 
   @override
   String homeTimeIn(String duration) {
@@ -705,7 +748,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get deviceLocation => 'Localização atual do dispositivo';
 
   @override
-  String get errorSetLocation => 'Erro ao definir a localização. Por favor, tente novamente.';
+  String get errorSetLocation =>
+      'Erro ao definir a localização. Por favor, tente novamente.';
 
   @override
   String get qiblaAligned => 'Qibla alinhada!';
@@ -741,13 +785,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get qiblaHelpStep1 => 'Segure seu telefone plano e nivelado.';
 
   @override
-  String get qiblaHelpStep2 => 'Gire lentamente até que a seta aponte para a Kaaba.';
+  String get qiblaHelpStep2 =>
+      'Gire lentamente até que a seta aponte para a Kaaba.';
 
   @override
-  String get qiblaHelpStep3 => 'Quando alinhado, você verá uma mensagem de confirmação.';
+  String get qiblaHelpStep3 =>
+      'Quando alinhado, você verá uma mensagem de confirmação.';
 
   @override
-  String get qiblaHelpStep4 => 'Se os dados da bússola forem imprecisos, toque no botão de calibração.';
+  String get qiblaHelpStep4 =>
+      'Se os dados da bússola forem imprecisos, toque no botão de calibração.';
 
   @override
   String get qiblaGotIt => 'Entendi';
@@ -759,7 +806,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get tesbihTarget => 'Meta';
 
   @override
-  String get tesbihEnterTarget => 'Digite a contagem alvo';
+  String get tesbihEnterTarget => 'Insira a meta da contagem';
 
   @override
   String get tesbihOk => 'OK';
@@ -810,5 +857,20 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get startCalibration => 'Iniciar Calibração';
 
   @override
-  String get distanceUnit => 'quilômetros de distância';
+  String get distanceUnit => 'milhas de distância';
+
+  @override
+  String get azanSound => 'Som do Azan';
+
+  @override
+  String get makkahAdhan => 'Adhan de Makkah';
+
+  @override
+  String get madinahAdhan => 'Adhan de Madinah';
+
+  @override
+  String get alAqsaAdhan => 'Adhan de Al-Aqsa';
+
+  @override
+  String get turkishAdhan => 'Adhan Turco';
 }

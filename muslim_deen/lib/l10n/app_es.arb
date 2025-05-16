@@ -125,5 +125,9 @@
   "searchError": "Error al buscar la ubicación",
   "@searchError": {
     "description": "Mensaje de error que se muestra cuando falla una búsqueda de ubicación"
+  },
+  "confirm": "Confirmar",
+  "@confirm": {
+    "description": "Texto del botón para confirmar una selección"
   }
 }

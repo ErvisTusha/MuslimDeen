@@ -122,7 +122,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get aboutTitle => 'À propos';
 
   @override
-  String get aboutAppDescription => 'Application Muslim Deen\nVersion 1.0.0\n\nDéveloppée avec Flutter.';
+  String get aboutAppDescription =>
+      'Application Muslim Deen\nVersion 1.0.0\n\nDéveloppée avec Flutter.';
 
   @override
   String comingSoon(String feature) {
@@ -224,19 +225,23 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get qiblaErrorPermission => 'Permission de localisation requise pour déterminer la direction de la Qibla.';
+  String get qiblaErrorPermission =>
+      'Permission de localisation requise pour déterminer la direction de la Qibla.';
 
   @override
-  String get qiblaErrorSensor => 'Capteur de boussole non disponible ou ne fonctionne pas.';
+  String get qiblaErrorSensor =>
+      'Capteur de boussole non disponible ou ne fonctionne pas.';
 
   @override
-  String get qiblaErrorLocation => 'Impossible d\'obtenir la localisation actuelle.';
+  String get qiblaErrorLocation =>
+      'Impossible d\'obtenir la localisation actuelle.';
 
   @override
   String get qiblaCalibrate => 'Calibrer la Boussole';
 
   @override
-  String get qiblaCalibrating => 'Veuillez déplacer votre appareil en formant un 8 pour calibrer la boussole.';
+  String get qiblaCalibrating =>
+      'Veuillez déplacer votre appareil en formant un 8 pour calibrer la boussole.';
 
   @override
   String tesbihCounter(int count) {
@@ -261,22 +266,28 @@ class AppLocalizationsFr extends AppLocalizations {
   String get mosquesNoResults => 'Aucune mosquée trouvée à proximité.';
 
   @override
-  String get homeErrorLoading => 'Échec du chargement des horaires de prière. Veuillez vérifier la connexion et les paramètres de localisation.';
+  String get homeErrorLoading =>
+      'Échec du chargement des horaires de prière. Veuillez vérifier la connexion et les paramètres de localisation.';
 
   @override
-  String get homeErrorLocationDisabled => 'Les services de localisation sont désactivés. Veuillez les activer dans les paramètres de votre appareil.';
+  String get homeErrorLocationDisabled =>
+      'Les services de localisation sont désactivés. Veuillez les activer dans les paramètres de votre appareil.';
 
   @override
-  String get homeErrorPermissionDenied => 'Permission de localisation refusée. Veuillez accorder la permission pour afficher les horaires de prière.';
+  String get homeErrorPermissionDenied =>
+      'Permission de localisation refusée. Veuillez accorder la permission pour afficher les horaires de prière.';
 
   @override
-  String get homeErrorPermissionPermanent => 'Permission de localisation refusée de manière permanente. Veuillez l\'activer dans les paramètres de l\'application.';
+  String get homeErrorPermissionPermanent =>
+      'Permission de localisation refusée de manière permanente. Veuillez l\'activer dans les paramètres de l\'application.';
 
   @override
-  String get homeErrorLocationUnknown => 'Impossible de déterminer votre localisation. Veuillez vous assurer que les services de localisation sont activés et que les permissions sont accordées.';
+  String get homeErrorLocationUnknown =>
+      'Impossible de déterminer votre localisation. Veuillez vous assurer que les services de localisation sont activés et que les permissions sont accordées.';
 
   @override
-  String get homeErrorInitialization => 'Erreur d\'initialisation. Veuillez redémarrer l\'application.';
+  String get homeErrorInitialization =>
+      'Erreur d\'initialisation. Veuillez redémarrer l\'application.';
 
   @override
   String homeTimeIn(String duration) {
@@ -305,7 +316,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get deviceLocation => 'Localisation actuelle de l\'appareil';
 
   @override
-  String get errorSetLocation => 'Erreur lors de la définition de l\'emplacement. Veuillez réessayer.';
+  String get errorSetLocation =>
+      'Erreur lors de la définition de l\'emplacement. Veuillez réessayer.';
 
   // Qibla feature translations
   @override
@@ -342,13 +354,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get qiblaHelpStep1 => 'Tenez votre téléphone à plat et de niveau.';
 
   @override
-  String get qiblaHelpStep2 => 'Tournez lentement jusqu\'à ce que la flèche pointe vers la Kaaba.';
+  String get qiblaHelpStep2 =>
+      'Tournez lentement jusqu\'à ce que la flèche pointe vers la Kaaba.';
 
   @override
-  String get qiblaHelpStep3 => 'Une fois aligné, vous verrez un message de confirmation.';
+  String get qiblaHelpStep3 =>
+      'Une fois aligné, vous verrez un message de confirmation.';
 
   @override
-  String get qiblaHelpStep4 => 'Si les données de la boussole sont inexactes, appuyez sur le bouton de calibration.';
+  String get qiblaHelpStep4 =>
+      'Si les données de la boussole sont inexactes, appuyez sur le bouton de calibration.';
 
   @override
   String get qiblaGotIt => 'Compris';
@@ -398,13 +413,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get qiblaCurrentDirectionLabel => 'Direction actuelle';
 
   @override
-  String get aboutAppSubtitle => 'En savoir plus sur l\'application Muslim Deen';
+  String get aboutAppSubtitle =>
+      'En savoir plus sur l\'application Muslim Deen';
 
   @override
   String get dubai => 'Dubaï';
 
   @override
-  String get moonsightingCommittee => 'Comité mondial d\'observation de la lune';
+  String get moonsightingCommittee =>
+      'Comité mondial d\'observation de la lune';
 
   @override
   String get kuwait => 'Koweït';
@@ -422,5 +439,20 @@ class AppLocalizationsFr extends AppLocalizations {
   String get startCalibration => 'Démarrer la calibration';
 
   @override
-  String get distanceUnit => 'kilomètres de distance';
+  String get distanceUnit => 'miles de distance';
+
+  @override
+  String get azanSound => 'Azan Sound';
+
+  @override
+  String get makkahAdhan => 'Makkah Adhan';
+
+  @override
+  String get madinahAdhan => 'Madinah Adhan';
+
+  @override
+  String get alAqsaAdhan => 'Al-Aqsa Adhan';
+
+  @override
+  String get turkishAdhan => 'Turkish Adhan';
 }

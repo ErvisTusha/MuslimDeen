@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/app_settings.dart';
@@ -36,6 +37,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   final LoggerService _logger = locator<LoggerService>();
   Position? _currentPosition;
   bool _isLoadingLocation = false;
+  final AudioPlayer _audioPlayer = AudioPlayer();
   // Add scroll controller to manage scrolling
   final ScrollController _scrollController = ScrollController();
   // Add global keys for sections we need to scroll to
@@ -85,6 +87,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     _logger.debug('SettingsView disposed');
     // Dispose the scroll controller
     _scrollController.dispose();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -338,6 +341,29 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           ),
 
           _buildSectionHeader(appLocalizations.tesbihSound),
+
+          _buildSettingsItem(
+            icon: Icons.music_note_outlined,
+            title:
+                appLocalizations
+                    .azanSound, // Assuming 'azanSound' is in AppLocalizations
+            subtitle: _getAzanSoundDisplayName(
+              settings.azanSoundForStandardPrayers,
+              appLocalizations,
+            ),
+            onTap: () {
+              _logger.logInteraction(
+                'SettingsView',
+                'Change Azan sound',
+                data: {'current': settings.azanSoundForStandardPrayers},
+              );
+              _showAzanSoundSelectionDialog(
+                context,
+                settings.azanSoundForStandardPrayers,
+                settingsNotifier,
+              );
+            },
+          ),
 
           _buildSectionHeader(
             appLocalizations.notifications,
@@ -997,6 +1023,141 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         );
       },
     );
+  }
+
+  void _showAzanSoundSelectionDialog(
+    BuildContext context,
+    String currentAzanSound,
+    SettingsNotifier settingsNotifier,
+  ) {
+    final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
+    final List<String> azanSounds = [
+      'makkah_adhan.mp3',
+      'madinah_adhan.mp3',
+      'alaqsa_adhan.mp3',
+      'azaan_turkish.mp3',
+    ];
+
+    String? tempSelectedAzan = currentAzanSound;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        // Changed context to dialogContext for clarity
+        return StatefulBuilder(
+          // Used StatefulBuilder to manage dialog state
+          builder: (BuildContext context, StateSetter setStateDialog) {
+            return AlertDialog(
+              backgroundColor: AppColors.background,
+              title: Text(
+                appLocalizations.azanSound,
+                style: AppTextStyles.sectionTitle,
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: azanSounds.length,
+                  itemBuilder: (BuildContext context, int index) {
+                    final soundFile = azanSounds[index];
+                    return RadioListTile<String>(
+                      title: Text(
+                        _getAzanSoundDisplayName(soundFile, appLocalizations),
+                        style: AppTextStyles.prayerName,
+                      ),
+                      value: soundFile,
+                      groupValue: tempSelectedAzan, // Use temporary selection
+                      activeColor: AppColors.primary,
+                      onChanged: (value) async {
+                        if (value != null) {
+                          setStateDialog(() {
+                            // Update dialog state
+                            tempSelectedAzan = value;
+                          });
+                          await _audioPlayer.stop();
+                          try {
+                            await _audioPlayer.play(
+                              AssetSource('audio/$value'),
+                            );
+                            _logger.info('Playing Azan preview: $value');
+                          } catch (e, s) {
+                            _logger.error(
+                              'Error playing Azan preview',
+                              error: e.toString(),
+                              stackTrace: s,
+                            );
+                          }
+                        }
+                      },
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () async {
+                    await _audioPlayer.stop();
+                    _safeNavigatorPop(dialogContext);
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                  ),
+                  child: Text(appLocalizations.cancel),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    if (tempSelectedAzan != null) {
+                      settingsNotifier.updateAzanSoundForStandardPrayers(
+                        tempSelectedAzan!,
+                      );
+                    }
+                    await _audioPlayer.stop();
+                    _safeNavigatorPop(dialogContext);
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                  ),
+                  child: Text("Confirm"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) async {
+      // Ensure audio stops if dialog is dismissed by tapping outside
+      await _audioPlayer.stop();
+    });
+  }
+
+  void _safeNavigatorPop(BuildContext context) {
+    if (!mounted) return;
+    Navigator.pop(context);
+  }
+
+  String _getAzanSoundDisplayName(
+    String fileName,
+    AppLocalizations appLocalizations,
+  ) {
+    // Helper to convert filename to a more readable display name
+    // This could be enhanced with actual localized names if available
+    if (fileName.isEmpty) return appLocalizations.notSet; // Or some default
+    String name = fileName.replaceAll('_adhan.mp3', '').replaceAll('_', ' ');
+    name = name.replaceAll('azaan ', ''); // for azaan_turkish
+    name = name[0].toUpperCase() + name.substring(1);
+    if (name.toLowerCase().contains('makkah')) {
+      return appLocalizations.makkahAdhan;
+    }
+    if (name.toLowerCase().contains('madinah')) {
+      return appLocalizations.madinahAdhan;
+    }
+    if (name.toLowerCase().contains('alaqsa')) {
+      return appLocalizations.alAqsaAdhan;
+    }
+    if (name.toLowerCase().contains('turkish')) {
+      return appLocalizations.turkishAdhan;
+    }
+    return name; // Fallback to a processed name
   }
 
   String _getLocaleName(

@@ -434,5 +434,20 @@ class AppLocalizationsSq extends AppLocalizations {
   String get startCalibration => 'Fillo Kalibrimin';
 
   @override
-  String get distanceUnit => 'kilometra larg';
+  String get distanceUnit => 'milje larg';
+
+  @override
+  String get azanSound => 'Azan Sound';
+
+  @override
+  String get makkahAdhan => 'Makkah Adhan';
+
+  @override
+  String get madinahAdhan => 'Madinah Adhan';
+
+  @override
+  String get alAqsaAdhan => 'Al-Aqsa Adhan';
+
+  @override
+  String get turkishAdhan => 'Turkish Adhan';
 }

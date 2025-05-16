@@ -88,5 +88,9 @@
   "searchError": "Gabim në Kërkimin e Vendndodhjes",
   "@searchError": {
     "description": "Mesazh gabimi i shfaqur kur një kërkim vendndodhjeje dështon"
+  },
+  "confirm": "Konfirmo",
+  "@confirm": {
+    "description": "Teksti i butonit për të konfirmuar një zgjedhje"
   }
 }

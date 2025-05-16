@@ -433,4 +433,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get distanceUnit => 'miles away';
+
+  @override
+  String get azanSound => 'Azan Sound';
+
+  @override
+  String get makkahAdhan => 'Makkah Adhan';
+
+  @override
+  String get madinahAdhan => 'Madinah Adhan';
+
+  @override
+  String get alAqsaAdhan => 'Al-Aqsa Adhan';
+
+  @override
+  String get turkishAdhan => 'Turkish Adhan';
 }

@@ -1,4 +1,5 @@
 {
+  "@@locale": "en",
   "qiblaAligned": "Qibla aligned!",
   "qiblaNoCompassData": "No compass data",
   "qiblaDirectionNorth": "N",
@@ -9,10 +10,6 @@
   "qiblaDirectionLabel": "Qibla Direction",
   "qiblaDistance": "Distance to Kaaba",
   "qiblaHelpTitle": "How to Use Qibla Finder",
-  "qiblaHelpStep1": "Hold your phone flat and level.",
-  "qiblaHelpStep2": "Rotate slowly until the arrow points to the Kaaba.",
-  "qiblaHelpStep3": "When aligned, you'll see a confirmation message.",
-  "qiblaHelpStep4": "If compass data is inaccurate, tap the calibrate button.",
   "qiblaGotIt": "Got it",
   "qiblaCalibrate": "Calibrate Compass",
   "qiblaCalibrating": "Rotate your phone in a figure-8 pattern to calibrate",
@@ -162,5 +159,29 @@
   "twelveHour": "12-hour",
   "twentyFourHour": "24-hour",
   "kilometers": "Kilometers",
-  "miles": "Miles"
+  "miles": "Miles",
+  "azanSound": "Azan",
+  "@azanSound": {
+    "description": "Label for Azan sound selection in settings"
+  },
+  "makkahAdhan": "Makkah Adhan",
+  "@makkahAdhan": {
+    "description": "Display name for Makkah Adhan sound"
+  },
+  "madinahAdhan": "Madinah Adhan",
+  "@madinahAdhan": {
+    "description": "Display name for Madinah Adhan sound"
+  },
+  "alAqsaAdhan": "Al-Aqsa Adhan",
+  "@alAqsaAdhan": {
+    "description": "Display name for Al-Aqsa Adhan sound"
+  },
+  "turkishAdhan": "Turkish Adhan",
+  "@turkishAdhan": {
+    "description": "Display name for Turkish Adhan sound"
+  },
+  "confirm": "Confirm",
+  "@confirm": {
+    "description": "Button text to confirm a selection"
+  }
 }

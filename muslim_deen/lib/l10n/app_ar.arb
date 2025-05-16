@@ -1,4 +1,5 @@
 {
+  "@@locale": "ar",
   "qiblaAligned": "تم توجيه القبلة!",
   "qiblaNoCompassData": "لا توجد بيانات البوصلة",
   "qiblaDirectionNorth": "ش",
@@ -88,5 +89,9 @@
   "searchError": "خطأ في البحث عن الموقع",
   "@searchError": {
     "description": "رسالة خطأ معروضة عند فشل البحث عن موقع"
+  },
+  "confirm": "تأكيد",
+  "@confirm": {
+    "description": "نص الزر لتأكيد التحديد"
   }
 }
