@@ -1,0 +1,47 @@
+name: Native iOS Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  native_ios_tests:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_15.3.app/Contents/Developer
+      # Adjust Xcode version as needed, or remove if latest on runner is always desired.
+
+      - name: Navigate to iOS project directory
+        run: cd muslim_deen/ios
+
+      - name: Run Native iOS Unit Tests
+        run: |
+          cd muslim_deen/ios
+          xcodebuild test \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+            -only-testing:RunnerTests \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Run Native iOS UI Tests (if configured)
+        run: |
+          cd muslim_deen/ios
+          xcodebuild test \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+            -only-testing:RunnerUITests \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
+        # Note: Ensure the 'RunnerUITests' target exists in your Xcode project.
+        # If UI tests are not set up, this step can be commented out or removed.

@@ -1,0 +1,70 @@
+name: Flutter CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  flutter_ci:
+    name: Flutter CI (Android & iOS)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17' # Flutter Android build often requires Java 11 or higher
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x' # Or specify your project's Flutter version e.g. '3.19.0'
+          channel: 'stable'
+
+      - name: Change directory to muslim_deen
+        run: cd muslim_deen
+
+      - name: Get Flutter packages
+        working-directory: ./muslim_deen
+        run: flutter pub get
+
+      - name: Analyze project
+        working-directory: ./muslim_deen
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        working-directory: ./muslim_deen
+        run: flutter test
+
+      # Android Specific Steps
+      - name: Build Android APK (Debug)
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: ./muslim_deen
+        run: flutter build apk --debug
+
+      # iOS Specific Steps
+      - name: Build iOS (Debug, no codesign)
+        if: matrix.os == 'macos-latest'
+        working-directory: ./muslim_deen
+        run: flutter build ios --no-codesign --debug
+
+      - name: Xcode Clean Analyze (iOS)
+        if: matrix.os == 'macos-latest'
+        working-directory: ./muslim_deen/ios
+        run: xcodebuild clean analyze -workspace Runner.xcworkspace -scheme Runner -configuration Debug -sdk iphonesimulator ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO
+
+      - name: Xcode Test (iOS)
+        if: matrix.os == 'macos-latest'
+        working-directory: ./muslim_deen/ios
+        run: xcodebuild test -workspace Runner.xcworkspace -scheme Runner -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' ONLY_ACTIVE_ARCH=NO CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
