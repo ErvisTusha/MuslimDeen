@@ -369,24 +369,22 @@ class LocationService {
           return _getLastKnownLocationOrDefault();
         }
 
-        // Set a shorter timeout and handle it properly
-        final position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 5), // Reduced from 10 to 5 seconds
-          ),
-        ).timeout(
-          const Duration(seconds: 5),
-          onTimeout: () {
-            _logger.warning('Location request timed out, using fallback');
-            throw TimeoutException('Location request timed out');
-          },
-        );
+        // Using a single timeout mechanism with increased duration
+        try {
+          final position = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              timeLimit: Duration(seconds: 10), // Increased timeout
+            ),
+          );
 
-        // Save position for future reference
-        await cacheCurrentLocation(position);
-
-        return position;
+          // Save position for future reference
+          await cacheCurrentLocation(position);
+          return position;
+        } on TimeoutException {
+          _logger.warning('Location request timed out, using fallback');
+          return _getLastKnownLocationOrDefault();
+        }
       } catch (e) {
         _logger.error('Error getting current location', error: e);
         return _getLastKnownLocationOrDefault();
@@ -439,23 +437,13 @@ class LocationService {
         )
         .handleError((error) {
           _logger.error('Location stream error', error: error);
-          // Log the error. Don't return a value here, let the stream handle errors/closure.
-          // If a fallback is needed, it should be handled by the stream consumer
-          // or by adding an error event to the sink if appropriate.
-          // Returning _lastKnownPosition here incorrectly terminates the stream processing.
-          // Consider adding error to sink: sink.addError(error); sink.close();
-          // Or just let the stream close/error out naturally.
-          // For now, just log and let the stream manage itself.
-          // If _lastKnownPosition is needed as a fallback, the UI/consumer should use it.
-          // throw error; // Re-throwing might be appropriate depending on desired stream behavior
         });
 
-    _locationSubscription = stream.listen((position) {
-      _lastKnownPosition = position;
-      _saveLastPosition(position);
-    }, onError: (e) => _logger.error('Location subscription error', error: e));
-
-    yield* stream;
+    await for (final position in stream) {
+      yield position;
+      // Cache each position update
+      await cacheCurrentLocation(position);
+    }
   }
 
   Future<bool> openLocationSettings() async {
