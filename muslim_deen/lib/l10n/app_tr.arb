@@ -85,5 +85,21 @@
   "confirm": "Onayla",
   "@confirm": {
     "description": "Bir seçimi onaylamak için düğme metni"
+  },
+  "qiblaErrorUnknown": "An unknown error occurred while trying to determine the Qibla direction.",
+  "@qiblaErrorUnknown": {
+    "description": "Generic error message for Qibla view when the cause is not specific."
+  },
+  "qiblaErrorPermissionDeniedSettings": "Location permission is required for Qibla finder. Please enable it in your browser/device settings.",
+  "@qiblaErrorPermissionDeniedSettings": {
+    "description": "Error message when location permission is denied and user needs to go to settings."
+  },
+  "qiblaErrorServiceDisabled": "Location services are disabled. Please enable them to use the Qibla feature.",
+  "@qiblaErrorServiceDisabled": {
+    "description": "Error message when location services are turned off on the device."
+  },
+  "qiblaErrorLocationUnavailable": "Could not access your current location. Please ensure location services are on and permissions are granted.",
+  "@qiblaErrorLocationUnavailable": {
+    "description": "Error message when the device cannot determine the current location."
   }
 }

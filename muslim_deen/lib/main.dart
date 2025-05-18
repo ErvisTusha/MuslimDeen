@@ -8,6 +8,7 @@ import 'providers/providers.dart';
 import 'service_locator.dart';
 import 'services/error_handler_service.dart';
 import 'services/logger_service.dart';
+import 'styles/app_styles.dart'; // Import AppColors
 import 'views/home_view.dart';
 import 'views/mosque_view.dart';
 import 'views/qibla_view.dart';
@@ -90,10 +91,90 @@ class MuslimDeenApp extends StatelessWidget {
             primarySwatch: Colors.green,
             visualDensity: VisualDensity.adaptivePlatformDensity,
           ),
-          darkTheme: ThemeData(
-            brightness: Brightness.dark,
-            primarySwatch: Colors.green,
+          darkTheme: ThemeData.dark().copyWith(
+            primaryColor: AppColors.primary(Brightness.dark), // Now very dark gray / black
+            scaffoldBackgroundColor: AppColors.background(Brightness.dark), // Now black
+            colorScheme: ColorScheme.dark(
+              primary: AppColors.primary(Brightness.dark),         // Main interactive elements (very dark gray)
+              secondary: AppColors.accentGreen(Brightness.dark),   // Accent color (green)
+              surface: AppColors.surface(Brightness.dark),         // Cards, dialogs (very dark gray)
+              error: AppColors.error(Brightness.dark),
+              onPrimary: AppColors.textPrimary(Brightness.dark),   // Text on primary (white)
+              onSecondary: AppColors.textPrimary(Brightness.dark), // Text on accent (white or black depending on accent's brightness)
+              onSurface: AppColors.textPrimary(Brightness.dark),   // Text on surface (white)
+              onError: AppColors.textPrimary(Brightness.dark),     // Text on error (white)
+              brightness: Brightness.dark, // Explicitly set brightness
+            ),
+            appBarTheme: AppBarTheme(
+              backgroundColor: AppColors.surface(Brightness.dark), // AppBar uses surface color
+              elevation: 1,
+              iconTheme: IconThemeData(color: AppColors.textPrimary(Brightness.dark)),
+              toolbarTextStyle: TextTheme(
+                titleLarge: AppTextStyles.appTitle(Brightness.dark),
+              ).bodyMedium,
+              titleTextStyle: TextTheme(
+                titleLarge: AppTextStyles.appTitle(Brightness.dark),
+              ).titleLarge,
+            ),
+            cardColor: AppColors.surface(Brightness.dark),
+            dividerColor: AppColors.divider(Brightness.dark),
+            iconTheme: IconThemeData(color: AppColors.iconInactive(Brightness.dark)), // Default icon color
+            primaryIconTheme: IconThemeData(color: AppColors.accentGreen(Brightness.dark)), // Icons that should be green
+            textTheme: TextTheme(
+              displayLarge: TextStyle(color: AppColors.textPrimary(Brightness.dark)),
+              displayMedium: TextStyle(color: AppColors.textPrimary(Brightness.dark)),
+              displaySmall: TextStyle(color: AppColors.textPrimary(Brightness.dark)),
+              headlineMedium: TextStyle(color: AppColors.textPrimary(Brightness.dark)),
+              headlineSmall: TextStyle(color: AppColors.textPrimary(Brightness.dark)),
+              titleLarge: TextStyle(color: AppColors.textPrimary(Brightness.dark)),
+              bodyLarge: TextStyle(color: AppColors.textPrimary(Brightness.dark)),
+              bodyMedium: TextStyle(color: AppColors.textPrimary(Brightness.dark)),
+              bodySmall: TextStyle(color: AppColors.textSecondary(Brightness.dark)),
+              labelLarge: TextStyle(color: AppColors.accentGreen(Brightness.dark)), // Buttons use accent green
+            ),
+            buttonTheme: ButtonThemeData(
+              buttonColor: AppColors.accentGreen(Brightness.dark), // Buttons use accent green
+              textTheme: ButtonTextTheme.primary, // Ensures text on button is contrasting
+              colorScheme: ColorScheme.dark(
+                primary: AppColors.accentGreen(Brightness.dark),
+                onPrimary: AppColors.textPrimary(Brightness.dark), // Text on green buttons
+              ),
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentGreen(Brightness.dark),
+                foregroundColor: AppColors.textPrimary(Brightness.dark),
+              ),
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.accentGreen(Brightness.dark),
+              ),
+            ),
+            switchTheme: SwitchThemeData(
+              thumbColor: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
+                if (states.contains(WidgetState.selected)) {
+                  return AppColors.accentGreen(Brightness.dark);
+                }
+                return AppColors.accentGray(Brightness.dark); // Off state
+              }),
+              trackColor: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
+                if (states.contains(WidgetState.selected)) {
+                  return AppColors.switchTrackActive(Brightness.dark); // Uses accentGreen with alpha
+                }
+                return AppColors.accentGray(Brightness.dark).withAlpha(50); // Off state track
+              }),
+            ),
             visualDensity: VisualDensity.adaptivePlatformDensity,
+            bottomNavigationBarTheme: BottomNavigationBarThemeData(
+              backgroundColor: AppColors.surface(Brightness.dark),
+              selectedItemColor: AppColors.accentGreen(Brightness.dark), // Selected item is green
+              unselectedItemColor: AppColors.iconInactive(Brightness.dark),
+            ),
+            floatingActionButtonTheme: FloatingActionButtonThemeData(
+              backgroundColor: AppColors.accentGreen(Brightness.dark), // FAB is green
+              foregroundColor: AppColors.textPrimary(Brightness.dark),
+            ),
           ),
           themeMode: settingsState.themeMode,
           locale: _parseLocale(settingsState.language),

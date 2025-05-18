@@ -450,4 +450,15 @@ class AppLocalizationsSq extends AppLocalizations {
 
   @override
   String get turkishAdhan => 'Turkish Adhan';
+@override
+  String get qiblaErrorLocationUnavailable => 'Shërbimet e vendndodhjes nuk janë të disponueshme. Ju lutemi aktivizoni shërbimet e vendndodhjes dhe provoni përsëri.';
+
+  @override
+  String get qiblaErrorPermissionDeniedSettings => 'Leja e vendndodhjes u refuzua përgjithmonë. Ju lutemi aktivizojeni atë nga cilësimet e aplikacionit.';
+
+  @override
+  String get qiblaErrorServiceDisabled => 'Shërbimet e vendndodhjes janë çaktivizuar. Ju lutemi aktivizojini ato për të përcaktuar drejtimin e Kiblës.';
+
+  @override
+  String get qiblaErrorUnknown => 'Ndodhi një gabim i panjohur gjatë përpjekjes për të përcaktuar drejtimin e Kiblës.';
 }

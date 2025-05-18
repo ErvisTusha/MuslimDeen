@@ -916,6 +916,30 @@ abstract class AppLocalizations {
   /// **'miles away'**
   String get distanceUnit;
 
+  /// Generic error message for Qibla view when the cause is not specific.
+  ///
+  /// In en, this message translates to:
+  /// **'An unknown error occurred while trying to determine the Qibla direction.'**
+  String get qiblaErrorUnknown;
+
+  /// Error message when location permission is denied and user needs to go to settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Location permission is required for Qibla finder. Please enable it in your browser/device settings.'**
+  String get qiblaErrorPermissionDeniedSettings;
+
+  /// Error message when location services are turned off on the device.
+  ///
+  /// In en, this message translates to:
+  /// **'Location services are disabled. Please enable them to use the Qibla feature.'**
+  String get qiblaErrorServiceDisabled;
+
+  /// Error message when the device cannot determine the current location.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not access your current location. Please ensure location services are on and permissions are granted.'**
+  String get qiblaErrorLocationUnavailable;
+
   //String get qiblaAlmostThere;
 }
 

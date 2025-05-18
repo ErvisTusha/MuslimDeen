@@ -800,66 +800,91 @@ class _HomeViewState extends ConsumerState<HomeView> {
     // Use watch to rebuild on any settings change
     final appSettings = ref.watch(settingsProvider);
     final localizations = AppLocalizations.of(context)!;
+    final brightness = Theme.of(context).brightness;
+    final bool isDarkMode = brightness == Brightness.dark;
+
+    // Define colors similar to TesbihView
+    final Color scaffoldBg = isDarkMode ? AppColors.surface(brightness) : AppColors.background(brightness);
+    final Color contentSurface = isDarkMode ? const Color(0xFF2C2C2C) : AppColors.primaryVariant(brightness); // For cards/containers
+    final Color currentPrayerItemBg = isDarkMode ? AppColors.accentGreen(brightness).withAlpha((0.15 * 255).round()) : AppColors.primary(brightness).withAlpha((0.1 * 255).round());
+    final Color currentPrayerItemBorder = isDarkMode ? AppColors.accentGreen(brightness).withAlpha((0.7 * 255).round()) : AppColors.primary(brightness);
+    final Color currentPrayerItemText = isDarkMode ? AppColors.accentGreen(brightness) : AppColors.primary(brightness);
+
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
-        title: Text(localizations.appTitle, style: AppTextStyles.appTitle),
-        backgroundColor: AppColors.primary,
+        title: Text(localizations.appTitle, style: AppTextStyles.appTitle(brightness)),
+        backgroundColor: AppColors.primary(brightness),
         elevation: 2,
-        shadowColor: AppColors.shadowColor,
+        shadowColor: AppColors.shadowColor(brightness),
         centerTitle: true,
         systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: AppColors.primary,
-          statusBarIconBrightness: Brightness.light,
+          statusBarColor: AppColors.primary(brightness),
+          statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.light,
         ),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _dataLoadingFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            // Show loading indicator but also the basic structure if prayer times exist
             return _buildMainContent(
               isLoading: true,
               prayerTimes: _prayerTimes,
               displayCity: _lastKnownCity ?? localizations.loading,
               displayCountry: _lastKnownCountry,
-              appSettings: appSettings, // Changed
+              appSettings: appSettings,
               localizations: localizations,
+              brightness: brightness,
+              isDarkMode: isDarkMode,
+              scaffoldBg: scaffoldBg,
+              contentSurface: contentSurface,
+              currentPrayerItemBg: currentPrayerItemBg,
+              currentPrayerItemBorder: currentPrayerItemBorder,
+              currentPrayerItemText: currentPrayerItemText,
             );
           } else if (snapshot.hasError) {
             String errorMessage = _processLoadError(snapshot.error);
-            // Show error UI
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    Icon(Icons.error_outline, color: AppColors.error(brightness), size: 48),
+                    const SizedBox(height: 16),
                     Text(
                       errorMessage,
-                      style: const TextStyle(color: Colors.red, fontSize: 16),
+                      style: AppTextStyles.label(brightness).copyWith(color: AppColors.error(brightness), fontSize: 16),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 10),
-                    ElevatedButton(
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.refresh),
                       onPressed: () {
                         setState(() {
                           _dataLoadingFuture =
                               _fetchDataAndScheduleNotifications();
                         });
                       },
-                      child: Text(localizations.retry),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accentGreen(brightness),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        textStyle: AppTextStyles.label(brightness).copyWith(fontWeight: FontWeight.w600), // Changed to label
+                      ),
+                      label: Text(localizations.retry),
                     ),
-                    if (errorMessage.contains('permission'))
+                    if (errorMessage.contains('permission') || errorMessage.contains('permanently denied'))
                       TextButton(
                         onPressed: () => _locationService.openAppSettings(),
+                        style: TextButton.styleFrom(foregroundColor: AppColors.primary(brightness)),
                         child: Text(localizations.openAppSettings),
                       ),
                     if (errorMessage.contains('services are disabled'))
                       TextButton(
-                        onPressed:
-                            () => _locationService.openLocationSettings(),
+                        onPressed: () => _locationService.openLocationSettings(),
+                        style: TextButton.styleFrom(foregroundColor: AppColors.primary(brightness)),
                         child: Text(localizations.openLocationSettings),
                       ),
                   ],
@@ -876,12 +901,47 @@ class _HomeViewState extends ConsumerState<HomeView> {
               prayerTimes: _prayerTimes!,
               displayCity: loadedCity,
               displayCountry: loadedCountry,
-              appSettings: appSettings, // Changed
+              appSettings: appSettings,
               localizations: localizations,
+              brightness: brightness,
+              isDarkMode: isDarkMode,
+              scaffoldBg: scaffoldBg,
+              contentSurface: contentSurface,
+              currentPrayerItemBg: currentPrayerItemBg,
+              currentPrayerItemBorder: currentPrayerItemBorder,
+              currentPrayerItemText: currentPrayerItemText,
             );
           } else {
-            return Center(
-              child: Text(localizations.unexpectedError(localizations.unknown)),
+            return Center( // Fallback for unexpected state
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.info_outline, color: AppColors.textSecondary(brightness), size: 48),
+                  const SizedBox(height:16),
+                  Text(
+                    localizations.unexpectedError(localizations.unknown),
+                    style: AppTextStyles.label(brightness).copyWith(color: AppColors.textSecondary(brightness)),
+                    textAlign: TextAlign.center,
+                  ),
+                   const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.refresh),
+                      onPressed: () {
+                        setState(() {
+                          _dataLoadingFuture =
+                              _fetchDataAndScheduleNotifications();
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accentGreen(brightness),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        textStyle: AppTextStyles.label(brightness).copyWith(fontWeight: FontWeight.w600), // Changed to label
+                      ),
+                      label: Text(localizations.retry),
+                    ),
+                ],
+              ),
             );
           }
         },
@@ -895,13 +955,18 @@ class _HomeViewState extends ConsumerState<HomeView> {
     required adhan.PrayerTimes? prayerTimes,
     required String? displayCity,
     required String? displayCountry,
-    required AppSettings appSettings, // Changed
+    required AppSettings appSettings,
     required AppLocalizations localizations,
+    required Brightness brightness,
+    required bool isDarkMode,
+    required Color scaffoldBg,
+    required Color contentSurface,
+    required Color currentPrayerItemBg,
+    required Color currentPrayerItemBorder,
+    required Color currentPrayerItemText,
   }) {
-    // Dynamic settings and formatting within content build
-    final settings = appSettings; // Changed (or use appSettings directly)
+    final settings = appSettings;
     final now = DateTime.now();
-    // Choose date pattern based on user setting
     final datePattern =
         settings.dateFormatOption == DateFormatOption.dayMonthYear
             ? 'd MMMM yyyy'
@@ -915,7 +980,6 @@ class _HomeViewState extends ConsumerState<HomeView> {
     final hijri = HijriCalendar.now();
     final formattedHijri =
         '${hijri.hDay} ${hijri.longMonthName} ${hijri.hYear}';
-    // Time format for prayer list
     final timeFormat = DateFormat(
       settings.timeFormat == TimeFormat.twentyFourHour ? 'HH:mm' : 'hh:mm a',
       Localizations.localeOf(context).toString(),
@@ -932,9 +996,8 @@ class _HomeViewState extends ConsumerState<HomeView> {
 
     return Column(
       children: [
-        // Location and Date Info
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        Padding( // Location and Date Info - no separate card, directly on scaffoldBg
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), // Increased top padding
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -956,8 +1019,8 @@ class _HomeViewState extends ConsumerState<HomeView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(formattedGregorian, style: AppTextStyles.date),
-                    Text(formattedHijri, style: AppTextStyles.dateSecondary),
+                    Text(formattedGregorian, style: AppTextStyles.date(brightness).copyWith(fontSize: 15)),
+                    Text(formattedHijri, style: AppTextStyles.dateSecondary(brightness).copyWith(fontSize: 13)),
                   ],
                 ),
               ),
@@ -965,7 +1028,6 @@ class _HomeViewState extends ConsumerState<HomeView> {
               Flexible(
                 child: GestureDetector(
                   onDoubleTap: () {
-                    // Navigate to settings view with location section focus
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -975,12 +1037,10 @@ class _HomeViewState extends ConsumerState<HomeView> {
                         settings: const RouteSettings(name: '/settings'),
                       ),
                     ).then((_) {
-                      // Refresh data when returning from settings - ensure a complete refresh
                       if (mounted) {
                         setState(() {
-                          // Force a complete refresh of data
-                          _prayerTimes = null; // Reset prayer times
-                          _lastKnownCity = null; // Reset cached location
+                          _prayerTimes = null;
+                          _lastKnownCity = null;
                           _lastKnownCountry = null;
                           _dataLoadingFuture =
                               _fetchDataAndScheduleNotifications();
@@ -996,14 +1056,14 @@ class _HomeViewState extends ConsumerState<HomeView> {
                         children: [
                           Icon(
                             Icons.location_on,
-                            color: AppColors.textPrimary,
-                            size: 16,
+                            color: AppColors.textPrimary(brightness),
+                            size: 15, // Adjusted size
                           ),
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(
-                              displayCity ?? localizations.unknownLocation,
-                              style: AppTextStyles.date,
+                              displayCity ?? localizations.loading, // Show loading if city is null
+                              style: AppTextStyles.date(brightness).copyWith(fontSize: 15),
                               textAlign: TextAlign.right,
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
@@ -1013,10 +1073,10 @@ class _HomeViewState extends ConsumerState<HomeView> {
                       ),
                       if (displayCountry != null && displayCountry.isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.only(left: 20.0),
+                          padding: const EdgeInsets.only(left: 20.0), // Keep padding for alignment
                           child: Text(
                             displayCountry,
-                            style: AppTextStyles.dateSecondary,
+                            style: AppTextStyles.dateSecondary(brightness).copyWith(fontSize: 13),
                             textAlign: TextAlign.right,
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
@@ -1030,78 +1090,70 @@ class _HomeViewState extends ConsumerState<HomeView> {
           ),
         ),
 
-        const SizedBox(height: 16),
-
         // Current & Next Prayer Box
         Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), // Added vertical margin
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.primaryLight,
-            borderRadius: BorderRadius.circular(10),
+            color: contentSurface, // Use contentSurface from TesbihView
+            borderRadius: BorderRadius.circular(12), // Consistent rounding
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.shadowColor(brightness).withAlpha(isDarkMode ? 30 : 50),
+                spreadRadius: 1,
+                blurRadius: 5,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Row(
-            crossAxisAlignment:
-                CrossAxisAlignment.start, // Align children to the top
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Current Prayer
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       localizations.currentPrayerTitle,
-                      style: AppTextStyles.label,
+                      style: AppTextStyles.label(brightness).copyWith(color: AppColors.textSecondary(brightness)),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      isLoading
-                          ? '...'
-                          : _currentPrayerName, // Show loading or actual name
-                      style: AppTextStyles.currentPrayer,
+                      isLoading ? '...' : _currentPrayerName,
+                      style: AppTextStyles.currentPrayer(brightness).copyWith(color: AppColors.textPrimary(brightness)),
                     ),
                   ],
                 ),
               ),
-              // Next Prayer
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
                       localizations.nextPrayerTitle,
-                      style: AppTextStyles.label,
+                      style: AppTextStyles.label(brightness).copyWith(color: AppColors.textSecondary(brightness)),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      isLoading
-                          ? '...'
-                          : _nextPrayerName, // Show loading or actual name
-                      style: AppTextStyles.nextPrayer,
+                      isLoading ? '...' : _nextPrayerName,
+                      style: AppTextStyles.nextPrayer(brightness).copyWith(color: AppColors.accentGreen(brightness)), // Highlight next prayer
                     ),
-                    // Use the new PrayerCountdownTimer widget here
                     Builder(
-                      // Use Builder to get fresh DateTime.now()
                       builder: (context) {
                         Duration initialCountdownDuration = Duration.zero;
                         if (!isLoading && _nextPrayerDateTime != null) {
                           final now = DateTime.now();
                           if (_nextPrayerDateTime!.isAfter(now)) {
-                            initialCountdownDuration = _nextPrayerDateTime!
-                                .difference(now);
+                            initialCountdownDuration = _nextPrayerDateTime!.difference(now);
                           }
                         }
                         return PrayerCountdownTimer(
-                          // Use zero duration if loading or time is null/past
-                          initialDuration:
-                              isLoading
-                                  ? Duration.zero
-                                  : initialCountdownDuration,
-                          textStyle: AppTextStyles.countdownTimer,
+                          initialDuration: isLoading ? Duration.zero : initialCountdownDuration,
+                          textStyle: AppTextStyles.countdownTimer(brightness).copyWith(color: AppColors.accentGreen(brightness)),
                           localizations: localizations,
                         );
                       },
-                    ), // End of Builder
+                    ),
                   ],
                 ),
               ),
@@ -1109,83 +1161,102 @@ class _HomeViewState extends ConsumerState<HomeView> {
           ),
         ),
 
-        const SizedBox(height: 20),
-
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), // Adjusted padding
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
               localizations.prayerTimesTitle,
-              style: AppTextStyles.sectionTitle,
+              style: AppTextStyles.sectionTitle(brightness).copyWith(color: AppColors.textPrimary(brightness)),
             ),
           ),
         ),
 
-        // Prayer times list
         Expanded(
           child: Stack(
-            // Use Stack to overlay loading indicator
             children: [
-              ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+              Container(
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 16), // Margin for the list container
+                decoration: BoxDecoration(
+                  color: contentSurface, // Background for the list area
+                  borderRadius: BorderRadius.circular(12),
+                   border: Border.all(color: AppColors.borderColor(brightness).withAlpha(isDarkMode ? 70 : 100)),
+                   boxShadow: [
+                      BoxShadow(
+                        color: AppColors.shadowColor(brightness).withAlpha(isDarkMode ? 20 : 40),
+                        spreadRadius: 0,
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
                 ),
-                itemCount: prayerOrder.length,
-                itemBuilder: (context, index) {
-                  final prayerEnum = prayerOrder[index];
-                  DateTime? prayerTime;
-                  String prayerNameString; // Name for display and icon lookup
+                child: ClipRRect( // To ensure border radius is respected by ListView
+                  borderRadius: BorderRadius.circular(11),
+                  child: ListView.separated(
+                    controller: _scrollController,
+                    padding: EdgeInsets.zero, // Remove default padding
+                    itemCount: prayerOrder.length,
+                    separatorBuilder: (context, index) => Divider(
+                      color: AppColors.borderColor(brightness).withAlpha(isDarkMode ? 70 : 100),
+                      height: 1,
+                      indent: 16,
+                      endIndent: 16,
+                    ),
+                    itemBuilder: (context, index) {
+                      final prayerEnum = prayerOrder[index];
+                      DateTime? prayerTime;
+                      String prayerNameString;
 
-                  switch (prayerEnum) {
-                    case PrayerNotification.fajr:
-                      prayerTime = prayerTimes?.fajr; // Use nullable access
-                      prayerNameString = localizations.prayerNameFajr;
-                      break;
-                    case PrayerNotification.sunrise:
-                      prayerTime = prayerTimes?.sunrise; // Use nullable access
-                      prayerNameString = localizations.prayerNameSunrise;
-                      break;
-                    case PrayerNotification.dhuhr:
-                      prayerTime = prayerTimes?.dhuhr; // Use nullable access
-                      prayerNameString = localizations.prayerNameDhuhr;
-                      break;
-                    case PrayerNotification.asr:
-                      prayerTime = prayerTimes?.asr; // Use nullable access
-                      prayerNameString = localizations.prayerNameAsr;
-                      break;
-                    case PrayerNotification.maghrib:
-                      prayerTime = prayerTimes?.maghrib; // Use nullable access
-                      prayerNameString = localizations.prayerNameMaghrib;
-                      break;
-                    case PrayerNotification.isha:
-                      prayerTime = prayerTimes?.isha; // Use nullable access
-                      prayerNameString = localizations.prayerNameIsha;
-                      break;
-                  }
+                      switch (prayerEnum) {
+                        case PrayerNotification.fajr:
+                          prayerTime = prayerTimes?.fajr;
+                          prayerNameString = localizations.prayerNameFajr;
+                          break;
+                        case PrayerNotification.sunrise:
+                          prayerTime = prayerTimes?.sunrise;
+                          prayerNameString = localizations.prayerNameSunrise;
+                          break;
+                        case PrayerNotification.dhuhr:
+                          prayerTime = prayerTimes?.dhuhr;
+                          prayerNameString = localizations.prayerNameDhuhr;
+                          break;
+                        case PrayerNotification.asr:
+                          prayerTime = prayerTimes?.asr;
+                          prayerNameString = localizations.prayerNameAsr;
+                          break;
+                        case PrayerNotification.maghrib:
+                          prayerTime = prayerTimes?.maghrib;
+                          prayerNameString = localizations.prayerNameMaghrib;
+                          break;
+                        case PrayerNotification.isha:
+                          prayerTime = prayerTimes?.isha;
+                          prayerNameString = localizations.prayerNameIsha;
+                          break;
+                      }
 
-                  // Get notification enabled status from provider's settings
-                  final bool isEnabled =
-                      settings.notifications[prayerEnum] ?? false;
-                  // Check if this prayer is the current one (only if not loading)
-                  final bool isCurrent =
-                      !isLoading && _currentPrayerName == prayerNameString;
+                      final bool isEnabled = settings.notifications[prayerEnum] ?? false;
+                      final bool isCurrent = !isLoading && _currentPrayerName == prayerNameString;
 
-                  return _buildPrayerItemWithSwitch(
-                    prayerNameString, // Localized name for display
-                    prayerEnum, // Enum value for updating settings
-                    prayerTime,
-                    timeFormat,
-                    isCurrent,
-                    isEnabled, // Pass enabled status
-                    // settingsProvider, // Removed: No longer needed by _buildPrayerItemWithSwitch
-                  );
-                },
+                      return _buildPrayerItemWithSwitch(
+                        prayerNameString,
+                        prayerEnum,
+                        prayerTime,
+                        timeFormat,
+                        isCurrent,
+                        isEnabled,
+                        brightness, // Pass brightness
+                        isDarkMode,
+                        contentSurface,
+                        currentPrayerItemBg,
+                        currentPrayerItemBorder,
+                        currentPrayerItemText,
+                      );
+                    },
+                  ),
+                ),
               ),
-              if (isLoading) // Overlay loading indicator
-                const Center(child: CircularProgressIndicator()),
+              if (isLoading)
+                Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentGreen(brightness)))),
             ],
           ),
         ),
@@ -1193,7 +1264,6 @@ class _HomeViewState extends ConsumerState<HomeView> {
     );
   }
 
-  /// Builds a single row in the prayer times list, without the toggle switch.
   Widget _buildPrayerItemWithSwitch(
     String name,
     PrayerNotification prayerEnum,
@@ -1201,65 +1271,72 @@ class _HomeViewState extends ConsumerState<HomeView> {
     DateFormat format,
     bool isCurrent,
     bool isEnabled,
-    // SettingsProvider settingsProvider, // Removed
+    Brightness brightness,
+    bool isDarkMode,
+    Color contentSurfaceColor, // Renamed from contentSurface to avoid conflict
+    Color currentPrayerItemBgColor, // Renamed
+    Color currentPrayerItemBorderColor, // Renamed
+    Color currentPrayerItemTextColor, // Renamed
   ) {
-    return GestureDetector(
-      onDoubleTap: () {
-        // Navigate to settings screen with notification section when prayer is double-tapped
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder:
-                (context) => const SettingsView(scrollToNotifications: true),
-            settings: const RouteSettings(name: '/settings'),
-          ),
-        ).then((_) {
-          // Refresh data if needed after returning from settings
-          setState(() {
-            _dataLoadingFuture = _fetchDataAndScheduleNotifications();
+    final Color itemBackgroundColor = isCurrent ? currentPrayerItemBgColor : contentSurfaceColor; // Use contentSurfaceColor for non-current
+    // final Color itemBorderColor = isCurrent ? currentPrayerItemBorderColor : AppColors.borderColor(brightness).withAlpha(0); // No border for non-current if inside a card
+    final Color itemIconColor = isCurrent ? currentPrayerItemTextColor : AppColors.iconInactive(brightness);
+    final Color itemTextColor = isCurrent ? currentPrayerItemTextColor : AppColors.textPrimary(brightness);
+
+    return Material( // For InkWell splash
+      color: Colors.transparent, // Make Material transparent
+      child: InkWell(
+        onDoubleTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (context) => const SettingsView(scrollToNotifications: true),
+              settings: const RouteSettings(name: '/settings'),
+            ),
+          ).then((_) {
+            setState(() {
+              _dataLoadingFuture = _fetchDataAndScheduleNotifications();
+            });
           });
-        });
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isCurrent ? AppColors.primaryLight : AppColors.background,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.borderColor),
-        ),
-        child: Row(
-          children: [
-            // Prayer Icon
-            Icon(
-              _getPrayerIcon(name),
-              color: isCurrent ? AppColors.primary : AppColors.iconInactive,
-              size: 24, // Increased from 20 to 24
-            ),
-            const SizedBox(width: 12),
-
-            // Prayer Name with increased font size
-            Text(
-              name,
-              style: TextStyle(
-                fontSize: 18, // Increased from 16 to 18
-                fontWeight: FontWeight.w600, // Changed from w500 to w600
-                color: isCurrent ? AppColors.primary : AppColors.textPrimary,
+        },
+        splashColor: isCurrent ? currentPrayerItemTextColor.withAlpha((0.1 * 255).round()) : AppColors.primary(brightness).withAlpha((0.1 * 255).round()),
+        highlightColor: isCurrent ? currentPrayerItemTextColor.withAlpha((0.05 * 255).round()) : AppColors.primary(brightness).withAlpha((0.05 * 255).round()),
+        child: Container(
+          // margin: const EdgeInsets.symmetric(vertical: 0), // Removed margin, handled by separator
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), // Adjusted padding
+          decoration: BoxDecoration( // This decoration is now for the InkWell's child, or remove if list items are plain
+            color: itemBackgroundColor, // Applied calculated background
+            // borderRadius: BorderRadius.circular(10), // Removed if list items are plain within a card
+            border: Border( // Apply border only if current, or rely on Divider
+              top: BorderSide(color: Colors.transparent), // Example: only bottom border from divider
+            )
+          ),
+          child: Row(
+            children: [
+              Icon(
+                _getPrayerIcon(name),
+                color: itemIconColor,
+                size: 22, // Slightly smaller icon
               ),
-            ),
-
-            const Spacer(),
-
-            // Prayer Time
-            Text(
-              time != null ? format.format(time.toLocal()) : '---',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: isCurrent ? AppColors.primary : AppColors.textPrimary,
+              const SizedBox(width: 16), // Increased spacing
+              Text(
+                name,
+                style: AppTextStyles.prayerName(brightness).copyWith(
+                  color: itemTextColor,
+                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.w600,
+                ),
               ),
-            ),
-          ],
+              const Spacer(),
+              Text(
+                time != null ? format.format(time.toLocal()) : '---',
+                style: AppTextStyles.prayerTime(brightness).copyWith(
+                  color: itemTextColor,
+                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

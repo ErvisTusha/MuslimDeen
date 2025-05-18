@@ -448,4 +448,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get turkishAdhan => 'Turkish Adhan';
+
+  @override
+  String get qiblaErrorUnknown => 'An unknown error occurred while trying to determine the Qibla direction.';
+
+  @override
+  String get qiblaErrorPermissionDeniedSettings => 'Location permission is required for Qibla finder. Please enable it in your browser/device settings.';
+
+  @override
+  String get qiblaErrorServiceDisabled => 'Location services are disabled. Please enable them to use the Qibla feature.';
+
+  @override
+  String get qiblaErrorLocationUnavailable => 'Could not access your current location. Please ensure location services are on and permissions are granted.';
 }

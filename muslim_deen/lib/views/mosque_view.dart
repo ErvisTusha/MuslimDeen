@@ -217,123 +217,211 @@ class _MosqueViewState extends State<MosqueView> {
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
+    final brightness = Theme.of(context).brightness;
+    final bool isDarkMode = brightness == Brightness.dark;
+
+    // Define colors similar to TesbihView
+    final Color scaffoldBg = isDarkMode ? AppColors.surface(brightness) : AppColors.background(brightness);
+    final Color contentSurface = isDarkMode ? const Color(0xFF2C2C2C) : AppColors.background(brightness); // Cards on a slightly lighter dark bg
+    final Color cardBorderColor = AppColors.borderColor(brightness).withAlpha(isDarkMode ? 100 : 150);
+    // final Color iconColor = AppColors.iconInactive(brightness); // For refresh icon if not on AppBar primary
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
-        title: Text(localizations.mosquesLabel, style: AppTextStyles.appTitle),
-        backgroundColor: AppColors.primary,
+        title: Text(localizations.mosquesLabel, style: AppTextStyles.appTitle(brightness)),
+        backgroundColor: AppColors.primary(brightness),
         elevation: 2.0,
-        shadowColor: AppColors.shadowColor,
+        shadowColor: AppColors.shadowColor(brightness),
         centerTitle: true,
         systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: AppColors.primary,
-          statusBarIconBrightness: Brightness.light,
+          statusBarColor: AppColors.primary(brightness),
+          statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.light,
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: Colors.white),
-            onPressed: _loadNearbyMosques,
+            icon: Icon(Icons.refresh, color: isDarkMode ? AppColors.textPrimary(brightness) : Colors.white), // Adjusted for AppBar contrast
+            onPressed: _isLoading ? null : _loadNearbyMosques, // Disable while loading
+            tooltip: localizations.retry,
           ),
         ],
       ),
-      body:
-          _isLoading
-              ? Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                ),
-              )
-              : _errorMessage != null
-              ? _buildErrorView()
-              : _buildMosqueListView(),
+      body: _isLoading
+          ? Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentGreen(brightness)),
+                strokeWidth: 3,
+              ),
+            )
+          : _errorMessage != null
+              ? _buildErrorView(brightness, isDarkMode, contentSurface, localizations)
+              : _buildMosqueListView(brightness, isDarkMode, contentSurface, cardBorderColor, localizations),
     );
   }
 
-  Widget _buildErrorView() {
-    final localizations = AppLocalizations.of(context)!;
-
+  Widget _buildErrorView(Brightness brightness, bool isDarkMode, Color contentSurface, AppLocalizations localizations) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            _errorMessage ?? localizations.mosquesError(''),
-            style: const TextStyle(color: Colors.red),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _loadNearbyMosques,
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: Text(localizations.retry),
-          ),
-        ],
+      child: Container(
+        margin: const EdgeInsets.all(24),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        decoration: BoxDecoration(
+          color: contentSurface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.error(brightness).withAlpha(100)),
+           boxShadow: [
+              BoxShadow(
+                color: AppColors.shadowColor(brightness).withAlpha(isDarkMode ? 20 : 40),
+                spreadRadius: 1,
+                blurRadius: 5,
+                offset: const Offset(0, 2),
+              ),
+            ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline_rounded, color: AppColors.error(brightness), size: 48),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage ?? localizations.mosquesError('Unknown error'),
+              style: AppTextStyles.label(brightness).copyWith(color: AppColors.error(brightness), fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.refresh),
+              label: Text(localizations.retry),
+              onPressed: _loadNearbyMosques,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentGreen(brightness),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                textStyle: AppTextStyles.label(brightness).copyWith(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildMosqueListView() {
-    final localizations = AppLocalizations.of(context)!;
-
-    return _nearbyMosques.isEmpty
-        ? Center(
-          child: Text(
-            localizations.mosquesNoResults,
-            style: AppTextStyles.label,
+  Widget _buildMosqueListView(Brightness brightness, bool isDarkMode, Color contentSurface, Color cardBorderColor, AppLocalizations localizations) {
+    if (_nearbyMosques.isEmpty) {
+      return Center(
+        child: Container(
+          margin: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+           decoration: BoxDecoration(
+            color: contentSurface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.borderColor(brightness).withAlpha(isDarkMode ? 100 : 150)),
+             boxShadow: [
+                BoxShadow(
+                  color: AppColors.shadowColor(brightness).withAlpha(isDarkMode ? 20 : 40),
+                  spreadRadius: 1,
+                  blurRadius: 5,
+                  offset: const Offset(0, 2),
+                ),
+              ],
           ),
-        )
-        : ListView.builder(
-          padding: const EdgeInsets.only(top: 8),
-          itemCount: _nearbyMosques.length,
-          itemBuilder:
-              (context, index) =>
-                  _buildMosqueCard(_nearbyMosques[index], index == 0),
-        );
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.search_off_rounded, color: AppColors.textSecondary(brightness), size: 48),
+              const SizedBox(height: 16),
+              Text(
+                localizations.mosquesNoResults,
+                style: AppTextStyles.label(brightness).copyWith(color: AppColors.textSecondary(brightness), fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16), // Consistent padding around the list
+      itemCount: _nearbyMosques.length,
+      itemBuilder: (context, index) => _buildMosqueCard(
+        _nearbyMosques[index],
+        index == 0, // isFeatured for the first item
+        brightness,
+        isDarkMode,
+        contentSurface,
+        cardBorderColor,
+        localizations,
+      ),
+    );
   }
 
-  Widget _buildMosqueCard(Mosque mosque, bool isFeatured) {
-    final localizations = AppLocalizations.of(context)!;
-    
-    return GestureDetector(
-      onTap: () => _openMosqueInMaps(mosque),
-      child: Card(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        elevation: 2,
-        shadowColor: AppColors.shadowColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  Widget _buildMosqueCard(
+    Mosque mosque,
+    bool isFeatured,
+    Brightness brightness,
+    bool isDarkMode,
+    Color cardBackgroundColor, // Use this for card background
+    Color cardBorderColor,
+    AppLocalizations localizations,
+  ) {
+    final Color textColor = AppColors.textPrimary(brightness);
+    // final Color secondaryTextColor = AppColors.textSecondary(brightness);
+    final Color directionsIconColor = AppColors.accentGreen(brightness); // Make directions icon stand out
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12), // Spacing between cards
+      elevation: 0, // Elevation handled by container shadow if needed, or keep minimal
+      color: cardBackgroundColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: cardBorderColor, width: 1),
+      ),
+      clipBehavior: Clip.antiAlias, // Ensures content respects border radius
+      child: InkWell( // Make the whole card tappable
+        onTap: () => _openMosqueInMaps(mosque),
+        splashColor: directionsIconColor.withAlpha((0.1 * 255).round()),
+        highlightColor: directionsIconColor.withAlpha((0.05 * 255).round()),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (isFeatured)
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
-                ),
-                child: Image.asset(
-                  'assets/images/mosque_placeholder.jpg',
-                  height: 160,
-                  fit: BoxFit.cover,
-                ),
+            if (isFeatured) // Fallback placeholder if no photo URL, as Mosque class doesn't have photoUrl
+              Image.asset(
+                'assets/images/mosque_placeholder.jpg',
+                height: 160,
+                fit: BoxFit.cover,
               ),
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center, // Center align items vertically
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(mosque.name, style: AppTextStyles.sectionTitle),
+                        Text(
+                          mosque.name.isNotEmpty ? mosque.name : localizations.unknownLocation,
+                          style: AppTextStyles.sectionTitle(brightness).copyWith(color: textColor, fontSize: 17),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        // Removed mosque.address as it's not part of the Mosque class
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.directions),
-                    onPressed: () => _openMosqueInMaps(mosque),
-                    color: AppColors.primary,
-                    tooltip: localizations.mosquesOpenInMaps,
+                  const SizedBox(width: 12),
+                  Container( // Button-like appearance for directions
+                    decoration: BoxDecoration(
+                      color: directionsIconColor.withAlpha((isDarkMode ? 0.2 * 255 : 0.15 * 255).round()),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: IconButton(
+                      icon: Icon(Icons.directions_rounded, color: directionsIconColor),
+                      onPressed: () => _openMosqueInMaps(mosque),
+                      tooltip: localizations.mosquesOpenInMaps,
+                      splashRadius: 20,
+                    ),
                   ),
                 ],
               ),

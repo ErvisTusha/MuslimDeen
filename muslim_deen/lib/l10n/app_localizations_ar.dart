@@ -446,4 +446,15 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get turkishAdhan => 'Turkish Adhan';
+@override
+  String get qiblaErrorLocationUnavailable => 'خدمات الموقع غير متوفرة. يرجى تمكين خدمات الموقع والمحاولة مرة أخرى.';
+
+  @override
+  String get qiblaErrorPermissionDeniedSettings => 'تم رفض إذن الموقع بشكل دائم. يرجى تمكينه من إعدادات التطبيق.';
+
+  @override
+  String get qiblaErrorServiceDisabled => 'خدمات الموقع معطلة. يرجى تمكينها لتحديد اتجاه القبلة.';
+
+  @override
+  String get qiblaErrorUnknown => 'حدث خطأ غير معروف أثناء محاولة تحديد اتجاه القبلة.';
 }

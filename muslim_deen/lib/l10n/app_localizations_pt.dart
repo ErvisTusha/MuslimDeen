@@ -448,6 +448,17 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get tesbihEnterTarget => 'Insira a meta da contagem';
+@override
+  String get qiblaErrorLocationUnavailable => 'Serviços de localização indisponíveis. Ative os serviços de localização e tente novamente.';
+
+  @override
+  String get qiblaErrorPermissionDeniedSettings => 'Permissão de localização negada permanentemente. Ative-a nas configurações do aplicativo.';
+
+  @override
+  String get qiblaErrorServiceDisabled => 'Os serviços de localização estão desativados. Ative-os para determinar a direção da Qibla.';
+
+  @override
+  String get qiblaErrorUnknown => 'Ocorreu um erro desconhecido ao tentar determinar a direção da Qibla.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).

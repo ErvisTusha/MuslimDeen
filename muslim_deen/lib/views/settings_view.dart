@@ -275,7 +275,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
     // Corrected signature
     final appLocalizations = AppLocalizations.of(context)!;
@@ -285,16 +284,18 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       settingsProvider.notifier,
     ); // SettingsNotifier
 
+    final brightness = Theme.of(context).brightness;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.background(brightness),
       appBar: AppBar(
-        title: Text(appLocalizations.settings, style: AppTextStyles.appTitle),
-        backgroundColor: AppColors.primary,
+        title: Text(appLocalizations.settings, style: AppTextStyles.appTitle(brightness)),
+        backgroundColor: AppColors.primary(brightness),
         elevation: 2.0,
-        shadowColor: AppColors.shadowColor,
+        shadowColor: AppColors.shadowColor(brightness),
         centerTitle: true,
         systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: AppColors.primary,
+          statusBarColor: AppColors.primary(brightness),
           statusBarIconBrightness: Brightness.light,
         ),
       ),
@@ -302,7 +303,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         controller: _scrollController,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
-          _buildSectionHeader(appLocalizations.appearance),
+          _buildSectionHeader(appLocalizations.appearance, brightness),
 
           _buildSettingsItem(
             icon: Icons.language,
@@ -340,7 +341,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             },
           ),
 
-          _buildSectionHeader(appLocalizations.tesbihSound),
+          _buildSectionHeader(appLocalizations.tesbihSound, brightness),
 
           _buildSettingsItem(
             icon: Icons.music_note_outlined,
@@ -367,6 +368,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
           _buildSectionHeader(
             appLocalizations.notifications,
+            brightness,
             trailing:
                 ref.watch(settingsProvider.notifier).areNotificationsBlocked
                     ? Icon(
@@ -394,7 +396,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             ),
           ),
 
-          _buildSectionHeader(appLocalizations.prayerCalculation),
+          _buildSectionHeader(appLocalizations.prayerCalculation, brightness),
 
           _buildSettingsItem(
             icon: Icons.calculate_outlined,
@@ -440,7 +442,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSectionHeader(appLocalizations.location),
+                _buildSectionHeader(appLocalizations.location, brightness),
                 _buildLocationTile(context, appLocalizations),
               ],
             ),
@@ -453,6 +455,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             children: [
               _buildSectionHeader(
                 _getFallbackString('dateTime'),
+                brightness,
                 // key: _dateKey, // Removed GlobalKey from here
               ),
               _buildSettingsItem(
@@ -498,7 +501,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             ],
           ),
 
-          _buildSectionHeader(appLocalizations.other),
+          _buildSectionHeader(appLocalizations.other, brightness),
 
           _buildSettingsItem(
             icon: Icons.info_outline,
@@ -517,7 +520,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     );
   }
 
-  Widget _buildSectionHeader(String title, {Widget? trailing, Key? key}) {
+  Widget _buildSectionHeader(String title, Brightness brightness, {Widget? trailing, Key? key}) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 24, 8, 8),
       child: Row(
@@ -526,8 +529,8 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           Expanded(
             child: Text(
               title,
-              style: AppTextStyles.sectionTitle.copyWith(
-                color: AppColors.primary,
+              style: AppTextStyles.sectionTitle(brightness).copyWith(
+                color: AppColors.primary(brightness),
               ),
             ),
           ),
@@ -543,21 +546,22 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     required String subtitle,
     required VoidCallback onTap,
   }) {
+    final brightness = Theme.of(context).brightness;
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.background(brightness),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderColor),
+        border: Border.all(color: AppColors.borderColor(brightness)),
       ),
       child: ListTile(
-        leading: Icon(icon, color: AppColors.iconInactive),
-        title: Text(title, style: AppTextStyles.prayerName),
-        subtitle: Text(subtitle, style: AppTextStyles.label),
+        leading: Icon(icon, color: AppColors.iconInactive(brightness)),
+        title: Text(title, style: AppTextStyles.prayerName(brightness)),
+        subtitle: Text(subtitle, style: AppTextStyles.label(brightness)),
         trailing: Icon(
           Icons.arrow_forward_ios,
           size: 16,
-          color: AppColors.iconInactive,
+          color: AppColors.iconInactive(brightness),
         ),
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -573,41 +577,42 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   }) {
     final localSettingsNotifier = ref.read(settingsProvider.notifier);
     final bool isBlocked = localSettingsNotifier.areNotificationsBlocked;
+    final brightness = Theme.of(context).brightness;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
         color:
             isBlocked
-                ? AppColors.background.withAlpha(178)
-                : AppColors.background,
+                ? AppColors.background(brightness).withAlpha(178)
+                : AppColors.background(brightness),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderColor),
+        border: Border.all(color: AppColors.borderColor(brightness)),
       ),
       child: Column(
         children: [
           SwitchListTile(
             title: Text(
               _getPrayerName(prayer, appLocalizations),
-              style: AppTextStyles.prayerName.copyWith(
-                color: isBlocked ? AppColors.iconInactive : null,
+              style: AppTextStyles.prayerName(brightness).copyWith(
+                color: isBlocked ? AppColors.iconInactive(brightness) : null,
               ),
             ),
             subtitle: Text(
               "Receive notification for ${_getPrayerName(prayer, appLocalizations)} prayer",
-              style: AppTextStyles.label.copyWith(
-                color: isBlocked ? AppColors.iconInactive : null,
+              style: AppTextStyles.label(brightness).copyWith(
+                color: isBlocked ? AppColors.iconInactive(brightness) : null,
               ),
             ),
             value: value,
             onChanged: isBlocked ? null : onChanged,
-            activeColor: AppColors.primary,
-            activeTrackColor: AppColors.switchTrackActive,
+            activeColor: AppColors.primary(brightness),
+            activeTrackColor: AppColors.switchTrackActive(brightness),
             secondary: Icon(
               isBlocked
                   ? Icons.notifications_off
                   : Icons.notifications_outlined,
-              color: AppColors.iconInactive,
+              color: AppColors.iconInactive(brightness),
             ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
@@ -623,7 +628,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   Expanded(
                     child: Text(
                       "Notifications are blocked. Enable them in system settings.",
-                      style: AppTextStyles.label.copyWith(
+                      style: AppTextStyles.label(brightness).copyWith(
                         color: Colors.orange,
                         fontSize: 12,
                       ),
@@ -641,23 +646,24 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     BuildContext context,
     AppLocalizations appLocalizations,
   ) {
+    final brightness = Theme.of(context).brightness;
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.background(brightness),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderColor),
+        border: Border.all(color: AppColors.borderColor(brightness)),
       ),
       child: Column(
         children: [
           ListTile(
             leading: Icon(
               Icons.location_on_outlined,
-              color: AppColors.iconInactive,
+              color: AppColors.iconInactive(brightness),
             ),
             title: Text(
               appLocalizations.location,
-              style: AppTextStyles.prayerName,
+              style: AppTextStyles.prayerName(brightness),
             ),
             subtitle: FutureBuilder<bool?>(
               future: Future.value(_locationService.isUsingManualLocation()),
@@ -665,7 +671,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Text(
                     appLocalizations.loading,
-                    style: AppTextStyles.label,
+                    style: AppTextStyles.label(brightness),
                   );
                 }
 
@@ -677,7 +683,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     builder: (context, nameSnapshot) {
                       return Text(
                         nameSnapshot.data ?? appLocalizations.unknownLocation,
-                        style: AppTextStyles.label,
+                        style: AppTextStyles.label(brightness),
                       );
                     },
                   );
@@ -685,16 +691,16 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   return _isLoadingLocation
                       ? Text(
                         appLocalizations.loading,
-                        style: AppTextStyles.label,
+                        style: AppTextStyles.label(brightness),
                       )
                       : _currentPosition != null
                       ? Text(
                         "${_currentPosition!.latitude.toStringAsFixed(4)}, ${_currentPosition!.longitude.toStringAsFixed(4)}",
-                        style: AppTextStyles.label,
+                        style: AppTextStyles.label(brightness),
                       )
                       : Text(
                         appLocalizations.notSet,
-                        style: AppTextStyles.label,
+                        style: AppTextStyles.label(brightness),
                       );
                 }
               },
@@ -702,7 +708,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             trailing: Icon(
               Icons.arrow_forward_ios,
               size: 16,
-              color: AppColors.iconInactive,
+              color: AppColors.iconInactive(brightness),
             ),
             onTap: () {
               _logger.logInteraction('SettingsView', 'Open location options');
@@ -719,24 +725,25 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
   void _showLocationOptionsDialog(BuildContext context) {
     final appLocalizations = AppLocalizations.of(context)!;
+    final brightness = Theme.of(context).brightness;
 
     showDialog(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          backgroundColor: AppColors.background,
+          backgroundColor: AppColors.background(brightness),
           title: Text(
             appLocalizations.location,
-            style: AppTextStyles.sectionTitle,
+            style: AppTextStyles.sectionTitle(brightness),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: Icon(Icons.my_location, color: AppColors.primary),
+                leading: Icon(Icons.my_location, color: AppColors.primary(brightness)),
                 title: Text(
                   'Current Device Location',
-                  style: AppTextStyles.prayerName,
+                  style: AppTextStyles.prayerName(brightness),
                 ),
                 onTap: () async {
                   _logger.logInteraction(
@@ -751,12 +758,12 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   }
                 },
               ),
-              const Divider(color: AppColors.divider),
+              Divider(color: AppColors.divider(brightness)),
               ListTile(
-                leading: Icon(Icons.search, color: AppColors.primary),
+                leading: Icon(Icons.search, color: AppColors.primary(brightness)),
                 title: Text(
                   appLocalizations.setLocationManually,
-                  style: AppTextStyles.prayerName,
+                  style: AppTextStyles.prayerName(brightness),
                 ),
                 onTap: () async {
                   _logger.logInteraction(
@@ -784,7 +791,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary(brightness)),
               child: Text(appLocalizations.cancel),
             ),
           ],
@@ -799,6 +806,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     SettingsNotifier settingsNotifier,
   ) {
     final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
+    final brightness = Theme.of(context).brightness;
     final Map<String, String> languages = {
       'en': 'English',
       'ar': 'العربية',
@@ -813,10 +821,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: AppColors.background,
+          backgroundColor: AppColors.background(brightness),
           title: Text(
             appLocalizations.selectLanguage,
-            style: AppTextStyles.sectionTitle,
+            style: AppTextStyles.sectionTitle(brightness),
           ),
           content: SizedBox(
             width: double.maxFinite,
@@ -826,10 +834,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               itemBuilder: (BuildContext context, int index) {
                 final entry = languages.entries.elementAt(index);
                 return RadioListTile<String>(
-                  title: Text(entry.value, style: AppTextStyles.prayerName),
+                  title: Text(entry.value, style: AppTextStyles.prayerName(brightness)),
                   value: entry.key,
                   groupValue: currentLanguage,
-                  activeColor: AppColors.primary,
+                  activeColor: AppColors.primary(brightness),
                   onChanged: (value) {
                     if (value != null) {
                       settingsNotifier.updateLanguage(value);
@@ -843,7 +851,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary(brightness)),
               child: Text(appLocalizations.cancel),
             ),
           ],
@@ -858,6 +866,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     SettingsNotifier settingsNotifier,
   ) {
     final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
+    final brightness = Theme.of(context).brightness;
     final Map<ThemeMode, String> themes = {
       ThemeMode.system: appLocalizations.system,
       ThemeMode.light: appLocalizations.light,
@@ -868,10 +877,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: AppColors.background,
+          backgroundColor: AppColors.background(brightness),
           title: Text(
             appLocalizations.theme,
-            style: AppTextStyles.sectionTitle,
+            style: AppTextStyles.sectionTitle(brightness),
           ),
           content: SizedBox(
             width: double.maxFinite,
@@ -881,10 +890,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               itemBuilder: (BuildContext context, int index) {
                 final entry = themes.entries.elementAt(index);
                 return RadioListTile<ThemeMode>(
-                  title: Text(entry.value, style: AppTextStyles.prayerName),
+                  title: Text(entry.value, style: AppTextStyles.prayerName(brightness)),
                   value: entry.key,
                   groupValue: currentThemeMode,
-                  activeColor: AppColors.primary,
+                  activeColor: AppColors.primary(brightness),
                   onChanged: (value) {
                     if (value != null) {
                       settingsNotifier.updateThemeMode(value);
@@ -898,7 +907,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary(brightness)),
               child: Text(appLocalizations.cancel),
             ),
           ],
@@ -913,6 +922,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     SettingsNotifier settingsNotifier,
   ) {
     final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
+    final brightness = Theme.of(context).brightness;
     final Map<String, String> calculationMethods = {
       'MuslimWorldLeague': appLocalizations.muslimWorldLeague,
       'Egyptian': appLocalizations.egyptian,
@@ -932,10 +942,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: AppColors.background,
+          backgroundColor: AppColors.background(brightness),
           title: Text(
             appLocalizations.calculationMethod,
-            style: AppTextStyles.sectionTitle,
+            style: AppTextStyles.sectionTitle(brightness),
           ),
           content: SizedBox(
             width: double.maxFinite,
@@ -945,10 +955,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               itemBuilder: (BuildContext context, int index) {
                 final entry = calculationMethods.entries.elementAt(index);
                 return RadioListTile<String>(
-                  title: Text(entry.value, style: AppTextStyles.prayerName),
+                  title: Text(entry.value, style: AppTextStyles.prayerName(brightness)),
                   value: entry.key,
                   groupValue: currentCalculationMethod,
-                  activeColor: AppColors.primary,
+                  activeColor: AppColors.primary(brightness),
                   onChanged: (value) {
                     if (value != null) {
                       settingsNotifier.updateCalculationMethod(value);
@@ -962,7 +972,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary(brightness)),
               child: Text(appLocalizations.cancel),
             ),
           ],
@@ -977,6 +987,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     SettingsNotifier settingsNotifier,
   ) {
     final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
+    final brightness = Theme.of(context).brightness;
     final Map<String, String> madhabs = {
       'shafi': appLocalizations.shafi,
       'hanafi': appLocalizations.hanafi,
@@ -986,10 +997,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: AppColors.background,
+          backgroundColor: AppColors.background(brightness),
           title: Text(
             appLocalizations.asrTime,
-            style: AppTextStyles.sectionTitle,
+            style: AppTextStyles.sectionTitle(brightness),
           ),
           content: SizedBox(
             width: double.maxFinite,
@@ -999,10 +1010,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               itemBuilder: (BuildContext context, int index) {
                 final entry = madhabs.entries.elementAt(index);
                 return RadioListTile<String>(
-                  title: Text(entry.value, style: AppTextStyles.prayerName),
+                  title: Text(entry.value, style: AppTextStyles.prayerName(brightness)),
                   value: entry.key,
                   groupValue: currentMadhab,
-                  activeColor: AppColors.primary,
+                  activeColor: AppColors.primary(brightness),
                   onChanged: (value) {
                     if (value != null) {
                       settingsNotifier.updateMadhab(value);
@@ -1016,7 +1027,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary(brightness)),
               child: Text(appLocalizations.cancel),
             ),
           ],
@@ -1031,6 +1042,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     SettingsNotifier settingsNotifier,
   ) {
     final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
+    final brightness = Theme.of(context).brightness;
     final List<String> azanSounds = [
       'makkah_adhan.mp3',
       'madinah_adhan.mp3',
@@ -1048,10 +1060,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           // Used StatefulBuilder to manage dialog state
           builder: (BuildContext context, StateSetter setStateDialog) {
             return AlertDialog(
-              backgroundColor: AppColors.background,
+              backgroundColor: AppColors.background(brightness),
               title: Text(
                 appLocalizations.azanSound,
-                style: AppTextStyles.sectionTitle,
+                style: AppTextStyles.sectionTitle(brightness),
               ),
               content: SizedBox(
                 width: double.maxFinite,
@@ -1063,11 +1075,11 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     return RadioListTile<String>(
                       title: Text(
                         _getAzanSoundDisplayName(soundFile, appLocalizations),
-                        style: AppTextStyles.prayerName,
+                        style: AppTextStyles.prayerName(brightness),
                       ),
                       value: soundFile,
                       groupValue: tempSelectedAzan, // Use temporary selection
-                      activeColor: AppColors.primary,
+                      activeColor: AppColors.primary(brightness),
                       onChanged: (value) async {
                         if (value != null) {
                           setStateDialog(() {
@@ -1096,11 +1108,14 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               actions: [
                 TextButton(
                   onPressed: () async {
+                    final navigator = Navigator.of(dialogContext);
                     await _audioPlayer.stop();
-                    _safeNavigatorPop(dialogContext);
+                    if (mounted) {
+                      navigator.pop();
+                    }
                   },
                   style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primary,
+                    foregroundColor: AppColors.primary(brightness),
                   ),
                   child: Text(appLocalizations.cancel),
                 ),
@@ -1111,11 +1126,14 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                         tempSelectedAzan!,
                       );
                     }
+                    final navigator = Navigator.of(dialogContext);
                     await _audioPlayer.stop();
-                    _safeNavigatorPop(dialogContext);
+                    if (mounted) {
+                      navigator.pop();
+                    }
                   },
                   style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primary,
+                    foregroundColor: AppColors.primary(brightness),
                   ),
                   child: Text("Confirm"),
                 ),
@@ -1128,11 +1146,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       // Ensure audio stops if dialog is dismissed by tapping outside
       await _audioPlayer.stop();
     });
-  }
-
-  void _safeNavigatorPop(BuildContext context) {
-    if (!mounted) return;
-    Navigator.pop(context);
   }
 
   String _getAzanSoundDisplayName(
@@ -1286,14 +1299,15 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     SettingsNotifier notifier,
   ) {
     final loc = AppLocalizations.of(context)!;
+    final brightness = Theme.of(context).brightness;
     showDialog(
       context: context,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: AppColors.background,
+            backgroundColor: AppColors.background(brightness),
             title: Text(
               _getFallbackString('dateFormat'),
-              style: AppTextStyles.sectionTitle,
+              style: AppTextStyles.sectionTitle(brightness),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1303,11 +1317,11 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                         (opt) => RadioListTile<DateFormatOption>(
                           title: Text(
                             _getDateFormatName(opt, loc),
-                            style: AppTextStyles.prayerName,
+                            style: AppTextStyles.prayerName(brightness),
                           ),
                           value: opt,
                           groupValue: currentDateFormatOption,
-                          activeColor: AppColors.primary,
+                          activeColor: AppColors.primary(brightness),
                           onChanged: (v) {
                             if (v != null) notifier.updateDateFormatOption(v);
                             Navigator.pop(ctx);
@@ -1326,14 +1340,15 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     SettingsNotifier notifier,
   ) {
     final loc = AppLocalizations.of(context)!;
+    final brightness = Theme.of(context).brightness;
     showDialog(
       context: context,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: AppColors.background,
+            backgroundColor: AppColors.background(brightness),
             title: Text(
               _getFallbackString('timeFormat'),
-              style: AppTextStyles.sectionTitle,
+              style: AppTextStyles.sectionTitle(brightness),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1343,11 +1358,11 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                         (fmt) => RadioListTile<TimeFormat>(
                           title: Text(
                             _getTimeFormatName(fmt, loc),
-                            style: AppTextStyles.prayerName,
+                            style: AppTextStyles.prayerName(brightness),
                           ),
                           value: fmt,
                           groupValue: currentTimeFormat,
-                          activeColor: AppColors.primary,
+                          activeColor: AppColors.primary(brightness),
                           onChanged: (v) {
                             if (v != null) notifier.updateTimeFormat(v);
                             Navigator.pop(ctx);

@@ -452,4 +452,15 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get turkishAdhan => 'Turkish Adhan';
+@override
+  String get qiblaErrorLocationUnavailable => 'Servicios de ubicación no disponibles. Por favor, active los servicios de ubicación e inténtelo de nuevo.';
+
+  @override
+  String get qiblaErrorPermissionDeniedSettings => 'Permiso de ubicación denegado permanentemente. Por favor, actívelo en los ajustes de la aplicación.';
+
+  @override
+  String get qiblaErrorServiceDisabled => 'Los servicios de ubicación están desactivados. Por favor, actívelos para determinar la dirección de la Qibla.';
+
+  @override
+  String get qiblaErrorUnknown => 'Ocurrió un error desconocido al intentar determinar la dirección de la Qibla.';
 }
