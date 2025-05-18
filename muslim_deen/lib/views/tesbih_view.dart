@@ -1,70 +1,56 @@
-// Standard library imports
 import 'dart:async';
+import 'dart:convert';
 
-// Third-party package imports
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // Changed
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get_it/get_it.dart';
-// import 'package:provider/provider.dart'; // Removed
+import 'package:audioplayers/audioplayers.dart';
 
-// Local application imports
 import '../l10n/app_localizations.dart';
-import '../providers/providers.dart'; // Changed to access Riverpod's settingsProvider
+import '../providers/providers.dart';
+import '../providers/tesbih_reminder_provider.dart';
 import '../service_locator.dart';
 import '../services/logger_service.dart';
 import '../services/notification_service.dart' show NotificationService;
 import '../services/storage_service.dart';
 import '../styles/app_styles.dart';
 
-class TesbihView extends ConsumerStatefulWidget { // Changed
+class TesbihView extends ConsumerStatefulWidget {
   const TesbihView({super.key});
 
   @override
-  ConsumerState<TesbihView> createState() => _TesbihViewState(); // Changed
+  ConsumerState<TesbihView> createState() => _TesbihViewState();
 }
 
-class _TesbihViewState extends ConsumerState<TesbihView> { // Changed
+class _TesbihViewState extends ConsumerState<TesbihView>
+    with WidgetsBindingObserver {
   int _count = 0;
-  String _currentDhikr = 'Subhanallah'; // Default Dhikr
+  String _currentDhikr = 'Subhanallah';
   bool _vibrationEnabled = true;
   bool _soundEnabled = false;
-  int _target = 33; // Default target
+  int _target = 33;
 
-  TimeOfDay? _reminderTime;
-  bool _reminderEnabled = false;
   Timer? _permissionCheckTimer;
   late final NotificationService _notificationService =
       GetIt.I<NotificationService>();
   late final StorageService _storageService = GetIt.I<StorageService>();
-  // late final SettingsProvider _settingsProvider = context.read<SettingsProvider>(); // Removed
   final LoggerService _logger = locator<LoggerService>();
 
-  void _startPermissionCheck() {
-    _permissionCheckTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) {
-        ref.read(settingsProvider.notifier).checkNotificationPermissionStatus(); // Changed
-      }
-    });
-  }
-
-  // Arabic representations for Dhikr
-  final Map<String, String> _dhikrArabic = {
+  static final Map<String, String> _dhikrArabic = {
     'Subhanallah': 'سُبْحَانَ اللهِ',
     'Alhamdulillah': 'الْحَمْدُ لِلَّهِ',
     'Astaghfirullah': 'أَسْتَغْفِرُ اللهَ',
     'Allahu Akbar': 'اللهُ أَكْبَر',
   };
 
-  // Default targets for each Dhikr
-  final Map<String, int> _defaultDhikrTargets = {
+  static final Map<String, int> _defaultDhikrTargets = {
     'Subhanallah': 33,
     'Alhamdulillah': 33,
     'Astaghfirullah': 33,
     'Allahu Akbar': 34, // Often 34 after prayer
   };
 
-  // Order for automatic advancement
   final List<String> _dhikrOrder = [
     'Subhanallah',
     'Alhamdulillah',
@@ -72,136 +58,212 @@ class _TesbihViewState extends ConsumerState<TesbihView> { // Changed
     'Allahu Akbar',
   ];
 
+  static final Map<String, String> _dhikrAudioFiles = {
+    'Subhanallah': 'audio/SubhanAllah.mp3',
+    'Alhamdulillah': 'audio/Alhamdulillah.mp3',
+    'Astaghfirullah': 'audio/Astaghfirullah.mp3',
+    'Allahu Akbar': 'audio/AllahuAkbar.mp3',
+  };
+
+  AudioPlayer? _dhikrPlayer;
+  AudioPlayer? _counterPlayer;
+
+  bool _isAudioPlaying = false;
+  bool _isResetting = false;
+  bool _isInDhikrTransition = false;
+  int _dhikrTransitionDelay = 1500;
+
+  bool _preferencesChanged = false;
+  bool? _notificationsBlocked;
+  bool _isCustomTarget = false;
+  final Map<String, int> _customDhikrTargets = {};
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _logger.info('TesbihView initialized');
     _loadPreferences();
-    // Wait to initialize any localization-dependent operations until didChangeDependencies
-    ref.read(settingsProvider.notifier).checkNotificationPermissionStatus(); // Changed: Use ref to read Riverpod provider
-    _startPermissionCheck(); // Start periodic permission check
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _saveDataIfNeeded();
+    } else if (state == AppLifecycleState.resumed &&
+        ref.read(tesbihReminderProvider).reminderEnabled) {
+      ref.read(settingsProvider.notifier).checkNotificationPermissionStatus();
+      _notificationsBlocked =
+          ref.read(settingsProvider.notifier).areNotificationsBlocked;
+    }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _logger.debug('TesbihView dependencies changed');
-    // Safely access localizations here after dependencies are established
     _loadReminderSettings();
   }
 
   @override
   void dispose() {
     _logger.debug('TesbihView disposed');
-    // Clean up resources
+    WidgetsBinding.instance.removeObserver(this);
     _permissionCheckTimer?.cancel();
-    if (_reminderEnabled) {
-      _notificationService.cancelNotification(9999);
+
+    if (ref.read(tesbihReminderProvider).reminderEnabled) {
+      _notificationService.cancelNotification(9876);
     }
 
-    // Save final state
-    _savePreferences();
-    _saveReminderSettings();
-
+    _dhikrPlayer?.dispose();
+    _counterPlayer?.dispose();
+    _saveDataIfNeeded();
     super.dispose();
   }
 
-  // Load reminder settings from storage
-  Future<void> _loadReminderSettings() async {
-    _logger.debug('Loading Tesbih reminder settings');
-    final reminderHour =
-        _storageService.getData('tesbih_reminder_hour') as int?;
-    final reminderMinute =
-        _storageService.getData('tesbih_reminder_minute') as int?;
-    final enabled = _storageService.getData('tesbih_reminder_enabled') as bool?;
+  Future<void> _saveDataIfNeeded() async {
+    final futures = <Future>[];
 
-    if (reminderHour != null && reminderMinute != null) {
-      setState(() {
-        _reminderTime = TimeOfDay(hour: reminderHour, minute: reminderMinute);
-        _reminderEnabled = enabled ?? false;
-      });
-      if (_reminderEnabled && mounted) {
-        _scheduleReminder();
+    if (_preferencesChanged) {
+      futures.add(_savePreferences());
+      _preferencesChanged = false;
+    }
+
+    if (futures.isNotEmpty) {
+      await Future.wait(futures);
+    }
+  }
+
+  Future<void> _checkAndUpdateNotificationStatus() async {
+    if (!mounted) return;
+
+    try {
+      await ref
+          .read(settingsProvider.notifier)
+          .checkNotificationPermissionStatus();
+      if (mounted) {
+        _notificationsBlocked =
+            ref.read(settingsProvider.notifier).areNotificationsBlocked;
+      }
+    } catch (e) {
+      _logger.warning('Error checking notification status: $e');
+    }
+  }
+
+  Future<void> _loadReminderSettings() async {
+    try {
+      final reminderHour =
+          _storageService.getData('tesbih_reminder_hour') as int?;
+      final reminderMinute =
+          _storageService.getData('tesbih_reminder_minute') as int?;
+      final enabled =
+          _storageService.getData('tesbih_reminder_enabled') as bool?;
+
+      if (reminderHour != null && reminderMinute != null) {
+        if (!mounted) return;
+        setState(() {
+          ref
+              .read(tesbihReminderProvider.notifier)
+              .setReminderTime(
+                TimeOfDay(hour: reminderHour, minute: reminderMinute),
+              );
+          ref
+              .read(tesbihReminderProvider.notifier)
+              .toggleReminder(enabled ?? false);
+        });
+
+        if (ref.read(tesbihReminderProvider).reminderEnabled && mounted) {
+          _scheduleReminder();
+        }
+      }
+    } catch (e, s) {
+      _logger.error('Error loading reminder settings', error: e, stackTrace: s);
+    }
+  }
+
+  Future<void> _scheduleReminder() async {
+    try {
+      if (!ref.read(tesbihReminderProvider).reminderEnabled) {
+        await _notificationService.cancelNotification(9876);
+        _logger.info('Tesbih reminder cancelled');
+        return;
+      }
+
+      if (ref.read(tesbihReminderProvider).reminderTime == null) {
+        _logger.warning('Cannot schedule Tesbih reminder: Time not set');
+        return;
+      }
+
+      final now = DateTime.now();
+      var scheduledDateTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        ref.read(tesbihReminderProvider).reminderTime!.hour,
+        ref.read(tesbihReminderProvider).reminderTime!.minute,
+      );
+
+      if (scheduledDateTime.isBefore(now)) {
+        scheduledDateTime = scheduledDateTime.add(const Duration(days: 1));
+      }
+
+      if (!mounted) return;
+
+      _logger.info(
+        'Scheduling Tesbih reminder for ${scheduledDateTime.toIso8601String()}, enabled: ${ref.read(tesbihReminderProvider).reminderEnabled}',
+      );
+
+      // Remove notification title - only use body text
+      final notificationBody =
+          "🤲 Time for your dhikr. Remember Allah with a peaceful heart.";
+
+      await _notificationService.schedulePrayerNotification(
+        id: 9876,
+        localizedTitle: "", // Empty string for no title
+        localizedBody: notificationBody,
+        prayerTime: scheduledDateTime,
+        isEnabled: ref.read(tesbihReminderProvider).reminderEnabled,
+      );
+
+      _logger.info('Reminder scheduled successfully');
+    } catch (e, s) {
+      _logger.error('Failed to schedule reminder', error: e, stackTrace: s);
+      if (mounted) {
+        ref.read(tesbihReminderProvider.notifier).toggleReminder(false);
+        await _saveReminderSettings();
+
+        _showErrorSnackBar(
+          'Failed to schedule reminder. Notifications have been disabled.',
+        );
       }
     }
   }
 
-  // Schedule the daily reminder notification using the existing service method
-  Future<void> _scheduleReminder() async {
-    if (!_reminderEnabled) {
-      // Cancel existing reminder if disabled
-      await _notificationService.cancelNotification(9999);
-      _logger.info('Tesbih reminder cancelled');
-      return;
-    }
-
-    if (_reminderTime == null) {
-      _logger.warning('Cannot schedule Tesbih reminder: Time not set');
-      return; // Don't schedule if time isn't set
-    }
-
-    final now = DateTime.now();
-    // Calculate the next occurrence of the reminder time
-    var scheduledDateTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      _reminderTime!.hour,
-      _reminderTime!.minute,
-    );
-
-    // If the calculated time is in the past, schedule it for the next day
-    if (scheduledDateTime.isBefore(now)) {
-      scheduledDateTime = scheduledDateTime.add(const Duration(days: 1));
-    }
-
-    // Ensure context is still valid before accessing localizations
-    if (!mounted) return;
-    final localizations = AppLocalizations.of(context)!;
-    _logger.info(
-      'Scheduling Tesbih reminder for ${scheduledDateTime.toIso8601String()}, enabled: $_reminderEnabled',
-    );
-
-    // Use the existing schedulePrayerNotification method
-    await _notificationService.schedulePrayerNotification(
-      id: 9999, // Unique ID for Tesbih reminder
-      localizedTitle: localizations.tasbihLabel,
-      // TEMP WORKAROUND: Use a known working key until tesbihReminderBody generation is fixed
-      localizedBody:
-          localizations.tasbihLabel, // localizations.tesbihReminderBody,
-      prayerTime: scheduledDateTime, // Pass the calculated DateTime
-      isEnabled: _reminderEnabled, // Pass the enabled state
-    );
-  }
-
-  // Show dialog to set reminder time
   Future<void> _showReminderSettingsDialog() async {
     _logger.logInteraction('TesbihView', 'Open reminder settings dialog');
 
-    // Ensure context is still valid before showing dialog
     if (!mounted) return;
-    // final localizations = AppLocalizations.of(context)!; // Unused variable
+
     final TimeOfDay? pickedTime = await showTimePicker(
       context: context,
-      initialTime: _reminderTime ?? TimeOfDay.now(),
+      initialTime:
+          ref.read(tesbihReminderProvider).reminderTime ?? TimeOfDay.now(),
       builder: (context, child) {
-        // Apply theme consistent with the app
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.light(
-              // Or dark based on app theme
               primary: AppColors.primary,
               onPrimary: AppColors.background,
               surface: AppColors.background,
               onSurface: AppColors.textPrimary,
             ),
-            // Use DialogTheme for background color
             dialogTheme: DialogTheme(backgroundColor: AppColors.background),
           ),
           child: child!,
         );
       },
     );
+
     if (pickedTime != null && mounted) {
       _logger.logInteraction(
         'TesbihView',
@@ -209,66 +271,115 @@ class _TesbihViewState extends ConsumerState<TesbihView> { // Changed
         data: {'hour': pickedTime.hour, 'minute': pickedTime.minute},
       );
 
-      setState(() {
-        _reminderTime = pickedTime;
-        _reminderEnabled = true; // Enable reminder when time is set
-      });
-      await _saveReminderSettings();
-      _scheduleReminder();
-    } else {
-      _logger.logInteraction('TesbihView', 'Cancel reminder time selection');
+      ref.read(tesbihReminderProvider.notifier).setReminderTime(pickedTime);
     }
   }
 
-  // Save reminder settings to storage
   Future<void> _saveReminderSettings() async {
-    if (_reminderTime != null) {
-      await _storageService.saveData(
-        'tesbih_reminder_hour',
-        _reminderTime!.hour,
-      );
-      await _storageService.saveData(
-        'tesbih_reminder_minute',
-        _reminderTime!.minute,
-      );
+    final Map<String, dynamic> dataToSave = {};
+
+    if (ref.read(tesbihReminderProvider).reminderTime != null) {
+      dataToSave['tesbih_reminder_hour'] =
+          ref.read(tesbihReminderProvider).reminderTime!.hour;
+      dataToSave['tesbih_reminder_minute'] =
+          ref.read(tesbihReminderProvider).reminderTime!.minute;
     }
-    await _storageService.saveData('tesbih_reminder_enabled', _reminderEnabled);
+    dataToSave['tesbih_reminder_enabled'] =
+        ref.read(tesbihReminderProvider).reminderEnabled;
+
+    try {
+      await Future.wait(
+        dataToSave.entries.map(
+          (entry) => _storageService.saveData(entry.key, entry.value),
+        ),
+      );
+    } catch (e, s) {
+      _logger.error('Error saving reminder settings', error: e, stackTrace: s);
+    }
   }
 
-  // Load user preferences (vibration, sound, current dhikr, target) from StorageService
   Future<void> _loadPreferences() async {
-    // Use try-catch for robustness when reading from storage
     try {
-      final storedDhikr =
-          _storageService.getData('current_dhikr') as String? ?? _currentDhikr;
-      final storedTarget = _storageService.getData('tasbih_target') as int?;
-      final storedVibration =
+      String? storedDhikr = _storageService.getData('current_dhikr') as String?;
+      int? storedTarget = _storageService.getData('tasbih_target') as int?;
+      bool? storedVibration =
           _storageService.getData('vibration_enabled') as bool?;
-      final storedSound = _storageService.getData('sound_enabled') as bool?;
+      bool? storedSound = _storageService.getData('sound_enabled') as bool?;
+      int? storedCount =
+          _storageService.getData('${storedDhikr ?? _currentDhikr}_count')
+              as int?;
 
-      // Check if the stored Dhikr is valid before using it
-      final validDhikr =
-          _dhikrOrder.contains(storedDhikr) ? storedDhikr : _currentDhikr;
+      final isCustom = _storageService.getData('is_custom_target') as bool?;
+      final customTargetsJson =
+          _storageService.getData('custom_dhikr_targets') as String?;
 
-      // Check if mounted before calling setState
+      if (customTargetsJson != null) {
+        try {
+          final Map<String, dynamic> decoded = json.decode(customTargetsJson);
+          decoded.forEach((key, value) {
+            if (value is int && value > 0) {
+              _customDhikrTargets[key] = value;
+            }
+          });
+        } catch (e) {
+          _logger.warning('Failed to parse custom targets: $e');
+        }
+      }
+
+      if (storedDhikr == null || !_dhikrOrder.contains(storedDhikr)) {
+        storedDhikr = _currentDhikr;
+        _logger.warning(
+          'Invalid stored dhikr: $storedDhikr, using default: $_currentDhikr',
+        );
+      }
+
+      if (storedTarget == null || storedTarget <= 0) {
+        storedTarget = _defaultDhikrTargets[storedDhikr]!;
+        _logger.warning(
+          'Invalid stored target: $storedTarget, using default: $storedTarget',
+        );
+      }
+
+      final transitionDelay =
+          _storageService.getData('dhikr_transition_delay') as int?;
+
       if (!mounted) return;
+
       setState(() {
-        _currentDhikr = validDhikr;
+        _currentDhikr = storedDhikr!;
         _vibrationEnabled = storedVibration ?? true;
         _soundEnabled = storedSound ?? false;
-        // Ensure target is valid, fallback to default if stored is null or invalid
-        _target =
-            (storedTarget != null && storedTarget > 0)
-                ? storedTarget
-                : _defaultDhikrTargets[_currentDhikr]!;
+        _isCustomTarget = isCustom ?? false;
+
+        if (_isCustomTarget && _customDhikrTargets.containsKey(_currentDhikr)) {
+          _target = _customDhikrTargets[_currentDhikr]!;
+        } else {
+          _target =
+              (storedTarget != null && storedTarget > 0)
+                  ? storedTarget
+                  : _defaultDhikrTargets[_currentDhikr]!;
+        }
+
+        _count =
+            (storedCount != null && storedCount >= 0 && storedCount <= _target)
+                ? storedCount
+                : 0;
+
+        _dhikrTransitionDelay = transitionDelay ?? 1500;
       });
+
+      if (_soundEnabled) {
+        _initializeAudioPlayers();
+      }
+
+      _logger.info('Preferences loaded successfully');
     } catch (e, s) {
       _logger.error(
         "Error loading Tesbih preferences",
-        data: {'error': e.toString(), 'stackTrace': s.toString()},
+        error: e,
+        stackTrace: s,
       );
-      // Keep default values if loading fails
-      // Check if mounted before calling setState
+
       if (!mounted) return;
       setState(() {
         _target = _defaultDhikrTargets[_currentDhikr]!;
@@ -276,171 +387,341 @@ class _TesbihViewState extends ConsumerState<TesbihView> { // Changed
     }
   }
 
-  // Save user preferences
-  Future<void> _savePreferences() async {
-    await _storageService.saveData('vibration_enabled', _vibrationEnabled);
-    await _storageService.saveData('sound_enabled', _soundEnabled);
-    await _storageService.saveData('current_dhikr', _currentDhikr);
-    await _storageService.saveData('tasbih_target', _target);
+  void _initializeAudioPlayers() {
+    if (_soundEnabled) {
+      _dhikrPlayer ??= AudioPlayer();
+      _counterPlayer ??= AudioPlayer();
+    }
   }
 
-  // Increment the counter, handle feedback and target completion
-  Future<void> _incrementCount() async {
-    if (_count >= _target) return; // Don't increment if target reached
+  Future<void> _savePreferences() async {
+    try {
+      final String customTargetsJson = json.encode(_customDhikrTargets);
 
-    // Check if mounted before calling setState
+      final Map<String, dynamic> dataToSave = {
+        'vibration_enabled': _vibrationEnabled,
+        'sound_enabled': _soundEnabled,
+        'current_dhikr': _currentDhikr,
+        'tasbih_target': _target,
+        '${_currentDhikr}_count': _count,
+        'is_custom_target': _isCustomTarget,
+        'custom_dhikr_targets': customTargetsJson,
+        'dhikr_transition_delay': _dhikrTransitionDelay,
+      };
+
+      await Future.wait(
+        dataToSave.entries.map(
+          (entry) => _storageService.saveData(entry.key, entry.value),
+        ),
+      );
+      _logger.info('Preferences saved successfully');
+      _preferencesChanged = false;
+    } catch (e, s) {
+      _logger.error('Error saving preferences', error: e, stackTrace: s);
+      return Future.error(e, s);
+    }
+  }
+
+  Future<void> _incrementCount() async {
+    if (_count >= _target) return;
+
     if (!mounted) return;
     setState(() => _count++);
 
-    // Haptic feedback
     if (_vibrationEnabled) {
-      HapticFeedback.mediumImpact();
+      _triggerHapticFeedback();
     }
 
-    // Sound feedback (Consider using a sound package for better control)
     if (_soundEnabled) {
-      // Basic system sounds, might not be ideal across platforms
-      SystemSound.play(SystemSoundType.click);
+      await _playCounterSound();
     }
 
-    // Check if target is reached
     if (_count == _target) {
-      // Target reached feedback
-      if (_vibrationEnabled) {
-        HapticFeedback.heavyImpact(); // Use a stronger vibration for completion
+      await _handleTargetReached();
+    }
+  }
+
+  Future<void> _handleTargetReached() async {
+    if (!mounted) return;
+
+    if (_vibrationEnabled) {
+      try {
+        for (int i = 0; i < 3; i++) {
+          HapticFeedback.heavyImpact();
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
+      } catch (e) {
+        _logger.warning('Failed to trigger haptic feedback');
       }
-      if (_soundEnabled) {
-        // Play a different sound for completion?
-        SystemSound.play(SystemSoundType.alert);
-      }
-      // Automatically advance to the next Dhikr
+    }
+
+    if (mounted) {
       await _advanceDhikr();
     }
   }
 
-  // Advance to the next Dhikr in the sequence
   Future<void> _advanceDhikr() async {
+    if (_isInDhikrTransition) return;
+    _isInDhikrTransition = true;
+
     final currentIndex = _dhikrOrder.indexOf(_currentDhikr);
     final nextIndex = (currentIndex + 1) % _dhikrOrder.length;
     final nextDhikr = _dhikrOrder[nextIndex];
-    await _setDhikrInternal(
-      nextDhikr,
-    ); // Use internal method to reset count and save
+
+    if (_soundEnabled) {
+      await _playDhikrSound(nextDhikr);
+
+      if (!mounted) {
+        _isInDhikrTransition = false;
+        return;
+      }
+
+      setState(() {});
+
+      await Future.delayed(Duration(milliseconds: _dhikrTransitionDelay));
+    }
+
+    if (!mounted) {
+      _isInDhikrTransition = false;
+      return;
+    }
+
+    await _setDhikrInternal(nextDhikr);
+    _isInDhikrTransition = false;
   }
 
-  // Reset the counter for the current Dhikr
-  void _resetCount() {
-    // Check if mounted before calling setState
-    if (!mounted) return;
+  Future<void> _resetCount() async {
+    if (_isResetting) return;
+    _isResetting = true;
+
+    if (!mounted) {
+      _isResetting = false;
+      return;
+    }
+
+    final previousCount = _count;
+
     setState(() {
       _count = 0;
     });
+
     if (_vibrationEnabled) {
-      HapticFeedback.lightImpact(); // Light feedback for reset
+      _triggerHapticFeedback();
+    }
+
+    try {
+      await _savePreferences();
+      _logger.info('Reset count saved successfully');
+      _isResetting = false;
+    } catch (e, s) {
+      _logger.error('Error saving reset count', error: e, stackTrace: s);
+      if (mounted && previousCount > 0) {
+        setState(() {
+          _count = previousCount;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Failed to save reset. Your count has been restored.",
+              style: AppTextStyles.snackBarText,
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: 'Reset Again',
+              textColor: AppColors.background,
+              onPressed: () {
+                Future.delayed(const Duration(milliseconds: 500), () {
+                  _isResetting = false;
+                  _resetCount();
+                });
+              },
+            ),
+          ),
+        );
+      }
+      _isResetting = false;
     }
   }
 
-  // Public method to set Dhikr (e.g., from button press)
+  void _triggerHapticFeedback() {
+    try {
+      HapticFeedback.heavyImpact();
+    } catch (e) {
+      _logger.warning('Failed to trigger haptic feedback');
+    }
+  }
+
+  Future<void> _playCounterSound() async {
+    if (!_soundEnabled || _isAudioPlaying) return;
+
+    _initializeAudioPlayers();
+
+    try {
+      _isAudioPlaying = true;
+      await _counterPlayer?.stop();
+      await _counterPlayer?.play(AssetSource('audio/tesbih.mp3'));
+
+      final completeTimer = Timer(const Duration(seconds: 3), () {
+        if (_isAudioPlaying) {
+          _isAudioPlaying = false;
+        }
+      });
+
+      _counterPlayer?.onPlayerComplete.first.then((_) {
+        completeTimer.cancel();
+        if (mounted) {
+          setState(() {
+            _isAudioPlaying = false;
+          });
+        } else {
+          _isAudioPlaying = false;
+        }
+      });
+    } catch (e, s) {
+      _isAudioPlaying = false;
+      _logger.error('Error playing tesbih sound', error: e, stackTrace: s);
+    }
+  }
+
   Future<void> _setDhikr(String dhikr) async {
+    if (dhikr == _currentDhikr || _isInDhikrTransition) return;
+
+    if (_soundEnabled && _isAudioPlaying) {
+      await _stopAllAudio();
+    }
+
+    await _playDhikrSound(dhikr);
     await _setDhikrInternal(dhikr);
   }
 
-  // Internal method to set Dhikr, reset count, update target, and save
   Future<void> _setDhikrInternal(String dhikr) async {
-    // Check if mounted before calling setState
     if (!mounted) return;
+
+    final bool dhikrChanged = dhikr != _currentDhikr;
+
+    int newTarget;
+    if (_isCustomTarget && _customDhikrTargets.containsKey(dhikr)) {
+      newTarget = _customDhikrTargets[dhikr]!;
+    } else {
+      newTarget = _defaultDhikrTargets[dhikr]!;
+    }
+
     setState(() {
       _currentDhikr = dhikr;
-      _count = 0; // Reset count when Dhikr changes
-      _target =
-          _defaultDhikrTargets[dhikr]!; // Set default target for the new Dhikr
+      _count = 0;
+      _target = newTarget;
     });
-    await _savePreferences(); // Save the new Dhikr and target
+
+    if (dhikrChanged) {
+      try {
+        await _savePreferences();
+      } catch (e, s) {
+        _logger.error('Error saving dhikr change', error: e, stackTrace: s);
+        if (mounted) {
+          _showErrorSnackBar('Failed to save dhikr change');
+        }
+      }
+    }
   }
 
-  // Show dialog to set a custom target count
+  Future<void> _stopAllAudio() async {
+    try {
+      await _dhikrPlayer?.stop();
+      await _counterPlayer?.stop();
+      _isAudioPlaying = false;
+    } catch (e, s) {
+      _logger.error('Error stopping audio', error: e, stackTrace: s);
+    }
+  }
+
+  Future<void> _playDhikrSound(String dhikr) async {
+    if (!_soundEnabled) return;
+
+    if (_isAudioPlaying) {
+      await _stopAllAudio();
+    }
+
+    _initializeAudioPlayers();
+
+    try {
+      final audioFile = _dhikrAudioFiles[dhikr];
+      if (audioFile != null) {
+        _isAudioPlaying = true;
+        _logger.info('Playing dhikr sound: $audioFile');
+
+        await _dhikrPlayer?.play(AssetSource(audioFile));
+
+        final completeTimer = Timer(const Duration(seconds: 3), () {
+          if (_isAudioPlaying) {
+            _isAudioPlaying = false;
+          }
+        });
+
+        _dhikrPlayer?.onPlayerComplete.first.then((_) {
+          completeTimer.cancel();
+          if (mounted) {
+            setState(() {
+              _isAudioPlaying = false;
+            });
+          } else {
+            _isAudioPlaying = false;
+          }
+        });
+      } else {
+        _logger.warning('No audio file found for dhikr: $dhikr');
+      }
+    } catch (e, s) {
+      _isAudioPlaying = false;
+      _logger.error('Error playing dhikr sound', error: e, stackTrace: s);
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: AppTextStyles.snackBarText),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   Future<void> _showTargetDialog() async {
-    // Ensure context is still valid before showing dialog
     if (!mounted) return;
-    final localizations = AppLocalizations.of(context)!;
-    final controller = TextEditingController(text: _target.toString());
-    return showDialog(
+
+    await showDialog<void>(
       context: context,
       builder:
-          (context) => AlertDialog(
-            backgroundColor: AppColors.background,
-            title: Text(
-              localizations.tesbihSetTarget,
-              style: AppTextStyles.sectionTitle,
-            ),
-            content: TextField(
-              controller: controller,
-              keyboardType: TextInputType.number,
-              style: AppTextStyles.prayerTime, // Consistent text style
-              decoration: InputDecoration(
-                labelText: localizations.tesbihTarget,
-                labelStyle: AppTextStyles.label,
-                hintText: localizations.tesbihEnterTarget,
-                hintStyle: AppTextStyles.label.copyWith(
-                  color: AppColors.textSecondary.withAlpha(153),
-                ), // 0.6 * 255 = 153
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: AppColors.borderColor),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: AppColors.primary),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                ),
-                child: Text(localizations.cancel),
-              ),
-              TextButton(
-                onPressed: () async {
-                  final newVal = int.tryParse(controller.text);
-                  // Store navigator before await
-                  final navigator = Navigator.of(context);
-                  bool shouldPop = true; // Assume we pop unless save fails
-
-                  if (newVal != null && newVal > 0) {
-                    // Check if mounted before calling setState
-                    if (!mounted) return;
-                    setState(() {
-                      _target = newVal;
-                    });
-                    try {
-                      await _savePreferences();
-                    } catch (e, s) {
-                      _logger.error(
-                        "Error saving target preference",
-                        data: {
-                          'error': e.toString(),
-                          'stackTrace': s.toString(),
-                        },
-                      );
-                      shouldPop = false; // Don't pop if save failed
-                      // Optionally show a snackbar or message to the user
-                    }
-                  }
-                  // Check mounted again before using navigator
-                  if (shouldPop && mounted) {
-                    navigator.pop();
-                  }
-                },
-                style: TextButton.styleFrom(foregroundColor: AppColors.primary),
-                child: Text(localizations.tesbihOk),
-              ),
-            ],
+          (BuildContext dialogContext) => _TargetDialog(
+            initialTarget: _target,
+            onTargetSet: _updateTargetValue,
           ),
     );
+  }
+
+  void _updateTargetValue(int newVal) {
+    if (!mounted || newVal == _target) return;
+
+    setState(() {
+      _target = newVal;
+      _isCustomTarget = true;
+      _customDhikrTargets[_currentDhikr] = newVal;
+
+      _count = _count > _target ? _target : _count;
+    });
+
+    _preferencesChanged = true;
+    _savePreferences().catchError((e, s) {
+      _logger.error("Error saving target preference", error: e, stackTrace: s);
+
+      if (mounted) {
+        _showErrorSnackBar("Failed to save target. Please try again.");
+      }
+    });
   }
 
   @override
@@ -462,21 +743,19 @@ class _TesbihViewState extends ConsumerState<TesbihView> { // Changed
       ),
       body: SingleChildScrollView(
         child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.stretch, // Stretch children horizontally
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Current Dhikr Display Area
             Container(
               padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-              color: AppColors.primaryLight, // Consistent background
+              color: AppColors.primaryLight,
               child: Column(
                 children: [
                   Text(
                     _dhikrArabic[_currentDhikr] ?? '',
                     style: AppTextStyles.appTitle.copyWith(
-                      fontSize: 40, // Slightly smaller for balance
+                      fontSize: 40,
                       height: 1.4,
-                      color: AppColors.primary, // Use primary color
+                      color: AppColors.primary,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -484,56 +763,44 @@ class _TesbihViewState extends ConsumerState<TesbihView> { // Changed
                   Text(
                     _currentDhikr,
                     style: AppTextStyles.label.copyWith(
-                      fontSize: 16, // Slightly larger label
-                      color: AppColors.textPrimary.withAlpha(
-                        204,
-                      ), // 0.8 * 255 = 204
+                      fontSize: 16,
+                      color: AppColors.textPrimary.withAlpha(204),
                     ),
                   ),
                 ],
               ),
             ),
-
-            // Counter Area
             GestureDetector(
               onTap: _incrementCount,
               child: Container(
-                // Removed fixed height, let it size naturally or use AspectRatio
-                padding: const EdgeInsets.symmetric(
-                  vertical: 40,
-                ), // Add padding
-                color: AppColors.primaryLight, // Consistent background
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                color: AppColors.primaryLight,
                 child: Center(
-                  // Center the Stack
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
                       SizedBox(
-                        width: 300, // Adjusted size
+                        width: 300,
                         height: 300,
                         child: CircularProgressIndicator(
                           value:
                               _target > 0
                                   ? (_count / _target).clamp(0.0, 1.0)
                                   : 0,
-                          strokeWidth: 8, // Thicker stroke
-                          backgroundColor: AppColors.borderColor.withAlpha(
-                            128,
-                          ), // 0.5 * 255 = 128
+                          strokeWidth: 8,
+                          backgroundColor: AppColors.borderColor.withAlpha(128),
                           color: AppColors.primary,
                         ),
                       ),
                       Container(
-                        width: 280, // Adjusted size
+                        width: 280,
                         height: 280,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: AppColors.background,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.shadowColor.withAlpha(
-                                128,
-                              ), // 0.5 * 255 = 128
+                              color: AppColors.shadowColor.withAlpha(128),
                               spreadRadius: 1,
                               blurRadius: 8,
                               offset: const Offset(0, 1),
@@ -547,9 +814,8 @@ class _TesbihViewState extends ConsumerState<TesbihView> { // Changed
                               Text(
                                 '$_count',
                                 style: AppTextStyles.currentPrayer.copyWith(
-                                  fontSize: 80, // Adjusted size
-                                  fontWeight:
-                                      FontWeight.w600, // Slightly less bold
+                                  fontSize: 80,
+                                  fontWeight: FontWeight.w600,
                                   color: AppColors.primary,
                                 ),
                               ),
@@ -557,7 +823,7 @@ class _TesbihViewState extends ConsumerState<TesbihView> { // Changed
                               Text(
                                 localizations.tesbihCounter(_target),
                                 style: AppTextStyles.label.copyWith(
-                                  fontSize: 15, // Adjusted size
+                                  fontSize: 15,
                                 ),
                               ),
                             ],
@@ -569,15 +835,9 @@ class _TesbihViewState extends ConsumerState<TesbihView> { // Changed
                 ),
               ),
             ),
-
-            // Action Buttons (Reset, Target)
             Container(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight, // Consistent background
-                // Add a subtle top border if needed
-                // border: Border(top: BorderSide(color: AppColors.borderColor, width: 0.5)),
-              ),
+              decoration: BoxDecoration(color: AppColors.primaryLight),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -590,28 +850,23 @@ class _TesbihViewState extends ConsumerState<TesbihView> { // Changed
                     Icons.track_changes_rounded,
                     localizations.tesbihTarget,
                     _showTargetDialog,
-                  ), // Changed icon
+                  ),
                 ],
               ),
             ),
-
-            // Dhikr Selection Buttons
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               child: Column(
                 children: [
                   Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.spaceAround, // Better spacing
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      Expanded(
-                        child: _buildDhikrButton('Subhanallah'),
-                      ), // Use Expanded
+                      Expanded(child: _buildDhikrButton('Subhanallah')),
                       const SizedBox(width: 12),
                       Expanded(child: _buildDhikrButton('Alhamdulillah')),
                     ],
                   ),
-                  const SizedBox(height: 12), // Spacing between rows
+                  const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
@@ -623,29 +878,13 @@ class _TesbihViewState extends ConsumerState<TesbihView> { // Changed
                 ],
               ),
             ),
-
-            // Settings Toggles Area
             Container(
-              margin: const EdgeInsets.all(
-                16,
-              ), // Margin around the settings box
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 8,
-              ), // Adjusted padding
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: AppColors.background,
-                borderRadius: BorderRadius.circular(10), // Rounded corners
-                border: Border.all(
-                  color: AppColors.borderColor,
-                ), // Subtle border
-                // boxShadow: [ // Optional subtle shadow
-                //   BoxShadow(
-                //     color: AppColors.shadowColor,
-                //     blurRadius: 4,
-                //     offset: const Offset(0, 1),
-                //   ),
-                // ],
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.borderColor),
               ),
               child: Column(
                 children: [
@@ -654,58 +893,58 @@ class _TesbihViewState extends ConsumerState<TesbihView> { // Changed
                     Icons.vibration_rounded,
                     _vibrationEnabled,
                     (value) {
-                      // Check if mounted before calling setState
                       if (!mounted) return;
                       setState(() => _vibrationEnabled = value);
                       _savePreferences();
                     },
                   ),
-                  Divider(color: AppColors.borderColor, height: 1), // Divider
+                  Divider(color: AppColors.borderColor, height: 1),
                   _buildToggleOption(
                     localizations.tesbihSound,
                     Icons.volume_up_rounded,
                     _soundEnabled,
                     (value) {
-                      // Check if mounted before calling setState
                       if (!mounted) return;
+
+                      if (value && !_soundEnabled) {
+                        _initializeAudioPlayers();
+                      }
+
                       setState(() => _soundEnabled = value);
                       _savePreferences();
                     },
                   ),
-                  Divider(color: AppColors.borderColor, height: 1), // Divider
+                  Divider(color: AppColors.borderColor, height: 1),
                   _buildToggleOption(
                     localizations.notifications,
                     Icons.notifications_active_rounded,
-                    _reminderEnabled,
+                    ref.watch(tesbihReminderProvider).reminderEnabled,
                     (value) async {
-                      if (ref.read(settingsProvider.notifier).areNotificationsBlocked) { // Changed
-                        if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              "Notifications are blocked. Enable them in system settings.",
-                              style: AppTextStyles.snackBarText,
-                            ),
-                            backgroundColor: AppColors.error,
-                            behavior: SnackBarBehavior.floating,
-                            duration: const Duration(seconds: 4),
-                          ),
-                        );
-                        return;
-                      }
-                      if (!mounted) return;
-                      setState(() => _reminderEnabled = value);
-                      await _saveReminderSettings();
-                      _scheduleReminder();
-                      if (value && mounted) {
-                        _showReminderSettingsDialog();
+                      // This onChanged handler is simplified since most logic is in the Switch
+                      if (!value) {
+                        // Only handle disabling notifications here
+                        ref
+                            .read(tesbihReminderProvider.notifier)
+                            .toggleReminder(false);
+                      } else {
+                        // Enabling is handled by the Switch directly
+                        // The time picker will be shown in the Switch's onChanged
+                        ref
+                            .read(tesbihReminderProvider.notifier)
+                            .toggleReminder(true);
                       }
                     },
-                    // Add trailing text to show current time if enabled
                     trailing:
-                        _reminderEnabled && _reminderTime != null
+                        ref.watch(tesbihReminderProvider).reminderEnabled &&
+                                ref
+                                        .watch(tesbihReminderProvider)
+                                        .reminderTime !=
+                                    null
                             ? Text(
-                              _reminderTime!.format(context),
+                              ref
+                                  .watch(tesbihReminderProvider)
+                                  .reminderTime!
+                                  .format(context),
                               style: AppTextStyles.label,
                             )
                             : null,
@@ -713,42 +952,34 @@ class _TesbihViewState extends ConsumerState<TesbihView> { // Changed
                 ],
               ),
             ),
-            const SizedBox(height: 16), // Bottom padding
+            const SizedBox(height: 16),
           ],
         ),
       ),
     );
   }
 
-  // Builder for Dhikr selection buttons
   Widget _buildDhikrButton(String dhikr) {
     final bool isSelected = _currentDhikr == dhikr;
     return ElevatedButton(
       onPressed: () => _setDhikr(dhikr),
       style: ElevatedButton.styleFrom(
-        foregroundColor:
-            isSelected ? AppColors.background : AppColors.primary, // Text color
+        foregroundColor: isSelected ? AppColors.background : AppColors.primary,
         backgroundColor:
-            isSelected
-                ? AppColors.primary
-                : AppColors.primaryLight, // Background color
-        padding: const EdgeInsets.symmetric(vertical: 14), // Adjusted padding
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8), // Less rounded
-        ),
-        elevation: 0, // No elevation
+            isSelected ? AppColors.primary : AppColors.primaryLight,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        elevation: 0,
         textStyle: AppTextStyles.prayerName.copyWith(
           fontWeight: FontWeight.w600,
-        ), // Consistent text style
+        ),
       ),
       child: Text(dhikr),
     );
   }
 
-  // Builder for action buttons (Reset, Target)
   Widget _buildActionButton(IconData icon, String label, VoidCallback onTap) {
     return InkWell(
-      // Use InkWell for ripple effect
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Padding(
@@ -756,64 +987,69 @@ class _TesbihViewState extends ConsumerState<TesbihView> { // Changed
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              color: AppColors.iconInactive,
-              size: 26,
-            ), // Adjusted size
+            Icon(icon, color: AppColors.iconInactive, size: 26),
             const SizedBox(height: 6),
-            Text(
-              label,
-              style: AppTextStyles.label.copyWith(
-                fontSize: 13,
-              ), // Adjusted size
-            ),
+            Text(label, style: AppTextStyles.label.copyWith(fontSize: 13)),
           ],
         ),
       ),
     );
   }
 
-  // Builder for toggle options (Vibration, Sound, Notifications)
   Widget _buildToggleOption(
     String title,
     IconData icon,
     bool value,
     Function(bool) onChanged, {
-    Widget? trailing, // Optional trailing widget (for reminder time)
+    Widget? trailing,
   }) {
     bool isNotificationToggle =
         title == AppLocalizations.of(context)!.notifications;
+
     bool isDisabled =
-        isNotificationToggle && ref.watch(settingsProvider.notifier).areNotificationsBlocked; // Changed
+        isNotificationToggle &&
+        (_notificationsBlocked ??
+            ref.read(settingsProvider.notifier).areNotificationsBlocked);
 
     return InkWell(
       onTap: isDisabled ? null : () => onChanged(!value),
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          vertical: 12.0,
-        ), // Consistent padding
+        padding: const EdgeInsets.symmetric(vertical: 12.0),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: AppColors.iconInactive,
-              size: 22,
-            ), // Adjusted size
+            Icon(icon, color: AppColors.iconInactive, size: 22),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
                 title,
                 style: AppTextStyles.prayerName.copyWith(fontSize: 15),
               ),
-            ), // Adjusted size
+            ),
             if (trailing != null) ...[trailing, const SizedBox(width: 8)],
             Switch(
-              value:
-                  isNotificationToggle
-                      ? (value && !ref.watch(settingsProvider.notifier).areNotificationsBlocked) // Changed
-                      : value,
-              onChanged: isDisabled ? null : onChanged,
+              value: isNotificationToggle ? (value && !isDisabled) : value,
+              onChanged:
+                  isDisabled
+                      ? null
+                      : (newValue) async {
+                        // Notifications toggle needs special handling
+                        if (isNotificationToggle && newValue) {
+                          // Check permissions first when enabling notifications
+                          await _checkAndUpdateNotificationStatus();
+                          if (_notificationsBlocked == true) {
+                            _showErrorSnackBar(
+                              "Notifications are blocked. Enable them in system settings.",
+                            );
+                            return;
+                          }
+
+                          // Always show time picker when enabling notifications
+                          _showReminderSettingsDialog();
+                        }
+
+                        // Call the regular onChange for other toggles
+                        onChanged(newValue);
+                      },
               activeColor: AppColors.primary,
               activeTrackColor:
                   isDisabled
@@ -832,6 +1068,125 @@ class _TesbihViewState extends ConsumerState<TesbihView> { // Changed
           ],
         ),
       ),
+    );
+  }
+}
+
+class _TargetDialog extends StatefulWidget {
+  final int initialTarget;
+  final Function(int) onTargetSet;
+
+  const _TargetDialog({required this.initialTarget, required this.onTargetSet});
+
+  @override
+  State<_TargetDialog> createState() => _TargetDialogState();
+}
+
+class _TargetDialogState extends State<_TargetDialog> {
+  late final TextEditingController _controller;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialTarget.toString());
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String? _validateTargetInput(String input) {
+    if (input.isEmpty) {
+      return 'Target cannot be empty';
+    }
+
+    final value = int.tryParse(input);
+    if (value == null) {
+      return 'Please enter a valid number';
+    }
+
+    if (value <= 0) {
+      return 'Target must be greater than 0';
+    }
+
+    if (value > 99999) {
+      return 'Target is too large';
+    }
+
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
+    return AlertDialog(
+      backgroundColor: AppColors.background,
+      title: Text(
+        localizations.tesbihSetTarget,
+        style: AppTextStyles.sectionTitle,
+      ),
+      content: TextField(
+        controller: _controller,
+        keyboardType: TextInputType.number,
+        style: AppTextStyles.prayerTime,
+        decoration: InputDecoration(
+          labelText: localizations.tesbihTarget,
+          labelStyle: AppTextStyles.label,
+          hintText: localizations.tesbihEnterTarget,
+          hintStyle: AppTextStyles.label.copyWith(
+            color: AppColors.textSecondary.withAlpha(153),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: AppColors.borderColor),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: AppColors.primary),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          errorText: _errorText,
+        ),
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(5),
+        ],
+        autofocus: true,
+        onChanged: (value) {
+          setState(() {
+            _errorText = _validateTargetInput(value);
+          });
+        },
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
+          child: Text(localizations.cancel),
+        ),
+        TextButton(
+          onPressed: () {
+            final newVal = int.tryParse(_controller.text);
+
+            final errorMessage = _validateTargetInput(_controller.text);
+            if (errorMessage != null) {
+              setState(() {
+                _errorText = errorMessage;
+              });
+              return;
+            }
+
+            Navigator.of(context).pop();
+
+            widget.onTargetSet(newVal!);
+          },
+          style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+          child: Text(localizations.tesbihOk),
+        ),
+      ],
     );
   }
 }
