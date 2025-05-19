@@ -117,7 +117,6 @@ class _TesbihViewState extends ConsumerState<TesbihView>
 
     _dhikrPlayer?.dispose();
     _counterPlayer?.dispose();
-    _saveDataIfNeeded();
     super.dispose();
   }
 
@@ -125,7 +124,20 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     final futures = <Future>[];
 
     if (_preferencesChanged) {
-      futures.add(_savePreferences());
+      futures.add(
+        _savePreferences().catchError((e, s) {
+          _logger.error(
+            "Error saving preferences on app pause",
+            error: e,
+            stackTrace: s,
+          );
+          if (mounted) {
+            _showErrorSnackBar(
+              "Failed to save some preferences. Please try again.",
+            );
+          }
+        }),
+      );
       _preferencesChanged = false;
     }
 
@@ -251,23 +263,39 @@ class _TesbihViewState extends ConsumerState<TesbihView>
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).brightness == Brightness.dark
-                ? ColorScheme.dark(
-                    primary: AppColors.accentGreen(Theme.of(context).brightness),
-                    onPrimary: Colors.white,
-                    surface: AppColors.surface(Theme.of(context).brightness), // Dark surface for dialog
-                    onSurface: AppColors.textPrimary(Theme.of(context).brightness),
-                  )
-                : ColorScheme.light(
-                    primary: AppColors.primary(Theme.of(context).brightness),
-                    onPrimary: AppColors.background(Theme.of(context).brightness),
-                    surface: AppColors.background(Theme.of(context).brightness),
-                    onSurface: AppColors.textPrimary(Theme.of(context).brightness),
-                  ),
+            colorScheme:
+                Theme.of(context).brightness == Brightness.dark
+                    ? ColorScheme.dark(
+                      primary: AppColors.accentGreen(
+                        Theme.of(context).brightness,
+                      ),
+                      onPrimary: Colors.white,
+                      surface: AppColors.surface(
+                        Theme.of(context).brightness,
+                      ), // Dark surface for dialog
+                      onSurface: AppColors.textPrimary(
+                        Theme.of(context).brightness,
+                      ),
+                    )
+                    : ColorScheme.light(
+                      primary: AppColors.primary(Theme.of(context).brightness),
+                      onPrimary: AppColors.background(
+                        Theme.of(context).brightness,
+                      ),
+                      surface: AppColors.background(
+                        Theme.of(context).brightness,
+                      ),
+                      onSurface: AppColors.textPrimary(
+                        Theme.of(context).brightness,
+                      ),
+                    ),
             dialogTheme: DialogTheme(
-              backgroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? AppColors.surface(Theme.of(context).brightness) // Dark surface for dialog
-                  : AppColors.background(Theme.of(context).brightness),
+              backgroundColor:
+                  Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.surface(
+                        Theme.of(context).brightness,
+                      ) // Dark surface for dialog
+                      : AppColors.background(Theme.of(context).brightness),
             ),
           ),
           child: child!,
@@ -693,7 +721,10 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: AppTextStyles.snackBarText(Theme.of(context).brightness)),
+        content: Text(
+          message,
+          style: AppTextStyles.snackBarText(Theme.of(context).brightness),
+        ),
         backgroundColor: AppColors.error(Theme.of(context).brightness),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 3),
@@ -743,32 +774,57 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     final bool isDarkMode = brightness == Brightness.dark;
 
     // Define colors for TesbihView in dark mode to make it lighter
-    final Color tesbihScaffoldBg = isDarkMode ? AppColors.surface(brightness) : AppColors.background(brightness);
+    final Color tesbihScaffoldBg =
+        isDarkMode
+            ? AppColors.surface(brightness)
+            : AppColors.background(brightness);
     // AppBar uses AppColors.primary(brightness) which is 0xFF1A1A1A in dark mode, this is fine.
-    
-    final Color tesbihContentSurface = isDarkMode ? const Color(0xFF2C2C2C) : AppColors.primaryVariant(brightness);
-    final Color tesbihCounterCircleBg = isDarkMode ? const Color(0xFF3C3C3C) : AppColors.background(brightness);
 
-    final Color tesbihDhikrArabicText = isDarkMode ? AppColors.textPrimary(brightness) : AppColors.primary(brightness);
-    final Color tesbihCounterProgress = isDarkMode ? AppColors.accentGreen(brightness) : AppColors.primary(brightness);
-    final Color tesbihCounterCountText = isDarkMode ? AppColors.accentGreen(brightness) : AppColors.primary(brightness);
-    
-    final Color tesbihToggleCardBg = isDarkMode ? tesbihContentSurface : AppColors.background(brightness);
+    final Color tesbihContentSurface =
+        isDarkMode
+            ? const Color(0xFF2C2C2C)
+            : AppColors.primaryVariant(brightness);
+    final Color tesbihCounterCircleBg =
+        isDarkMode ? const Color(0xFF3C3C3C) : AppColors.background(brightness);
+
+    final Color tesbihDhikrArabicText =
+        isDarkMode
+            ? AppColors.textPrimary(brightness)
+            : AppColors.primary(brightness);
+    final Color tesbihCounterProgress =
+        isDarkMode
+            ? AppColors.accentGreen(brightness)
+            : AppColors.primary(brightness);
+    final Color tesbihCounterCountText =
+        isDarkMode
+            ? AppColors.accentGreen(brightness)
+            : AppColors.primary(brightness);
+
+    final Color tesbihToggleCardBg =
+        isDarkMode ? tesbihContentSurface : AppColors.background(brightness);
 
     return Scaffold(
       backgroundColor: tesbihScaffoldBg,
       appBar: AppBar(
-        title: Text(localizations.tasbihLabel, style: AppTextStyles.appTitle(brightness)),
-        backgroundColor: AppColors.primary(brightness), // Stays 0xFF1A1A1A in dark mode
+        title: Text(
+          localizations.tasbihLabel,
+          style: AppTextStyles.appTitle(brightness),
+        ),
+        backgroundColor: AppColors.primary(
+          brightness,
+        ), // Stays 0xFF1A1A1A in dark mode
         elevation: 2,
         shadowColor: AppColors.shadowColor(brightness),
         centerTitle: true,
         systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent, // Make status bar transparent
-          statusBarIconBrightness: Brightness.light, // Keep icons light since AppBar is always dark
+          statusBarIconBrightness:
+              Brightness.light, // Keep icons light since AppBar is always dark
           statusBarBrightness: Brightness.dark, // This affects iOS status bar
-          systemNavigationBarColor: tesbihScaffoldBg, // Match scaffold background
-          systemNavigationBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
+          systemNavigationBarColor:
+              tesbihScaffoldBg, // Match scaffold background
+          systemNavigationBarIconBrightness:
+              isDarkMode ? Brightness.light : Brightness.dark,
         ),
       ),
       body: SingleChildScrollView(
@@ -785,7 +841,8 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                     style: AppTextStyles.appTitle(brightness).copyWith(
                       fontSize: 40,
                       height: 1.4,
-                      color: tesbihDhikrArabicText, // Applied tesbihDhikrArabicText
+                      color:
+                          tesbihDhikrArabicText, // Applied tesbihDhikrArabicText
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -794,7 +851,9 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                     _currentDhikr,
                     style: AppTextStyles.label(brightness).copyWith(
                       fontSize: 16,
-                      color: AppColors.textPrimary(brightness).withAlpha(isDarkMode ? 230 : 204), // Slightly more opaque for better readability on new bg
+                      color: AppColors.textPrimary(brightness).withAlpha(
+                        isDarkMode ? 230 : 204,
+                      ), // Slightly more opaque for better readability on new bg
                     ),
                   ),
                 ],
@@ -818,8 +877,11 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                                   ? (_count / _target).clamp(0.0, 1.0)
                                   : 0,
                           strokeWidth: 8,
-                          backgroundColor: AppColors.borderColor(brightness).withAlpha(isDarkMode ? 80 : 128),
-                          color: tesbihCounterProgress, // Applied tesbihCounterProgress
+                          backgroundColor: AppColors.borderColor(
+                            brightness,
+                          ).withAlpha(isDarkMode ? 80 : 128),
+                          color:
+                              tesbihCounterProgress, // Applied tesbihCounterProgress
                         ),
                       ),
                       Container(
@@ -827,10 +889,13 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                         height: 280,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: tesbihCounterCircleBg, // Applied tesbihCounterCircleBg
+                          color:
+                              tesbihCounterCircleBg, // Applied tesbihCounterCircleBg
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.shadowColor(brightness).withAlpha(isDarkMode ? 60 :128),
+                              color: AppColors.shadowColor(
+                                brightness,
+                              ).withAlpha(isDarkMode ? 60 : 128),
                               spreadRadius: 1,
                               blurRadius: 8,
                               offset: const Offset(0, 1),
@@ -843,10 +908,13 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                             children: [
                               Text(
                                 '$_count',
-                                style: AppTextStyles.currentPrayer(brightness).copyWith(
+                                style: AppTextStyles.currentPrayer(
+                                  brightness,
+                                ).copyWith(
                                   fontSize: 80,
                                   fontWeight: FontWeight.w600,
-                                  color: tesbihCounterCountText, // Applied tesbihCounterCountText
+                                  color:
+                                      tesbihCounterCountText, // Applied tesbihCounterCountText
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -854,7 +922,12 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                                 localizations.tesbihCounter(_target),
                                 style: AppTextStyles.label(brightness).copyWith(
                                   fontSize: 15,
-                                  color: isDarkMode ? AppColors.textSecondary(brightness).withAlpha(200) : AppColors.textSecondary(brightness),
+                                  color:
+                                      isDarkMode
+                                          ? AppColors.textSecondary(
+                                            brightness,
+                                          ).withAlpha(200)
+                                          : AppColors.textSecondary(brightness),
                                 ),
                               ),
                             ],
@@ -868,7 +941,9 @@ class _TesbihViewState extends ConsumerState<TesbihView>
             ),
             Container(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(color: tesbihContentSurface), // Applied tesbihContentSurface
+              decoration: BoxDecoration(
+                color: tesbihContentSurface,
+              ), // Applied tesbihContentSurface
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -894,18 +969,26 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      Expanded(child: _buildDhikrButton('Subhanallah', brightness)),
+                      Expanded(
+                        child: _buildDhikrButton('Subhanallah', brightness),
+                      ),
                       const SizedBox(width: 12),
-                      Expanded(child: _buildDhikrButton('Alhamdulillah', brightness)),
+                      Expanded(
+                        child: _buildDhikrButton('Alhamdulillah', brightness),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      Expanded(child: _buildDhikrButton('Astaghfirullah', brightness)),
+                      Expanded(
+                        child: _buildDhikrButton('Astaghfirullah', brightness),
+                      ),
                       const SizedBox(width: 12),
-                      Expanded(child: _buildDhikrButton('Allahu Akbar', brightness)),
+                      Expanded(
+                        child: _buildDhikrButton('Allahu Akbar', brightness),
+                      ),
                     ],
                   ),
                 ],
@@ -928,7 +1011,18 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                     (value) {
                       if (!mounted) return;
                       setState(() => _vibrationEnabled = value);
-                      _savePreferences();
+                      _savePreferences().catchError((e, s) {
+                        _logger.error(
+                          "Error saving vibration preference",
+                          error: e,
+                          stackTrace: s,
+                        );
+                        if (mounted) {
+                          _showErrorSnackBar(
+                            "Failed to save vibration preference. Please try again.",
+                          );
+                        }
+                      });
                     },
                     brightness,
                   ),
@@ -945,7 +1039,18 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                       }
 
                       setState(() => _soundEnabled = value);
-                      _savePreferences();
+                      _savePreferences().catchError((e, s) {
+                        _logger.error(
+                          "Error saving sound preference",
+                          error: e,
+                          stackTrace: s,
+                        );
+                        if (mounted) {
+                          _showErrorSnackBar(
+                            "Failed to save sound preference. Please try again.",
+                          );
+                        }
+                      });
                     },
                     brightness,
                   ),
@@ -999,11 +1104,21 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     final bool isSelected = _currentDhikr == dhikr;
     final bool isDarkMode = brightness == Brightness.dark;
 
-    final Color selectedBgColor = isDarkMode ? AppColors.accentGreen(brightness) : AppColors.primary(brightness);
-    final Color selectedFgColor = isDarkMode ? Colors.white : AppColors.background(brightness);
-    
-    final Color unselectedBgColor = isDarkMode ? const Color(0xFF2C2C2C) : AppColors.primaryVariant(brightness);
-    final Color unselectedFgColor = isDarkMode ? AppColors.textPrimary(brightness) : AppColors.primary(brightness);
+    final Color selectedBgColor =
+        isDarkMode
+            ? AppColors.accentGreen(brightness)
+            : AppColors.primary(brightness);
+    final Color selectedFgColor =
+        isDarkMode ? Colors.white : AppColors.background(brightness);
+
+    final Color unselectedBgColor =
+        isDarkMode
+            ? const Color(0xFF2C2C2C)
+            : AppColors.primaryVariant(brightness);
+    final Color unselectedFgColor =
+        isDarkMode
+            ? AppColors.textPrimary(brightness)
+            : AppColors.primary(brightness);
 
     return ElevatedButton(
       onPressed: () => _setDhikr(dhikr),
@@ -1013,15 +1128,20 @@ class _TesbihViewState extends ConsumerState<TesbihView>
         padding: const EdgeInsets.symmetric(vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         elevation: 0,
-        textStyle: AppTextStyles.prayerName(brightness).copyWith(
-          fontWeight: FontWeight.w600,
-        ),
+        textStyle: AppTextStyles.prayerName(
+          brightness,
+        ).copyWith(fontWeight: FontWeight.w600),
       ),
       child: Text(dhikr),
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label, VoidCallback onTap, Brightness brightness) {
+  Widget _buildActionButton(
+    IconData icon,
+    String label,
+    VoidCallback onTap,
+    Brightness brightness,
+  ) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -1032,7 +1152,10 @@ class _TesbihViewState extends ConsumerState<TesbihView>
           children: [
             Icon(icon, color: AppColors.iconInactive(brightness), size: 26),
             const SizedBox(height: 6),
-            Text(label, style: AppTextStyles.label(brightness).copyWith(fontSize: 13)),
+            Text(
+              label,
+              style: AppTextStyles.label(brightness).copyWith(fontSize: 13),
+            ),
           ],
         ),
       ),
@@ -1056,7 +1179,27 @@ class _TesbihViewState extends ConsumerState<TesbihView>
             ref.read(settingsProvider.notifier).areNotificationsBlocked);
 
     return InkWell(
-      onTap: isDisabled ? null : () => onChanged(!value),
+      onTap:
+          isDisabled
+              ? null
+              : () {
+                if (isNotificationToggle) {
+                  // Special handling for notification toggle is within the Switch's onChanged
+                  // Directly calling onChanged here might bypass permission checks/dialogs
+                  // So, we let the Switch handle its own tap for notifications.
+                  // For other toggles, we can proceed.
+                  if (value) {
+                    // If current value is true, new value will be false
+                    onChanged(!value);
+                  } else {
+                    // If current value is false, new value will be true
+                    // For non-notification toggles, just call onChanged
+                    onChanged(!value);
+                  }
+                } else {
+                  onChanged(!value);
+                }
+              },
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12.0),
         child: Row(
@@ -1066,7 +1209,9 @@ class _TesbihViewState extends ConsumerState<TesbihView>
             Expanded(
               child: Text(
                 title,
-                style: AppTextStyles.prayerName(brightness).copyWith(fontSize: 15),
+                style: AppTextStyles.prayerName(
+                  brightness,
+                ).copyWith(fontSize: 15),
               ),
             ),
             if (trailing != null) ...[trailing, const SizedBox(width: 8)],
@@ -1076,23 +1221,39 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                   isDisabled
                       ? null
                       : (newValue) async {
-                        // Notifications toggle needs special handling
-                        if (isNotificationToggle && newValue) {
-                          // Check permissions first when enabling notifications
-                          await _checkAndUpdateNotificationStatus();
-                          if (_notificationsBlocked == true) {
-                            _showErrorSnackBar(
-                              "Notifications are blocked. Enable them in system settings.",
-                            );
-                            return;
+                        if (isNotificationToggle) {
+                          // Notifications toggle needs special handling
+                          if (newValue) {
+                            // Check permissions first when enabling notifications
+                            await _checkAndUpdateNotificationStatus();
+                            if (_notificationsBlocked == true) {
+                              _showErrorSnackBar(
+                                "Notifications are blocked. Enable them in system settings.",
+                              );
+                              // Do not call onChanged(newValue) here as we don't want to change the state
+                              // if notifications are blocked. The switch should reflect the actual state.
+                              // We might need to refresh the provider state if it was optimistically updated.
+                              // For now, we assume the UI will reflect the actual provider state.
+                              return;
+                            }
+                            // Always show time picker when enabling notifications
+                            // The onChanged callback will be triggered by the dialog if time is set.
+                            // For now, we call onChanged(true) to update the provider,
+                            // and then show the dialog.
+                            onChanged(newValue); // Update provider state
+                            _showReminderSettingsDialog(); // Then show dialog
+                          } else {
+                            // Disabling notifications
+                            onChanged(newValue);
                           }
-
-                          // Always show time picker when enabling notifications
-                          _showReminderSettingsDialog();
+                        } else {
+                          // For other toggles (vibration, sound)
+                          onChanged(
+                            newValue,
+                          ); // This will call setState and _savePreferences
+                          // from the TesbihView's _buildToggleOption call.
+                          // Error handling for _savePreferences is added there.
                         }
-
-                        // Call the regular onChange for other toggles
-                        onChanged(newValue);
                       },
               activeColor: AppColors.primary(brightness),
               activeTrackColor:
@@ -1121,7 +1282,11 @@ class _TargetDialog extends StatefulWidget {
   final Function(int) onTargetSet;
   final Brightness brightness;
 
-  const _TargetDialog({required this.initialTarget, required this.onTargetSet, required this.brightness});
+  const _TargetDialog({
+    required this.initialTarget,
+    required this.onTargetSet,
+    required this.brightness,
+  });
 
   @override
   State<_TargetDialog> createState() => _TargetDialogState();
@@ -1172,7 +1337,10 @@ class _TargetDialogState extends State<_TargetDialog> {
     final bool isDarkMode = brightness == Brightness.dark;
 
     return AlertDialog(
-      backgroundColor: isDarkMode ? AppColors.surface(brightness) : AppColors.background(brightness),
+      backgroundColor:
+          isDarkMode
+              ? AppColors.surface(brightness)
+              : AppColors.background(brightness),
       title: Text(
         localizations.tesbihSetTarget,
         style: AppTextStyles.sectionTitle(brightness),
@@ -1185,9 +1353,9 @@ class _TargetDialogState extends State<_TargetDialog> {
           labelText: localizations.tesbihTarget,
           labelStyle: AppTextStyles.label(brightness),
           hintText: localizations.tesbihEnterTarget,
-          hintStyle: AppTextStyles.label(brightness).copyWith(
-            color: AppColors.textSecondary(brightness).withAlpha(153),
-          ),
+          hintStyle: AppTextStyles.label(
+            brightness,
+          ).copyWith(color: AppColors.textSecondary(brightness).withAlpha(153)),
           enabledBorder: OutlineInputBorder(
             borderSide: BorderSide(color: AppColors.borderColor(brightness)),
             borderRadius: BorderRadius.circular(8),
@@ -1212,7 +1380,9 @@ class _TargetDialogState extends State<_TargetDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary(brightness)),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.textSecondary(brightness),
+          ),
           child: Text(localizations.cancel),
         ),
         TextButton(
@@ -1231,7 +1401,9 @@ class _TargetDialogState extends State<_TargetDialog> {
 
             widget.onTargetSet(newVal!);
           },
-          style: TextButton.styleFrom(foregroundColor: AppColors.primary(brightness)),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.primary(brightness),
+          ),
           child: Text(localizations.tesbihOk),
         ),
       ],
