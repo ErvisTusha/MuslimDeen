@@ -40,7 +40,7 @@ class PrayerService {
 
   /// Gets default calculation parameters (MuslimWorldLeague, Hanafi).
   adhan.CalculationParameters getDefaultParams() {
-    final params = adhan.CalculationMethod.muslimWorldLeague();
+    final adhan.CalculationParameters params = adhan.CalculationMethod.muslimWorldLeague() as adhan.CalculationParameters;
     params.madhab =
         adhan.Madhab.hanafi; // Changed to hanafi to match AppSettings default
     params.highLatitudeRule = adhan.HighLatitudeRule.twilightAngle;
@@ -57,49 +57,49 @@ class PrayerService {
 
     switch (calculationMethod) {
       case 'MuslimWorldLeague':
-        params = adhan.CalculationMethod.muslimWorldLeague();
+        params = adhan.CalculationMethod.muslimWorldLeague() as adhan.CalculationParameters;
         break;
       case 'NorthAmerica':
-        params = adhan.CalculationMethod.northAmerica();
+        params = adhan.CalculationMethod.northAmerica() as adhan.CalculationParameters;
         break;
       case 'Egyptian':
-        params = adhan.CalculationMethod.egyptian();
+        params = adhan.CalculationMethod.egyptian() as adhan.CalculationParameters;
         break;
       case 'UmmAlQura':
-        params = adhan.CalculationMethod.ummAlQura();
+        params = adhan.CalculationMethod.ummAlQura() as adhan.CalculationParameters;
         break;
       case 'Karachi':
-        params = adhan.CalculationMethod.karachi();
+        params = adhan.CalculationMethod.karachi() as adhan.CalculationParameters;
         break;
       case 'Tehran':
-        params = adhan.CalculationMethod.tehran();
+        params = adhan.CalculationMethod.tehran() as adhan.CalculationParameters;
         break;
       case 'Dubai':
-        params = adhan.CalculationMethod.dubai();
+        params = adhan.CalculationMethod.dubai() as adhan.CalculationParameters;
         break;
       case 'MoonsightingCommittee':
-        params = adhan.CalculationMethod.moonsightingCommittee();
+        params = adhan.CalculationMethod.moonsightingCommittee() as adhan.CalculationParameters;
         break;
       case 'Kuwait':
-        params = adhan.CalculationMethod.kuwait();
+        params = adhan.CalculationMethod.kuwait() as adhan.CalculationParameters;
         break;
       case 'Qatar':
-        params = adhan.CalculationMethod.qatar();
+        params = adhan.CalculationMethod.qatar() as adhan.CalculationParameters;
         break;
       case 'Singapore':
-        params = adhan.CalculationMethod.singapore();
+        params = adhan.CalculationMethod.singapore() as adhan.CalculationParameters;
         break;
       case 'Turkey':
         _logger.warning(
           "Warning: 'Turkey' calculation method selected, but not directly supported by adhan_dart. Falling back to MuslimWorldLeague.",
         );
-        params = adhan.CalculationMethod.muslimWorldLeague();
+        params = adhan.CalculationMethod.muslimWorldLeague() as adhan.CalculationParameters;
         break;
       default:
         _logger.warning(
           "Unsupported calculation method '$calculationMethod', using MuslimWorldLeague.",
         );
-        params = adhan.CalculationMethod.muslimWorldLeague();
+        params = adhan.CalculationMethod.muslimWorldLeague() as adhan.CalculationParameters;
     }
 
     // Fix madhab comparison by using string comparison correctly
@@ -319,7 +319,7 @@ class PrayerService {
       _logger.warning('Attempted to get current prayer before calculation.');
       return adhan.Prayer.none;
     }
-    return _currentPrayerTimes!.currentPrayer(date: DateTime.now());
+    return _currentPrayerTimes!.currentPrayer(date: DateTime.now()) as String;
   }
 
   /// Determines the next prayer based on the current time and cached prayer times.
@@ -331,7 +331,7 @@ class PrayerService {
       _logger.warning('Attempted to get next prayer before calculation.');
       return adhan.Prayer.none;
     }
-    return _currentPrayerTimes!.nextPrayer(date: DateTime.now());
+    return _currentPrayerTimes!.nextPrayer(date: DateTime.now()) as String;
   }
 
   /// Calculates the time of the next prayer.
@@ -379,9 +379,9 @@ class PrayerService {
     if (!_isInitialized) await init();
 
     final currentSettingsParams = _getCalculationParams(settings);
-    String currentMethodNameString = settings.calculationMethod;
+    final String currentMethodNameString = settings.calculationMethod;
 
-    bool needsRecalculation =
+    final bool needsRecalculation =
         _currentPrayerTimes == null ||
         _lastCalculationTime == null ||
         DateTime.now().difference(_lastCalculationTime!) >

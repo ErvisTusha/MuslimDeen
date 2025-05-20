@@ -120,11 +120,11 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   }
 
   Future<void> _saveDataIfNeeded() async {
-    final futures = <Future>[];
+    final futures = <Future<void>>[];
 
     if (_preferencesChanged) {
       futures.add(
-        _savePreferences().catchError((e, s) {
+        _savePreferences().catchError((Object e, StackTrace? s) {
           _logger.error(
             "Error saving preferences on app pause",
             error: e,
@@ -141,7 +141,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     }
 
     if (futures.isNotEmpty) {
-      await Future.wait(futures);
+      await Future.wait<void>(futures);
     }
   }
 
@@ -340,20 +340,23 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     try {
       String? storedDhikr = _storageService.getData('current_dhikr') as String?;
       int? storedTarget = _storageService.getData('tasbih_target') as int?;
-      bool? storedVibration =
+      final bool? storedVibration =
           _storageService.getData('vibration_enabled') as bool?;
-      bool? storedSound = _storageService.getData('sound_enabled') as bool?;
-      int? storedCount =
+      final bool? storedSound =
+          _storageService.getData('sound_enabled') as bool?;
+      final int? storedCount =
           _storageService.getData('${storedDhikr ?? _currentDhikr}_count')
               as int?;
 
-      final isCustom = _storageService.getData('is_custom_target') as bool?;
-      final customTargetsJson =
+      final bool? isCustom =
+          _storageService.getData('is_custom_target') as bool?;
+      final String? customTargetsJson =
           _storageService.getData('custom_dhikr_targets') as String?;
 
       if (customTargetsJson != null) {
         try {
-          final Map<String, dynamic> decoded = json.decode(customTargetsJson);
+          final Map<String, dynamic> decoded =
+              json.decode(customTargetsJson) as Map<String, dynamic>;
           decoded.forEach((key, value) {
             if (value is int && value > 0) {
               _customDhikrTargets[key] = value;
@@ -486,7 +489,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
       try {
         for (int i = 0; i < 3; i++) {
           HapticFeedback.heavyImpact();
-          await Future.delayed(const Duration(milliseconds: 100));
+          await Future<void>.delayed(const Duration(milliseconds: 100));
         }
       } catch (e) {
         _logger.warning('Failed to trigger haptic feedback');
@@ -516,7 +519,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
 
       setState(() {});
 
-      await Future.delayed(Duration(milliseconds: _dhikrTransitionDelay));
+      await Future<void>.delayed(Duration(milliseconds: _dhikrTransitionDelay));
     }
 
     if (!mounted) {
@@ -757,7 +760,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     });
 
     _preferencesChanged = true;
-    _savePreferences().catchError((e, s) {
+    _savePreferences().catchError((Object e, StackTrace? s) {
       _logger.error("Error saving target preference", error: e, stackTrace: s);
 
       if (mounted) {
@@ -1006,7 +1009,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                     (value) {
                       if (!mounted) return;
                       setState(() => _vibrationEnabled = value);
-                      _savePreferences().catchError((e, s) {
+                      _savePreferences().catchError((Object e, StackTrace? s) {
                         _logger.error(
                           "Error saving vibration preference",
                           error: e,
@@ -1034,7 +1037,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                       }
 
                       setState(() => _soundEnabled = value);
-                      _savePreferences().catchError((e, s) {
+                      _savePreferences().catchError((Object e, StackTrace? s) {
                         _logger.error(
                           "Error saving sound preference",
                           error: e,
@@ -1161,13 +1164,13 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     String title,
     IconData icon,
     bool value,
-    Function(bool) onChanged,
+    void Function(bool) onChanged,
     Brightness brightness, {
     Widget? trailing,
   }) {
-    bool isNotificationToggle = title == "Notifications";
+    final bool isNotificationToggle = title == "Notifications";
 
-    bool isDisabled =
+    final bool isDisabled =
         isNotificationToggle &&
         (_notificationsBlocked ??
             ref.read(settingsProvider.notifier).areNotificationsBlocked);
@@ -1273,7 +1276,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
 
 class _TargetDialog extends StatefulWidget {
   final int initialTarget;
-  final Function(int) onTargetSet;
+  final void Function(int) onTargetSet;
   final Brightness brightness;
 
   const _TargetDialog({

@@ -123,7 +123,7 @@ class ErrorHandlerService {
 // Provider for error handler service
 final errorHandlerProvider = Provider<ErrorHandlerService>((ref) {
   final errorHandler = ErrorHandlerService();
-  ref.onDispose(() => errorHandler.dispose());
+  ref.onDispose(errorHandler.dispose);
   return errorHandler;
 });
 

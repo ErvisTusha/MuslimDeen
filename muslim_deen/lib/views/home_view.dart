@@ -29,9 +29,9 @@ String _formatDuration(Duration duration) {
   }
   String twoDigits(int n) => n.toString().padLeft(2, "0");
   duration = duration.abs(); // Ensure positive duration for formatting
-  String twoDigitHours = twoDigits(duration.inHours);
-  String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
-  String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
+  final String twoDigitHours = twoDigits(duration.inHours);
+  final String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
+  final String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
   return "$twoDigitHours:$twoDigitMinutes:$twoDigitSeconds";
 }
 
@@ -267,7 +267,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
       // Check if mounted before calling setState
       if (mounted) {
         // Check if current prayer changed to trigger scroll
-        bool currentPrayerChanged =
+        final bool currentPrayerChanged =
             _currentPrayerName != formattedCurrentPrayer;
 
         setState(() {
@@ -405,7 +405,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
       return {'city': 'Current Location', 'country': null};
     } else if (locationName.contains(',')) {
       // Assume "City, Country" or similar
-      var parts = locationName.split(',');
+      final parts = locationName.split(',');
       city = parts[0].trim();
       // If more than one comma, join the rest as country
       country = parts.length > 1 ? parts.sublist(1).join(',').trim() : null;
@@ -465,19 +465,19 @@ class _HomeViewState extends ConsumerState<HomeView> {
 
           // Try reverse geocoding the current location
           try {
-            List<Placemark> placemarks = await placemarkFromCoordinates(
+            final List<Placemark> placemarks = await placemarkFromCoordinates(
               position.latitude,
               position.longitude,
             );
             if (placemarks.isNotEmpty) {
               final placemark = placemarks.first;
-              String? city =
+              final String? city =
                   placemark.locality?.isNotEmpty == true
                       ? placemark.locality
                       : placemark.subAdministrativeArea?.isNotEmpty == true
                       ? placemark.subAdministrativeArea
                       : placemark.administrativeArea;
-              String? country = placemark.country;
+              final String? country = placemark.country;
               _logger.info(
                 "Geocoding successful",
                 data: {'city': city, 'country': country},
@@ -530,9 +530,9 @@ class _HomeViewState extends ConsumerState<HomeView> {
             "Error getting current location, falling back to saved location",
             data: {'error': e.toString(), 'stackTrace': s.toString()},
           );
-          double? savedLat = locator<StorageService>().getLatitude();
-          double? savedLng = locator<StorageService>().getLongitude();
-          String? savedName = locator<StorageService>().getLocationName();
+          final double? savedLat = locator<StorageService>().getLatitude();
+          final double? savedLng = locator<StorageService>().getLongitude();
+          final String? savedName = locator<StorageService>().getLocationName();
 
           if (savedLat != null && savedLng != null) {
             position = Position(
@@ -602,7 +602,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
       if (!mounted) return {};
       final settings = ref.read(settingsProvider); // Changed
 
-      adhan.PrayerTimes? calculatedPrayerTimes = await _prayerService
+      final adhan.PrayerTimes? calculatedPrayerTimes = await _prayerService
           .calculatePrayerTimesForToday(settings);
 
       if (calculatedPrayerTimes == null) {
@@ -879,7 +879,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
               currentPrayerItemText: currentPrayerItemText,
             );
           } else if (snapshot.hasError) {
-            String errorMessage = _processLoadError(snapshot.error);
+            final String errorMessage = _processLoadError(snapshot.error);
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -925,7 +925,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
                     if (errorMessage.contains('permission') ||
                         errorMessage.contains('permanently denied'))
                       TextButton(
-                        onPressed: () => _locationService.openAppSettings(),
+                        onPressed: _locationService.openAppSettings,
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.primary(brightness),
                         ),
@@ -935,8 +935,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
                       ),
                     if (errorMessage.contains('services are disabled'))
                       TextButton(
-                        onPressed:
-                            () => _locationService.openLocationSettings(),
+                        onPressed: _locationService.openLocationSettings,
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.primary(brightness),
                         ),
@@ -1080,7 +1079,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
                 onDoubleTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
+                    MaterialPageRoute<void>(
                       builder:
                           (context) => const SettingsView(scrollToDate: true),
                       settings: const RouteSettings(name: '/settings'),
@@ -1115,7 +1114,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
                   onDoubleTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
+                      MaterialPageRoute<void>(
                         builder:
                             (context) =>
                                 const SettingsView(scrollToLocation: true),
@@ -1441,7 +1440,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
         onDoubleTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
+            MaterialPageRoute<void>(
               builder:
                   (context) => const SettingsView(scrollToNotifications: true),
               settings: const RouteSettings(name: '/settings'),

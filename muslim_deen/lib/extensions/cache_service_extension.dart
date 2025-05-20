@@ -7,7 +7,7 @@ extension CacheServiceExtension on CacheService {
   }
 
   dynamic getData(String key) {
-    return getCache(key);
+    return getCache<dynamic>(key);
   }
 
   List<String> getAllKeys() {

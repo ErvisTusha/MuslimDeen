@@ -311,7 +311,7 @@ class NotificationService {
     );
     if (details.payload != null && details.payload!.isNotEmpty) {
       try {
-        final Map<String, dynamic> payloadData = jsonDecode(details.payload!);
+        final Map<String, dynamic> payloadData = jsonDecode(details.payload!) as Map<String, dynamic>;
         _logger.debug("Decoded notification payload", data: payloadData);
         // Handle navigation or actions based on payload
       } catch (e) {
@@ -366,7 +366,7 @@ class NotificationService {
           // Try requesting SCHEDULE_EXACT_ALARM / USE_EXACT_ALARM permission.
           // The plugin's requestExactAlarmsPermission method handles the appropriate
           // system calls based on the Android version.
-          bool? exactRequested = await androidPlugin.requestExactAlarmsPermission();
+          final bool? exactRequested = await androidPlugin.requestExactAlarmsPermission();
           _hasExactAlarmPermission = exactRequested ?? false;
           
           // The second call and specific try-catch for USE_EXACT_ALARM is removed
@@ -695,10 +695,10 @@ class NotificationService {
           try {
             final Map<String, dynamic> payloadData = jsonDecode(
               notification.payload!,
-            );
+            ) as Map<String, dynamic>;
             if (payloadData.containsKey('prayerTime')) {
               final scheduledTime = DateTime.tryParse(
-                payloadData['prayerTime'],
+                payloadData['prayerTime'] as String,
               );
               if (scheduledTime != null && scheduledTime.isBefore(now)) {
                 await cancelNotification(notification.id);

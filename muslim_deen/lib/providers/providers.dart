@@ -61,7 +61,7 @@ final errorHandlerProvider = Provider<ErrorHandlerService>((ref) {
   // disposing it here might be redundant or even unintended if other parts of the app still need it.
   // However, ErrorHandlerService's dispose only closes a stream controller.
   // Let's keep it for now as it was there, assuming it's for the stream controller within that instance.
-  ref.onDispose(() => errorHandler.dispose());
+  ref.onDispose(errorHandler.dispose);
   return errorHandler;
 });
 

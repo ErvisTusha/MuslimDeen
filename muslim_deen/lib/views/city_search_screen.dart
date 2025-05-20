@@ -131,7 +131,7 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
 
       for (var location in limitedLocations) {
         try {
-          List<Placemark> placemarks = await placemarkFromCoordinates(
+          final List<Placemark> placemarks = await placemarkFromCoordinates(
             location.latitude,
             location.longitude,
           ).timeout(const Duration(seconds: 10));
@@ -286,9 +286,9 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
       final locationService = locator<LocationService>();
 
       await locationService.setManualLocation(
-        location['latitude'],
-        location['longitude'],
-        name: location['name'],
+        location['latitude'] as double,
+        location['longitude'] as double,
+        name: location['name'] as String?,
       );
 
       // Enable manual location
@@ -550,7 +550,7 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
                                               CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              result['name'],
+                                              result['name'] as String,
                                               style: AppTextStyles.prayerName(
                                                 brightness,
                                               ).copyWith(

@@ -31,10 +31,10 @@ void _registerServices(bool testing) {
   final sharedPrefsInstance = SharedPreferences.getInstance();
   
   // Register logger first so it's available to all other services
-  locator.registerLazySingleton<LoggerService>(() => LoggerService());
+  locator.registerLazySingleton<LoggerService>(LoggerService.new);
 
   // Register storage service
-  locator.registerLazySingleton<StorageService>(() => StorageService());
+  locator.registerLazySingleton<StorageService>(StorageService.new);
   
   // Register cache service with async shared prefs resolution
   locator.registerLazySingletonAsync<CacheService>(() async {
@@ -43,11 +43,11 @@ void _registerServices(bool testing) {
   });
 
   // Register location service
-  locator.registerLazySingleton<LocationService>(() => LocationService());
+  locator.registerLazySingleton<LocationService>(LocationService.new);
 
   // Register notification service (except in testing)
   if (!testing) {
-    locator.registerLazySingleton<NotificationService>(() => NotificationService());
+    locator.registerLazySingleton<NotificationService>(NotificationService.new);
   }
 
   // Register dependent services
@@ -66,7 +66,7 @@ void _registerServices(bool testing) {
   });
 
   // Register ErrorHandlerService
-  locator.registerLazySingleton<ErrorHandlerService>(() => ErrorHandlerService());
+  locator.registerLazySingleton<ErrorHandlerService>(ErrorHandlerService.new);
 }
 
 /// Initialize critical services required for app to start

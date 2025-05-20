@@ -434,7 +434,7 @@ class LocationService {
             sink.close();
           },
         )
-        .handleError((error) {
+        .handleError((Object error) {
           _logger.error('Location stream error', error: error);
         });
 

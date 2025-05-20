@@ -487,7 +487,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               _logger.logInteraction('SettingsView', 'Open about screen');
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const AboutScreen()),
+                MaterialPageRoute<void>(builder: (context) => const AboutScreen()),
               );
             },
           ),
@@ -700,7 +700,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   void _showLocationOptionsDialog(BuildContext context) {
     final brightness = Theme.of(context).brightness;
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -749,7 +749,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
                   final result = await Navigator.push(
                     context,
-                    MaterialPageRoute(
+                    MaterialPageRoute<bool>(
                       builder: (context) => const CitySearchScreen(),
                     ),
                   );
@@ -781,7 +781,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     final Color textColor = AppColors.textPrimary(brightness);
     final Color accentColor = AppColors.accentGreen(brightness);
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
@@ -830,7 +830,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
     String? tempSelectedAzan = currentAzanSound;
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (dialogContext) {
         // Changed context to dialogContext for clarity
@@ -1020,7 +1020,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     SettingsNotifier notifier,
   ) {
     final brightness = Theme.of(context).brightness;
-    showDialog(
+    showDialog<void>(
       context: context,
       builder:
           (ctx) => AlertDialog(
@@ -1060,7 +1060,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     SettingsNotifier notifier,
   ) {
     final brightness = Theme.of(context).brightness;
-    showDialog(
+    showDialog<void>(
       context: context,
       builder:
           (ctx) => AlertDialog(
@@ -1123,7 +1123,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       'Turkey'
       ];
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
@@ -1181,7 +1181,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     // You need to define how you get these. Example:
     final List<String> madhabs = ['shafi', 'hanafi']; 
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(

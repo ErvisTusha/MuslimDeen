@@ -34,16 +34,14 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
 
   void _initializePermissionListener() {
     _permissionSubscription = _notificationService.permissionStatusStream
-        .listen((status) {
-          _updateNotificationPermissionStatus(status);
-        });
+        .listen(_updateNotificationPermissionStatus);
   }
 
   Future<void> loadSettings() async {
     try {
       final String? storedSettings = _storage.getData(_settingsKey) as String?;
       if (storedSettings != null) {
-        state = AppSettings.fromJson(jsonDecode(storedSettings));
+        state = AppSettings.fromJson(jsonDecode(storedSettings) as Map<String, dynamic>);
       }
     } catch (e) {
       _logger.error('Error loading settings', error: e);

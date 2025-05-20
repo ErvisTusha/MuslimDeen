@@ -30,13 +30,13 @@ class Mosque {
   // Added to support deserialization from cache
   factory Mosque.fromJson(Map<String, dynamic> json) {
     return Mosque(
-      name: json['name'],
+      name: json['name'] as String,
       location: LatLng(
-        json['location']['latitude'],
-        json['location']['longitude'],
+        json['location']['latitude'] as double,
+        json['location']['longitude'] as double,
       ),
-      id: json['id'],
-      distance: json['distance'],
+      id: json['id'] as String?,
+      distance: json['distance'] as double?,
     );
   }
 }
@@ -114,11 +114,11 @@ class MapService {
               double lat, lon;
 
               if (element['type'] == 'node') {
-                lat = element['lat'];
-                lon = element['lon'];
+                lat = element['lat'] as double;
+                lon = element['lon'] as double;
               } else {
-                lat = element['center']['lat'];
-                lon = element['center']['lon'];
+                lat = element['center']['lat'] as double;
+                lon = element['center']['lon'] as double;
               }
 
               final tags = element['tags'] as Map<String, dynamic>?;
@@ -232,7 +232,7 @@ out body;''';
       if (response.statusCode == 200) {
         final Map<String, dynamic> json = jsonDecode(
           utf8.decode(response.bodyBytes),
-        );
+        ) as Map<String, dynamic>;
         final List<dynamic> elements = json['elements'] as List<dynamic>;
         if (elements.isNotEmpty) {
           final result = elements.first as Map<String, dynamic>;

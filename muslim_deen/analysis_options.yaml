@@ -1,0 +1,47 @@
+# Enables additional checks and lints.
+analyzer:
+  # Exclude generated files from analysis, if any.
+  # exclude:
+  #   - 'lib/generated/**' # Example
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    # Treat these as warnings to make them visible.
+    # Change to 'info' for less aggressive reporting or 'error' to fail CI.
+    dead_code: warning # Reports unreachable code.
+    unused_element: warning # Reports unused private declarations (classes, functions, variables, etc.).
+    unused_field: warning # Reports unused private instance fields.
+    unused_import: warning # Reports unused imports.
+    unused_local_variable: warning # Reports unused local variables.
+    # Potentially useful for identifying dead logic:
+    # unnecessary_null_comparison: warning
+    # null_closures: warning
+
+linter:
+  rules:
+    # Add specific lint rules that help identify unused code or bad practices.
+    # Many of these are part of recommended sets like `package:lints/recommended.yaml`
+    # or `package:flutter_lints/flutter.yaml`.
+    # For this specific task, focusing on those most relevant to unused/dead code.
+
+    # --- Unused Code Related ---
+    - avoid_unused_constructor_parameters
+    - prefer_final_fields # Fields not reassigned can sometimes be unused if only set.
+    - prefer_final_locals # Locals not reassigned.
+
+    # --- General Cleanliness that can reveal dead code ---
+    - unnecessary_statements
+    - unnecessary_lambdas
+    # - unnecessary_parenthesis (can be stylistic, but sometimes hides issues)
+    # - unnecessary_const (good for performance, less for dead code)
+    # - unnecessary_new (similar to unnecessary_const)
+
+    # Ensure all rules from a good base set are included if not specified.
+    # For example, if using Flutter:
+    # include: package:flutter_lints/flutter.yaml
+    # Or for a pure Dart project:
+    # include: package:lints/recommended.yaml
+
+    # For now, let's keep it minimal and focused on the task without pulling in external packages.

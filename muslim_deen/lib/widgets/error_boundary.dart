@@ -41,7 +41,7 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
                 const Icon(Icons.error_outline, color: Colors.red, size: 60),
                 const SizedBox(height: 16),
                 Text(
-                  _error?.message ?? 'An unknown error occurred',
+                  _error?.message?.toString() ?? 'An unknown error occurred',
                   style: Theme.of(context).textTheme.titleLarge,
                   textAlign: TextAlign.center,
                 ),
@@ -49,7 +49,7 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
                   Padding(
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Text(
-                      _error!.details!,
+                      _error!.details!.toString(),
                       style: Theme.of(context).textTheme.bodyMedium,
                       textAlign: TextAlign.center,
                     ),

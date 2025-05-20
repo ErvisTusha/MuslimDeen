@@ -73,7 +73,7 @@ class PrayerTimesCache {
         return null;
       }
 
-      final Map<String, dynamic> prayerTimesJson = jsonDecode(cachedData);
+      final Map<String, dynamic> prayerTimesJson = jsonDecode(cachedData) as Map<String, dynamic>;
 
       // Helper to safely parse DateTime?
       DateTime? safeParseDateTime(String? dateString) {
@@ -90,8 +90,8 @@ class PrayerTimesCache {
         date: DateTime.parse(prayerTimesJson['date'] as String), // Date is not nullable
         hijriDay: prayerTimesJson['hijriDay'] as int,
         hijriMonth: prayerTimesJson['hijriMonth'] as int,
-        hijriYear: prayerTimesJson['hijriYear'],
-        hijriMonthName: prayerTimesJson['hijriMonthName'],
+        hijriYear: prayerTimesJson['hijriYear'] as int,
+        hijriMonthName: prayerTimesJson['hijriMonthName'] as String,
       );
     } catch (e) {
       _logger.error('Error retrieving cached prayer times', error: e);
