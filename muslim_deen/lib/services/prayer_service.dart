@@ -181,7 +181,7 @@ class PrayerService {
 
   /// Gets user location based on their preference (manual or device)
   /// and calculates today's prayer times using provided settings.
-  Future<adhan.PrayerTimes> calculatePrayerTimesForToday(
+  Future<adhan.PrayerTimes?> calculatePrayerTimesForToday(
     AppSettings? settings,
   ) async {
     if (!_isInitialized) await init();
@@ -216,7 +216,7 @@ class PrayerService {
         'fajr': _currentPrayerTimes?.fajr?.toIso8601String(),
       },
     );
-    return _currentPrayerTimes!;
+    return _currentPrayerTimes;
   }
 
   /// Provides a fallback position when location services fail

@@ -14,6 +14,7 @@ import 'package:intl/intl.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/app_settings.dart';
+import '../models/custom_exceptions.dart'; // Added
 import '../providers/providers.dart'; // Changed for Riverpod
 import '../service_locator.dart';
 import '../services/location_service.dart';
@@ -603,8 +604,17 @@ class _HomeViewState extends ConsumerState<HomeView> {
       if (!mounted) return {};
       final settings = ref.read(settingsProvider); // Changed
 
-      adhan.PrayerTimes calculatedPrayerTimes = await _prayerService
+      adhan.PrayerTimes? calculatedPrayerTimes = await _prayerService
           .calculatePrayerTimesForToday(settings);
+
+      if (calculatedPrayerTimes == null) {
+        _logger.error(
+          'Prayer times calculation returned null in HomeView',
+          data: {'settings': settings.toJson()},
+        );
+        throw Exception('Failed to calculate prayer times: Result was null.');
+      }
+
       _logger.info(
         "Prayer times calculated successfully",
         data: {
@@ -671,7 +681,9 @@ class _HomeViewState extends ConsumerState<HomeView> {
     );
     String specificError =
         'Failed to load prayer times. Please check connection and location settings.';
-    if (error is Exception) {
+    if (error is PrayerDataException) {
+      specificError = error.message; // Use the message from PrayerDataException
+    } else if (error is Exception) {
       final errorString = error.toString();
       if (errorString.contains('Location services are disabled')) {
         specificError =

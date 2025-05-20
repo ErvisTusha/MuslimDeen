@@ -580,7 +580,7 @@ class NotificationService {
   AndroidNotificationDetails _createAndroidPrayerDetails(String? soundName, bool useCustomSound) {
     // For Android, if using custom sound, it must be in res/raw and name without extension
     final String? androidSound = useCustomSound && soundName != null
-        ? soundName.substring(0, soundName.lastIndexOf('.'))
+        ? (soundName.endsWith('.mp3') ? soundName.substring(0, soundName.length - 4) : soundName)
         : null;
 
     return AndroidNotificationDetails(

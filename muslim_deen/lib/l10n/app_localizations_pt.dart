@@ -884,4 +884,18 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get turkishAdhan => 'Adhan Turco';
+  @override
+  String get useDeviceLocation => '[PT_BR] Use Device Location';
+
+  @override
+  String get searchCity => '[PT_BR] Search City';
+
+  @override
+  String get search => '[PT_BR] Search';
+
+  @override
+  String get noLocationsFound => '[PT_BR] No locations found. Try a different search.';
+
+  @override
+  String get searchError => '[PT_BR] Error searching for places. Please try again.';
 }

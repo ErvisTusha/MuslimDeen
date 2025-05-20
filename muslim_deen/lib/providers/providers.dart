@@ -76,25 +76,25 @@ final prayerRepositoryProvider = Provider<PrayerRepository>((ref) {
 });
 
 // Prayer times providers
-final prayerTimesProvider = FutureProvider.family<PrayerTimesModel?, DateTime>((ref, date) async {
+final prayerTimesProvider = FutureProvider.family<PrayerTimesModel, DateTime>((ref, date) async {
   final repository = ref.watch(prayerRepositoryProvider);
-  final result = await repository.getPrayerTimes(date);
-  
-  return result.fold(
-    (success) => success,
-    (error) => null, // Return null on error - the error is already handled by the error handler
-  );
+  // The getPrayerTimes method now returns Future<PrayerTimesModel> and throws PrayerDataException on error.
+  // The FutureProvider will automatically catch this exception and expose it in AsyncValue.error.
+  return repository.getPrayerTimes(date);
 });
 
 final nextPrayerProvider = FutureProvider<PrayerTime?>((ref) async {
   // Automatically refresh every minute
   final _ = DateTime.now().minute;
-  
+
   final repository = ref.watch(prayerRepositoryProvider);
-  final prayerTimesResult = await repository.getPrayerTimes(DateTime.now());
-  
-  return prayerTimesResult.fold(
-    (prayerTimes) => prayerTimes.getNextPrayer(),
-    (error) => null,
-  );
+  try {
+    final prayerTimes = await repository.getPrayerTimes(DateTime.now());
+    return prayerTimes.getNextPrayer();
+  } catch (e) {
+    // If getPrayerTimes throws (e.g., PrayerDataException), nextPrayerProvider will also result in an error state.
+    // We can return null or let the exception propagate if the UI is designed to handle AsyncValue.error for nextPrayerProvider.
+    // For now, returning null to maintain similar behavior to the previous .fold approach for this specific provider.
+    return null;
+  }
 });

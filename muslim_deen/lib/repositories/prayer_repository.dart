@@ -2,6 +2,7 @@ import 'package:adhan_dart/adhan_dart.dart';
 
 import '../extensions/location_service_extension.dart';
 import '../extensions/prayer_service_extension.dart';
+import '../models/custom_exceptions.dart';
 import '../models/prayer_times_model.dart';
 import '../services/error_handler_service.dart';
 import '../services/location_service.dart';
@@ -26,8 +27,8 @@ class PrayerRepository {
   }
 
   /// Gets prayer times for the current location and date
-  Future<Result<PrayerTimesModel>> getPrayerTimes(DateTime date) async {
-    return _errorHandler.guard(() async {
+  Future<PrayerTimesModel> getPrayerTimes(DateTime date) async {
+    try {
       // Get current coordinates
       final coordinates = await _locationService.getCurrentCoordinates();
 
@@ -52,7 +53,16 @@ class PrayerRepository {
       await _cache.cachePrayerTimes(prayerTimesModel, coordinates);
 
       return prayerTimesModel;
-    });
+    } catch (e, s) {
+      _errorHandler.reportError(
+        AppError(
+          message: 'Failed to fetch prayer times for $date',
+          originalException: e,
+          stackTrace: s,
+        ),
+      );
+      throw PrayerDataException('Failed to fetch prayer times for $date: ${e.toString()}');
+    }
   }
 
   /// Gets prayer times for a specific location and date

@@ -101,28 +101,28 @@ class _QiblaViewState extends State<QiblaView>
           timeLimit: Duration(seconds: 10),
         ),
       );
+
+            
+            // Get Qibla direction (which is already true Qibla from the service)
+            _qiblaDirection = await _compassService.getQiblaDirection(position);
+            // Optionally fetch current city name via reverse geocoding
+            try {
+              final placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+              _currentCity = placemarks.isNotEmpty ? placemarks.first.locality : null;
+            } catch (_) {
+              _currentCity = null;
+            }
       
-      // Get Qibla direction (which is already true Qibla from the service)
-      _qiblaDirection = await _compassService.getQiblaDirection(position);
-      // Optionally fetch current city name via reverse geocoding
-      try {
-        final placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
-        _currentCity = placemarks.isNotEmpty ? placemarks.first.locality : null;
-      } catch (_) {
-        _currentCity = null;
-      }
-
-      if (_qiblaDirection == null) {
-        _logger.error('Failed to calculate Qibla direction.');
-        throw Exception('Could not calculate Qibla direction.');
-      }
-
-      _logger.info(
-        'True Qibla direction calculated: $_qiblaDirection°',
-      );
-
-      _compassSubscription?.cancel();
-
+            if (_qiblaDirection == null) {
+              _logger.error('Failed to calculate Qibla direction.');
+              throw Exception('Could not calculate Qibla direction.');
+            }
+      
+            _logger.info(
+              'True Qibla direction calculated: $_qiblaDirection°',
+            );
+      
+            _compassSubscription?.cancel();
       if (_compassService.compassEvents == null) {
         _logger.error('Compass sensor not available');
         throw Exception('Compass sensor not available');
@@ -386,7 +386,7 @@ class _QiblaViewState extends State<QiblaView>
             painter: QiblaDirectionPainter(
               qiblaAngleFromTrueNorth: _qiblaDirection!,
               magneticDeviceHeading: _magneticHeading!,
-              magneticDeclination: 0.0,
+              magneticDeclination: 0.0, // Assuming 0.0 as flutter_compass might provide true heading or declination calculation is not implemented.
               arrowColor: qiblaArrowColor, // Pass the calculated arrow color
             ),
           ),

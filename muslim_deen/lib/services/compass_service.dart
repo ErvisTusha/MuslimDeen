@@ -71,7 +71,11 @@ class CompassService {
           position.latitude,
           position.longitude,
         ) ??
-        'qibla_true_${position.latitude}_${position.longitude}';
+        () {
+          final lat = position.latitude.toStringAsFixed(4);
+          final lon = position.longitude.toStringAsFixed(4);
+          return 'qibla_true_${lat}_$lon';
+        }();
     final cachedDirection = cacheService?.getCache<double>(cacheKey);
 
     if (cachedDirection != null) {

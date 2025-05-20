@@ -153,24 +153,22 @@ class PrayerTime {
 
   /// Format the remaining time as a string
   String formatTimeRemaining() {
-    if (time == null) return "N/A"; // Handle null time
+    if (time == null) return "N/A";
 
     final duration = timeUntil();
-    if (duration.isNegative) return "Passed";
-
-    // If remaining time is less than a minute (0-59 seconds), display "Now".
-    if (duration.inSeconds < 60) {
-      return "Now";
-    }
+    if (duration.isNegative) return "Passed"; // Explicitly handle passed time first
 
     final hours = duration.inHours;
     final minutes = duration.inMinutes % 60;
+    // final seconds = duration.inSeconds % 60; // If you need seconds too
 
     if (hours > 0) {
       return '$hours ${hours == 1 ? 'hour' : 'hours'} $minutes ${minutes == 1 ? 'minute' : 'minutes'}';
-    } else {
-      // Only minutes remaining (duration.inMinutes will be >= 1 here)
+    } else if (minutes > 0) { // Changed from minutes >= 0 to minutes > 0
       return '$minutes ${minutes == 1 ? 'minute' : 'minutes'}';
+    } else if (duration.inSeconds > 0) { // Handle cases where only seconds remain
+      return '${duration.inSeconds} ${duration.inSeconds == 1 ? 'second' : 'seconds'}';
     }
+    return "Now"; // If duration is exactly zero or very small (less than a second)
   }
 }
