@@ -1,4 +1,3 @@
-import 'package:adhan_dart/adhan_dart.dart' as adhan;
 import 'package:flutter/material.dart';
 
 import '../services/notification_service.dart';
@@ -28,7 +27,7 @@ class AppSettings {
 
   AppSettings({
     this.calculationMethod = 'MuslimWorldLeague',
-    this.madhab = adhan.Madhab.hanafi,
+    this.madhab = 'hanafi', // Changed to string 'hanafi'
     this.themeMode = ThemeMode.system,
     this.language = 'en',
     Map<PrayerNotification, bool>? notifications,

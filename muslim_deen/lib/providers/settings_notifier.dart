@@ -166,6 +166,9 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       await _prayerService.calculatePrayerTimesForToday(state);
 
       final prayersToReschedule = [
+        // Added Fajr and Sunrise
+        {'name': "fajr", 'enum': PrayerNotification.fajr, 'displayName': "Fajr"},
+        {'name': "sunrise", 'enum': PrayerNotification.sunrise, 'displayName': "Sunrise"},
         {'name': "dhuhr", 'enum': PrayerNotification.dhuhr, 'displayName': "Dhuhr"},
         {'name': "asr", 'enum': PrayerNotification.asr, 'displayName': "Asr"},
         {'name': "maghrib", 'enum': PrayerNotification.maghrib, 'displayName': "Maghrib"},

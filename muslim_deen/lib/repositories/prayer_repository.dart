@@ -42,7 +42,7 @@ class PrayerRepository {
       }
 
       // If not in cache, calculate prayer times
-      final prayerTimes = await _prayerService.getPrayerTimesForDate(date);
+      final prayerTimes = await _prayerService.getPrayerTimesForDate(date, null); // Pass null for AppSettings
       final prayerTimesModel = PrayerTimesModel.fromAdhanPrayerTimes(
         prayerTimes,
         date,
@@ -75,7 +75,7 @@ class PrayerRepository {
   Future<Result<PrayerInfo>> getNextPrayer() async {
     return _errorHandler.guard(() async {
       final now = DateTime.now();
-      final prayerTimes = await _prayerService.getPrayerTimesForDate(now);
+      final prayerTimes = await _prayerService.getPrayerTimesForDate(now, null); // Pass null for AppSettings
 
       final prayers = [
         PrayerInfo(name: 'Fajr', time: prayerTimes.fajr ?? now),
@@ -96,6 +96,7 @@ class PrayerRepository {
       // If no prayer is after current time, get first prayer of next day
       final tomorrowPrayerTimes = await _prayerService.getPrayerTimesForDate(
         DateTime.now().add(const Duration(days: 1)),
+        null, // Pass null for AppSettings
       );
 
       return PrayerInfo(
@@ -112,7 +113,7 @@ class PrayerRepository {
 
       await _cache.prefetchPrayerTimes(
         (date) async {
-          final prayerTimes = await _prayerService.getPrayerTimesForDate(date);
+          final prayerTimes = await _prayerService.getPrayerTimesForDate(date, null); // Pass null for AppSettings
           return PrayerTimesModel.fromAdhanPrayerTimes(prayerTimes, date);
         },
         coordinates,

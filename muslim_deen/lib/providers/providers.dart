@@ -53,7 +53,14 @@ final notificationsBlockedProvider = StreamProvider<bool>((ref) {
 
 // Error handler provider
 final errorHandlerProvider = Provider<ErrorHandlerService>((ref) {
-  final errorHandler = ErrorHandlerService();
+  // Use the singleton instance from the service locator
+  final errorHandler = locator<ErrorHandlerService>();
+  // ref.onDispose is generally not needed for GetIt singletons if they manage their own lifecycle,
+  // but ErrorHandlerService has a public dispose method that might be intended for manual cleanup
+  // in some contexts. For a Riverpod provider, if the service is truly global and managed by GetIt,
+  // disposing it here might be redundant or even unintended if other parts of the app still need it.
+  // However, ErrorHandlerService's dispose only closes a stream controller.
+  // Let's keep it for now as it was there, assuming it's for the stream controller within that instance.
   ref.onDispose(() => errorHandler.dispose());
   return errorHandler;
 });

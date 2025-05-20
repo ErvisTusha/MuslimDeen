@@ -11,9 +11,8 @@ extension CacheServiceExtension on CacheService {
   }
 
   List<String> getAllKeys() {
-    // Implementation would need access to SharedPreferences keys
-    // This is a simplified version
-    return [];
+    // Uses the new method in CacheService to get all base keys
+    return getAllBaseKeys().toList();
   }
 
   Future<void> removeData(String key) async {

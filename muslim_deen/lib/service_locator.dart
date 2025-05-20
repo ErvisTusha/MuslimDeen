@@ -7,6 +7,7 @@ import 'package:muslim_deen/services/map_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
 import 'package:muslim_deen/services/storage_service.dart';
+import 'package:muslim_deen/services/error_handler_service.dart'; // Added import
 import 'package:shared_preferences/shared_preferences.dart';
 
 final GetIt locator = GetIt.instance;
@@ -71,6 +72,9 @@ void _registerServices(bool testing) {
     final cacheService = await locator.getAsync<CacheService>();
     return MapService(cacheService: cacheService);
   });
+
+  // Register ErrorHandlerService
+  locator.registerLazySingleton<ErrorHandlerService>(() => ErrorHandlerService());
 }
 
 /// Initialize critical services required for app to start

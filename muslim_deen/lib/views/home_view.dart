@@ -56,6 +56,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
   Timer? _permissionCheckTimer;
   Timer? _dailyRefreshTimer; // VoidCallback? _settingsListener; // Removed
   // AppSettings? _previousSettings; // Removed
+  ProviderSubscription? _settingsListenerSubscription; // Added for listenManual
   String? _lastKnownCity; // Store last known location details for loading state
   String?
   _lastKnownCountry; // Note: Loading/error states are managed through FutureBuilder
@@ -90,9 +91,20 @@ class _HomeViewState extends ConsumerState<HomeView> {
         .checkNotificationPermissionStatus(); // Changed
     _startPermissionCheck();
 
-    // Listen to settings changes using Riverpod
-    // Defer the listener setup until after the first frame
-    // Settings listening is now handled in build method
+    // Listen to settings changes using Riverpod with listenManual
+    _settingsListenerSubscription = ref.listenManual<AppSettings>(
+      settingsProvider,
+      (previous, next) {
+        _logger.debug(
+          'Settings changed (via ref.listenManual in initState)',
+          data: {
+            'newSettings': next.toJson(),
+            'previousSettings': previous?.toJson(),
+          },
+        );
+        _handleSettingsChange(next, previous);
+      },
+    );
 
     // Start daily refresh timer
     _startDailyRefreshTimer();
@@ -105,6 +117,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
     // First, stop any active timers to prevent new location/notification requests
     _permissionCheckTimer?.cancel();
     _dailyRefreshTimer?.cancel();
+    _settingsListenerSubscription?.close(); // Dispose of the settings listener
 
     // Clear UI-related state immediately
     _prayerTimes = null;
@@ -785,18 +798,6 @@ class _HomeViewState extends ConsumerState<HomeView> {
 
   @override
   Widget build(BuildContext context) {
-    // Listen for settings changes
-    ref.listen<AppSettings>(settingsProvider, (previous, next) {
-      _logger.debug(
-        'Settings changed (via ref.listen)',
-        data: {
-          'newSettings': next.toJson(),
-          'previousSettings': previous?.toJson(),
-        },
-      );
-      _handleSettingsChange(next, previous);
-    });
-
     // Use watch to rebuild on any settings change
     final appSettings = ref.watch(settingsProvider);
     final localizations = AppLocalizations.of(context)!;
@@ -804,24 +805,42 @@ class _HomeViewState extends ConsumerState<HomeView> {
     final bool isDarkMode = brightness == Brightness.dark;
 
     // Define colors similar to TesbihView
-    final Color scaffoldBg = isDarkMode ? AppColors.surface(brightness) : AppColors.background(brightness);
-    final Color contentSurface = isDarkMode ? const Color(0xFF2C2C2C) : AppColors.primaryVariant(brightness); // For cards/containers
-    final Color currentPrayerItemBg = isDarkMode ? AppColors.accentGreen(brightness).withAlpha((0.15 * 255).round()) : AppColors.primary(brightness).withAlpha((0.1 * 255).round());
-    final Color currentPrayerItemBorder = isDarkMode ? AppColors.accentGreen(brightness).withAlpha((0.7 * 255).round()) : AppColors.primary(brightness);
-    final Color currentPrayerItemText = isDarkMode ? AppColors.accentGreen(brightness) : AppColors.primary(brightness);
-
+    final Color scaffoldBg =
+        isDarkMode
+            ? AppColors.surface(brightness)
+            : AppColors.background(brightness);
+    final Color contentSurface =
+        isDarkMode
+            ? const Color(0xFF2C2C2C)
+            : AppColors.primaryVariant(brightness); // For cards/containers
+    final Color currentPrayerItemBg =
+        isDarkMode
+            ? AppColors.accentGreen(brightness).withAlpha((0.15 * 255).round())
+            : AppColors.primary(brightness).withAlpha((0.1 * 255).round());
+    final Color currentPrayerItemBorder =
+        isDarkMode
+            ? AppColors.accentGreen(brightness).withAlpha((0.7 * 255).round())
+            : AppColors.primary(brightness);
+    final Color currentPrayerItemText =
+        isDarkMode
+            ? AppColors.accentGreen(brightness)
+            : AppColors.primary(brightness);
 
     return Scaffold(
       backgroundColor: scaffoldBg,
       appBar: AppBar(
-        title: Text(localizations.appTitle, style: AppTextStyles.appTitle(brightness)),
+        title: Text(
+          localizations.appTitle,
+          style: AppTextStyles.appTitle(brightness),
+        ),
         backgroundColor: AppColors.primary(brightness),
         elevation: 2,
         shadowColor: AppColors.shadowColor(brightness),
         centerTitle: true,
         systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: AppColors.primary(brightness),
-          statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.light,
+          statusBarIconBrightness:
+              isDarkMode ? Brightness.light : Brightness.light,
         ),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
@@ -851,11 +870,18 @@ class _HomeViewState extends ConsumerState<HomeView> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.error_outline, color: AppColors.error(brightness), size: 48),
+                    Icon(
+                      Icons.error_outline,
+                      color: AppColors.error(brightness),
+                      size: 48,
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       errorMessage,
-                      style: AppTextStyles.label(brightness).copyWith(color: AppColors.error(brightness), fontSize: 16),
+                      style: AppTextStyles.label(brightness).copyWith(
+                        color: AppColors.error(brightness),
+                        fontSize: 16,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 20),
@@ -870,21 +896,32 @@ class _HomeViewState extends ConsumerState<HomeView> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.accentGreen(brightness),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        textStyle: AppTextStyles.label(brightness).copyWith(fontWeight: FontWeight.w600), // Changed to label
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        textStyle: AppTextStyles.label(brightness).copyWith(
+                          fontWeight: FontWeight.w600,
+                        ), // Changed to label
                       ),
                       label: Text(localizations.retry),
                     ),
-                    if (errorMessage.contains('permission') || errorMessage.contains('permanently denied'))
+                    if (errorMessage.contains('permission') ||
+                        errorMessage.contains('permanently denied'))
                       TextButton(
                         onPressed: () => _locationService.openAppSettings(),
-                        style: TextButton.styleFrom(foregroundColor: AppColors.primary(brightness)),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.primary(brightness),
+                        ),
                         child: Text(localizations.openAppSettings),
                       ),
                     if (errorMessage.contains('services are disabled'))
                       TextButton(
-                        onPressed: () => _locationService.openLocationSettings(),
-                        style: TextButton.styleFrom(foregroundColor: AppColors.primary(brightness)),
+                        onPressed:
+                            () => _locationService.openLocationSettings(),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.primary(brightness),
+                        ),
                         child: Text(localizations.openLocationSettings),
                       ),
                   ],
@@ -912,34 +949,46 @@ class _HomeViewState extends ConsumerState<HomeView> {
               currentPrayerItemText: currentPrayerItemText,
             );
           } else {
-            return Center( // Fallback for unexpected state
+            return Center(
+              // Fallback for unexpected state
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.info_outline, color: AppColors.textSecondary(brightness), size: 48),
-                  const SizedBox(height:16),
+                  Icon(
+                    Icons.info_outline,
+                    color: AppColors.textSecondary(brightness),
+                    size: 48,
+                  ),
+                  const SizedBox(height: 16),
                   Text(
                     localizations.unexpectedError(localizations.unknown),
-                    style: AppTextStyles.label(brightness).copyWith(color: AppColors.textSecondary(brightness)),
+                    style: AppTextStyles.label(
+                      brightness,
+                    ).copyWith(color: AppColors.textSecondary(brightness)),
                     textAlign: TextAlign.center,
                   ),
-                   const SizedBox(height: 20),
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.refresh),
-                      onPressed: () {
-                        setState(() {
-                          _dataLoadingFuture =
-                              _fetchDataAndScheduleNotifications();
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.accentGreen(brightness),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        textStyle: AppTextStyles.label(brightness).copyWith(fontWeight: FontWeight.w600), // Changed to label
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: () {
+                      setState(() {
+                        _dataLoadingFuture =
+                            _fetchDataAndScheduleNotifications();
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accentGreen(brightness),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
                       ),
-                      label: Text(localizations.retry),
+                      textStyle: AppTextStyles.label(brightness).copyWith(
+                        fontWeight: FontWeight.w600,
+                      ), // Changed to label
                     ),
+                    label: Text(localizations.retry),
+                  ),
                 ],
               ),
             );
@@ -996,8 +1045,14 @@ class _HomeViewState extends ConsumerState<HomeView> {
 
     return Column(
       children: [
-        Padding( // Location and Date Info - no separate card, directly on scaffoldBg
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), // Increased top padding
+        Padding(
+          // Location and Date Info - no separate card, directly on scaffoldBg
+          padding: const EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            8,
+          ), // Increased top padding
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1019,8 +1074,18 @@ class _HomeViewState extends ConsumerState<HomeView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(formattedGregorian, style: AppTextStyles.date(brightness).copyWith(fontSize: 15)),
-                    Text(formattedHijri, style: AppTextStyles.dateSecondary(brightness).copyWith(fontSize: 13)),
+                    Text(
+                      formattedGregorian,
+                      style: AppTextStyles.date(
+                        brightness,
+                      ).copyWith(fontSize: 15),
+                    ),
+                    Text(
+                      formattedHijri,
+                      style: AppTextStyles.dateSecondary(
+                        brightness,
+                      ).copyWith(fontSize: 13),
+                    ),
                   ],
                 ),
               ),
@@ -1062,8 +1127,12 @@ class _HomeViewState extends ConsumerState<HomeView> {
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(
-                              displayCity ?? localizations.loading, // Show loading if city is null
-                              style: AppTextStyles.date(brightness).copyWith(fontSize: 15),
+                              displayCity ??
+                                  localizations
+                                      .loading, // Show loading if city is null
+                              style: AppTextStyles.date(
+                                brightness,
+                              ).copyWith(fontSize: 15),
                               textAlign: TextAlign.right,
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
@@ -1073,10 +1142,14 @@ class _HomeViewState extends ConsumerState<HomeView> {
                       ),
                       if (displayCountry != null && displayCountry.isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.only(left: 20.0), // Keep padding for alignment
+                          padding: const EdgeInsets.only(
+                            left: 20.0,
+                          ), // Keep padding for alignment
                           child: Text(
                             displayCountry,
-                            style: AppTextStyles.dateSecondary(brightness).copyWith(fontSize: 13),
+                            style: AppTextStyles.dateSecondary(
+                              brightness,
+                            ).copyWith(fontSize: 13),
                             textAlign: TextAlign.right,
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
@@ -1092,14 +1165,19 @@ class _HomeViewState extends ConsumerState<HomeView> {
 
         // Current & Next Prayer Box
         Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), // Added vertical margin
+          margin: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 8,
+          ), // Added vertical margin
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: contentSurface, // Use contentSurface from TesbihView
             borderRadius: BorderRadius.circular(12), // Consistent rounding
             boxShadow: [
               BoxShadow(
-                color: AppColors.shadowColor(brightness).withAlpha(isDarkMode ? 30 : 50),
+                color: AppColors.shadowColor(
+                  brightness,
+                ).withAlpha(isDarkMode ? 30 : 50),
                 spreadRadius: 1,
                 blurRadius: 5,
                 offset: const Offset(0, 2),
@@ -1115,12 +1193,16 @@ class _HomeViewState extends ConsumerState<HomeView> {
                   children: [
                     Text(
                       localizations.currentPrayerTitle,
-                      style: AppTextStyles.label(brightness).copyWith(color: AppColors.textSecondary(brightness)),
+                      style: AppTextStyles.label(
+                        brightness,
+                      ).copyWith(color: AppColors.textSecondary(brightness)),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       isLoading ? '...' : _currentPrayerName,
-                      style: AppTextStyles.currentPrayer(brightness).copyWith(color: AppColors.textPrimary(brightness)),
+                      style: AppTextStyles.currentPrayer(
+                        brightness,
+                      ).copyWith(color: AppColors.textPrimary(brightness)),
                     ),
                   ],
                 ),
@@ -1131,12 +1213,16 @@ class _HomeViewState extends ConsumerState<HomeView> {
                   children: [
                     Text(
                       localizations.nextPrayerTitle,
-                      style: AppTextStyles.label(brightness).copyWith(color: AppColors.textSecondary(brightness)),
+                      style: AppTextStyles.label(
+                        brightness,
+                      ).copyWith(color: AppColors.textSecondary(brightness)),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       isLoading ? '...' : _nextPrayerName,
-                      style: AppTextStyles.nextPrayer(brightness).copyWith(color: AppColors.accentGreen(brightness)), // Highlight next prayer
+                      style: AppTextStyles.nextPrayer(brightness).copyWith(
+                        color: AppColors.accentGreen(brightness),
+                      ), // Highlight next prayer
                     ),
                     Builder(
                       builder: (context) {
@@ -1144,12 +1230,18 @@ class _HomeViewState extends ConsumerState<HomeView> {
                         if (!isLoading && _nextPrayerDateTime != null) {
                           final now = DateTime.now();
                           if (_nextPrayerDateTime!.isAfter(now)) {
-                            initialCountdownDuration = _nextPrayerDateTime!.difference(now);
+                            initialCountdownDuration = _nextPrayerDateTime!
+                                .difference(now);
                           }
                         }
                         return PrayerCountdownTimer(
-                          initialDuration: isLoading ? Duration.zero : initialCountdownDuration,
-                          textStyle: AppTextStyles.countdownTimer(brightness).copyWith(color: AppColors.accentGreen(brightness)),
+                          initialDuration:
+                              isLoading
+                                  ? Duration.zero
+                                  : initialCountdownDuration,
+                          textStyle: AppTextStyles.countdownTimer(
+                            brightness,
+                          ).copyWith(color: AppColors.accentGreen(brightness)),
                           localizations: localizations,
                         );
                       },
@@ -1167,7 +1259,9 @@ class _HomeViewState extends ConsumerState<HomeView> {
             alignment: Alignment.centerLeft,
             child: Text(
               localizations.prayerTimesTitle,
-              style: AppTextStyles.sectionTitle(brightness).copyWith(color: AppColors.textPrimary(brightness)),
+              style: AppTextStyles.sectionTitle(
+                brightness,
+              ).copyWith(color: AppColors.textPrimary(brightness)),
             ),
           ),
         ),
@@ -1176,32 +1270,47 @@ class _HomeViewState extends ConsumerState<HomeView> {
           child: Stack(
             children: [
               Container(
-                margin: const EdgeInsets.fromLTRB(16, 0, 16, 16), // Margin for the list container
+                margin: const EdgeInsets.fromLTRB(
+                  16,
+                  0,
+                  16,
+                  16,
+                ), // Margin for the list container
                 decoration: BoxDecoration(
                   color: contentSurface, // Background for the list area
                   borderRadius: BorderRadius.circular(12),
-                   border: Border.all(color: AppColors.borderColor(brightness).withAlpha(isDarkMode ? 70 : 100)),
-                   boxShadow: [
-                      BoxShadow(
-                        color: AppColors.shadowColor(brightness).withAlpha(isDarkMode ? 20 : 40),
-                        spreadRadius: 0,
-                        blurRadius: 4,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
+                  border: Border.all(
+                    color: AppColors.borderColor(
+                      brightness,
+                    ).withAlpha(isDarkMode ? 70 : 100),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.shadowColor(
+                        brightness,
+                      ).withAlpha(isDarkMode ? 20 : 40),
+                      spreadRadius: 0,
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
-                child: ClipRRect( // To ensure border radius is respected by ListView
+                child: ClipRRect(
+                  // To ensure border radius is respected by ListView
                   borderRadius: BorderRadius.circular(11),
                   child: ListView.separated(
                     controller: _scrollController,
                     padding: EdgeInsets.zero, // Remove default padding
                     itemCount: prayerOrder.length,
-                    separatorBuilder: (context, index) => Divider(
-                      color: AppColors.borderColor(brightness).withAlpha(isDarkMode ? 70 : 100),
-                      height: 1,
-                      indent: 16,
-                      endIndent: 16,
-                    ),
+                    separatorBuilder:
+                        (context, index) => Divider(
+                          color: AppColors.borderColor(
+                            brightness,
+                          ).withAlpha(isDarkMode ? 70 : 100),
+                          height: 1,
+                          indent: 16,
+                          endIndent: 16,
+                        ),
                     itemBuilder: (context, index) {
                       final prayerEnum = prayerOrder[index];
                       DateTime? prayerTime;
@@ -1234,8 +1343,10 @@ class _HomeViewState extends ConsumerState<HomeView> {
                           break;
                       }
 
-                      final bool isEnabled = settings.notifications[prayerEnum] ?? false;
-                      final bool isCurrent = !isLoading && _currentPrayerName == prayerNameString;
+                      final bool isEnabled =
+                          settings.notifications[prayerEnum] ?? false;
+                      final bool isCurrent =
+                          !isLoading && _currentPrayerName == prayerNameString;
 
                       return _buildPrayerItemWithSwitch(
                         prayerNameString,
@@ -1256,7 +1367,13 @@ class _HomeViewState extends ConsumerState<HomeView> {
                 ),
               ),
               if (isLoading)
-                Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentGreen(brightness)))),
+                Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.accentGreen(brightness),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -1278,12 +1395,22 @@ class _HomeViewState extends ConsumerState<HomeView> {
     Color currentPrayerItemBorderColor, // Renamed
     Color currentPrayerItemTextColor, // Renamed
   ) {
-    final Color itemBackgroundColor = isCurrent ? currentPrayerItemBgColor : contentSurfaceColor; // Use contentSurfaceColor for non-current
+    final Color itemBackgroundColor =
+        isCurrent
+            ? currentPrayerItemBgColor
+            : contentSurfaceColor; // Use contentSurfaceColor for non-current
     // final Color itemBorderColor = isCurrent ? currentPrayerItemBorderColor : AppColors.borderColor(brightness).withAlpha(0); // No border for non-current if inside a card
-    final Color itemIconColor = isCurrent ? currentPrayerItemTextColor : AppColors.iconInactive(brightness);
-    final Color itemTextColor = isCurrent ? currentPrayerItemTextColor : AppColors.textPrimary(brightness);
+    final Color itemIconColor =
+        isCurrent
+            ? currentPrayerItemTextColor
+            : AppColors.iconInactive(brightness);
+    final Color itemTextColor =
+        isCurrent
+            ? currentPrayerItemTextColor
+            : AppColors.textPrimary(brightness);
 
-    return Material( // For InkWell splash
+    return Material(
+      // For InkWell splash
       color: Colors.transparent, // Make Material transparent
       child: InkWell(
         onDoubleTap: () {
@@ -1300,17 +1427,30 @@ class _HomeViewState extends ConsumerState<HomeView> {
             });
           });
         },
-        splashColor: isCurrent ? currentPrayerItemTextColor.withAlpha((0.1 * 255).round()) : AppColors.primary(brightness).withAlpha((0.1 * 255).round()),
-        highlightColor: isCurrent ? currentPrayerItemTextColor.withAlpha((0.05 * 255).round()) : AppColors.primary(brightness).withAlpha((0.05 * 255).round()),
+        splashColor:
+            isCurrent
+                ? currentPrayerItemTextColor.withAlpha((0.1 * 255).round())
+                : AppColors.primary(brightness).withAlpha((0.1 * 255).round()),
+        highlightColor:
+            isCurrent
+                ? currentPrayerItemTextColor.withAlpha((0.05 * 255).round())
+                : AppColors.primary(brightness).withAlpha((0.05 * 255).round()),
         child: Container(
           // margin: const EdgeInsets.symmetric(vertical: 0), // Removed margin, handled by separator
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), // Adjusted padding
-          decoration: BoxDecoration( // This decoration is now for the InkWell's child, or remove if list items are plain
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ), // Adjusted padding
+          decoration: BoxDecoration(
+            // This decoration is now for the InkWell's child, or remove if list items are plain
             color: itemBackgroundColor, // Applied calculated background
             // borderRadius: BorderRadius.circular(10), // Removed if list items are plain within a card
-            border: Border( // Apply border only if current, or rely on Divider
-              top: BorderSide(color: Colors.transparent), // Example: only bottom border from divider
-            )
+            border: Border(
+              // Apply border only if current, or rely on Divider
+              top: BorderSide(
+                color: Colors.transparent,
+              ), // Example: only bottom border from divider
+            ),
           ),
           child: Row(
             children: [

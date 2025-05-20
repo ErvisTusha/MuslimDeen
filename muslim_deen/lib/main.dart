@@ -24,7 +24,7 @@ Future<void> main() async {
 
   // Set up error handling for Flutter framework errors
   FlutterError.onError = (details) {
-    final errorHandler = ErrorHandlerService();
+    final errorHandler = locator<ErrorHandlerService>(); // Use locator
     errorHandler.reportError(
       AppError(
         message: 'Flutter framework error',
@@ -307,7 +307,7 @@ class _MainScreenState extends State<MainScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: isSelected ? Colors.green.shade100 : Colors.transparent,
+              color: isSelected ? theme.colorScheme.primaryContainer : Colors.transparent, // Use theme color
               shape: BoxShape.circle,
             ),
             child: Icon(

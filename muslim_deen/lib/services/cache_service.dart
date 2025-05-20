@@ -116,6 +116,20 @@ class CacheService {
     }
   }
 
+  /// Returns all unique base keys stored in the cache.
+  Set<String> getAllBaseKeys() {
+    final allStoredKeys = _prefs.getKeys();
+    final baseKeys = <String>{};
+    for (final key in allStoredKeys) {
+      if (key.endsWith('_data')) {
+        baseKeys.add(key.substring(0, key.length - '_data'.length));
+      }
+      // No need to check for '_expiration' as '_data' implies its existence
+    }
+    _logger.info('Retrieved all base keys from cache.', data: {'count': baseKeys.length});
+    return baseKeys;
+  }
+
   /// Generate a cache key for location-based data
   String generateLocationCacheKey(
     String prefix,

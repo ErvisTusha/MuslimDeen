@@ -36,13 +36,13 @@ class PrayerTimesCache {
 
       // Convert to JSON for storage
       final Map<String, dynamic> prayerTimesJson = {
-        'fajr': prayerTimes.fajr.toIso8601String(),
-        'sunrise': prayerTimes.sunrise.toIso8601String(),
-        'dhuhr': prayerTimes.dhuhr.toIso8601String(),
-        'asr': prayerTimes.asr.toIso8601String(),
-        'maghrib': prayerTimes.maghrib.toIso8601String(),
-        'isha': prayerTimes.isha.toIso8601String(),
-        'date': prayerTimes.date.toIso8601String(),
+        'fajr': prayerTimes.fajr?.toIso8601String(),
+        'sunrise': prayerTimes.sunrise?.toIso8601String(),
+        'dhuhr': prayerTimes.dhuhr?.toIso8601String(),
+        'asr': prayerTimes.asr?.toIso8601String(),
+        'maghrib': prayerTimes.maghrib?.toIso8601String(),
+        'isha': prayerTimes.isha?.toIso8601String(),
+        'date': prayerTimes.date.toIso8601String(), // Date is not nullable
         'hijriDay': prayerTimes.hijriDay,
         'hijriMonth': prayerTimes.hijriMonth,
         'hijriYear': prayerTimes.hijriYear,
@@ -75,16 +75,21 @@ class PrayerTimesCache {
 
       final Map<String, dynamic> prayerTimesJson = jsonDecode(cachedData);
 
+      // Helper to safely parse DateTime?
+      DateTime? safeParseDateTime(String? dateString) {
+        return dateString == null ? null : DateTime.parse(dateString);
+      }
+
       return PrayerTimesModel(
-        fajr: DateTime.parse(prayerTimesJson['fajr']),
-        sunrise: DateTime.parse(prayerTimesJson['sunrise']),
-        dhuhr: DateTime.parse(prayerTimesJson['dhuhr']),
-        asr: DateTime.parse(prayerTimesJson['asr']),
-        maghrib: DateTime.parse(prayerTimesJson['maghrib']),
-        isha: DateTime.parse(prayerTimesJson['isha']),
-        date: DateTime.parse(prayerTimesJson['date']),
-        hijriDay: prayerTimesJson['hijriDay'],
-        hijriMonth: prayerTimesJson['hijriMonth'],
+        fajr: safeParseDateTime(prayerTimesJson['fajr'] as String?),
+        sunrise: safeParseDateTime(prayerTimesJson['sunrise'] as String?),
+        dhuhr: safeParseDateTime(prayerTimesJson['dhuhr'] as String?),
+        asr: safeParseDateTime(prayerTimesJson['asr'] as String?),
+        maghrib: safeParseDateTime(prayerTimesJson['maghrib'] as String?),
+        isha: safeParseDateTime(prayerTimesJson['isha'] as String?),
+        date: DateTime.parse(prayerTimesJson['date'] as String), // Date is not nullable
+        hijriDay: prayerTimesJson['hijriDay'] as int,
+        hijriMonth: prayerTimesJson['hijriMonth'] as int,
         hijriYear: prayerTimesJson['hijriYear'],
         hijriMonthName: prayerTimesJson['hijriMonthName'],
       );

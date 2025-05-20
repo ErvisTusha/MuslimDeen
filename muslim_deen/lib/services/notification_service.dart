@@ -363,21 +363,14 @@ class NotificationService {
         if (!checkOnly) {
           _logger.info('Requesting exact alarm permission...');
           
-          // Try requesting SCHEDULE_EXACT_ALARM permission first
+          // Try requesting SCHEDULE_EXACT_ALARM / USE_EXACT_ALARM permission.
+          // The plugin's requestExactAlarmsPermission method handles the appropriate
+          // system calls based on the Android version.
           bool? exactRequested = await androidPlugin.requestExactAlarmsPermission();
           _hasExactAlarmPermission = exactRequested ?? false;
           
-          if (!_hasExactAlarmPermission) {
-            // If SCHEDULE_EXACT_ALARM failed, try USE_EXACT_ALARM for Android 13+
-            try {
-              exactRequested = await androidPlugin.requestExactAlarmsPermission();
-              _hasExactAlarmPermission = exactRequested ?? false;
-            } catch (e) {
-              _logger.warning(
-                'Failed to request USE_EXACT_ALARM permission: $e',
-              );
-            }
-          }
+          // The second call and specific try-catch for USE_EXACT_ALARM is removed
+          // as the single call to requestExactAlarmsPermission should handle it.
 
           if (_hasExactAlarmPermission) {
             await prefs.setBool(_exactAlarmPermissionKey, true);
