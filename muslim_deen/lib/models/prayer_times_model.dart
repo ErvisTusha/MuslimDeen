@@ -79,7 +79,6 @@ class PrayerTimesModel {
   PrayerTime getNextPrayer() {
     final now = DateTime.now();
     final prayers = getAllPrayers();
-    // final now = DateTime.now(); // Removed redundant definition
 
     for (final prayer in prayers) {
       if (prayer.time != null && prayer.time!.isAfter(now)) {
@@ -87,33 +86,34 @@ class PrayerTimesModel {
       }
     }
 
-    // If no prayer is upcoming today, find the first valid prayer for tomorrow
-    PrayerTime? firstPrayerOfToday = prayers.firstWhere((p) => p.time != null, orElse: () => prayers.first);
+    // If all prayers for today have passed or their times are null,
+    // the next prayer is Fajr of the next day.
+    // 'this.date' is the date for which the current PrayerTimesModel instance was created.
 
-    if (firstPrayerOfToday.time == null) {
-      // Edge case: if all prayer times for today are null, return a default "unknown" state for tomorrow
-      // This should ideally not happen if at least one prayer time is usually calculable.
-      // Or, decide on a specific prayer to target for tomorrow, e.g., Fajr, if its time is available.
-      // For now, returning the first prayer entry, which might have a null time.
-      // A more robust solution might involve looking up tomorrow's actual Fajr time.
-      return prayers.first.copyWith(isTomorrow: true); // This might still have a null time
+    final fajrPrayerTemplate = prayers.first; // Assuming prayers.first is Fajr
+
+    // If Fajr time itself is null in the template, we can't determine a specific time for tomorrow's Fajr.
+    if (fajrPrayerTemplate.time == null) {
+      return fajrPrayerTemplate.copyWith(
+        isTomorrow: true,
+        // time will remain null, name remains 'Fajr' (or whatever prayers.first is)
+      );
     }
-    
-    // Ensure we have a non-null time to construct tomorrow's prayer time
-    final baseTimeForTomorrow = firstPrayerOfToday.time!;
 
-    final tomorrow = firstPrayerOfToday.copyWith(
-      time: DateTime(
-        date.year,
-        date.month,
-        date.day + 1,
-        baseTimeForTomorrow.hour,
-        baseTimeForTomorrow.minute,
-      ),
-      isTomorrow: true,
+    // Construct the DateTime for Fajr tomorrow
+    // using the hour and minute from today's Fajr prayer time.
+    final DateTime fajrTimeTomorrow = DateTime(
+      date.year,
+      date.month,
+      date.day + 1, // Advance to the next day from the model's date
+      fajrPrayerTemplate.time!.hour,
+      fajrPrayerTemplate.time!.minute,
     );
 
-    return tomorrow;
+    return fajrPrayerTemplate.copyWith(
+      time: fajrTimeTomorrow,
+      isTomorrow: true,
+    );
   }
 }
 
@@ -158,14 +158,19 @@ class PrayerTime {
     final duration = timeUntil();
     if (duration.isNegative) return "Passed";
 
+    // If remaining time is less than a minute (0-59 seconds), display "Now".
+    if (duration.inSeconds < 60) {
+      return "Now";
+    }
+
     final hours = duration.inHours;
     final minutes = duration.inMinutes % 60;
 
     if (hours > 0) {
       return '$hours ${hours == 1 ? 'hour' : 'hours'} $minutes ${minutes == 1 ? 'minute' : 'minutes'}';
-    } else if (minutes >= 0) { // ensure minutes is not negative if duration is very small positive
+    } else {
+      // Only minutes remaining (duration.inMinutes will be >= 1 here)
       return '$minutes ${minutes == 1 ? 'minute' : 'minutes'}';
     }
-    return "Now"; // Or "Passed" if duration was negative and handled above
   }
 }
