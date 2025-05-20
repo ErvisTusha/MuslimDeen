@@ -10,9 +10,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hijri/hijri_calendar.dart';
 import 'package:intl/intl.dart';
-// import 'package:provider/provider.dart'; // Removed
 
-// import '../l10n/app_localizations.dart'; // Removed
 import '../models/app_settings.dart';
 import '../models/custom_exceptions.dart'; // Added
 import '../providers/providers.dart'; // Changed for Riverpod

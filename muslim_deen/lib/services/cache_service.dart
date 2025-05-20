@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-// import 'package:flutter/foundation.dart'; // Removed unused import
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/service_locator.dart';
 

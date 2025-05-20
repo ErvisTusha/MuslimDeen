@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-// import 'package:geocoding/geocoding.dart'; // Removed unused import
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:muslim_deen/service_locator.dart';

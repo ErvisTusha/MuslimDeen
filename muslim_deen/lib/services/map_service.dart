@@ -1,4 +1,3 @@
-// import 'package:flutter/foundation.dart'; // Removed unused import
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;

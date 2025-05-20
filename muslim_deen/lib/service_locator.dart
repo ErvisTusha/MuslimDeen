@@ -12,14 +12,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 final GetIt locator = GetIt.instance;
 
-/// Defines service initialization priority
-enum ServicePriority {
-  critical, // Services required for app to function
-  high,     // Services needed early in app lifecycle
-  normal,   // Standard services
-  low       // Services that can be initialized on demand
-}
-
 /// Initializes the service locator with optimized loading
 Future<void> setupLocator({bool testing = false}) async {
   // First, register all services without initializing them
