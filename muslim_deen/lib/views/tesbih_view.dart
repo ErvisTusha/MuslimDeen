@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get_it/get_it.dart';
 import 'package:audioplayers/audioplayers.dart';
 
-import '../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import '../providers/tesbih_reminder_provider.dart';
 import '../service_locator.dart';
@@ -769,7 +768,6 @@ class _TesbihViewState extends ConsumerState<TesbihView>
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
     final brightness = Theme.of(context).brightness;
     final bool isDarkMode = brightness == Brightness.dark;
 
@@ -806,10 +804,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     return Scaffold(
       backgroundColor: tesbihScaffoldBg,
       appBar: AppBar(
-        title: Text(
-          localizations.tasbihLabel,
-          style: AppTextStyles.appTitle(brightness),
-        ),
+        title: Text("Tasbih", style: AppTextStyles.appTitle(brightness)),
         backgroundColor: AppColors.primary(
           brightness,
         ), // Stays 0xFF1A1A1A in dark mode
@@ -919,7 +914,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                localizations.tesbihCounter(_target),
+                                "Target: $_target",
                                 style: AppTextStyles.label(brightness).copyWith(
                                   fontSize: 15,
                                   color:
@@ -949,13 +944,13 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                 children: [
                   _buildActionButton(
                     Icons.refresh_rounded,
-                    localizations.tesbihReset,
+                    "Reset",
                     _resetCount,
                     brightness,
                   ),
                   _buildActionButton(
                     Icons.track_changes_rounded,
-                    localizations.tesbihTarget,
+                    "Set Target",
                     _showTargetDialog,
                     brightness,
                   ),
@@ -1005,7 +1000,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
               child: Column(
                 children: [
                   _buildToggleOption(
-                    localizations.tesbihVibration,
+                    "Vibration",
                     Icons.vibration_rounded,
                     _vibrationEnabled,
                     (value) {
@@ -1028,7 +1023,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                   ),
                   Divider(color: AppColors.borderColor(brightness), height: 1),
                   _buildToggleOption(
-                    localizations.tesbihSound,
+                    "Sound",
                     Icons.volume_up_rounded,
                     _soundEnabled,
                     (value) {
@@ -1056,7 +1051,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                   ),
                   Divider(color: AppColors.borderColor(brightness), height: 1),
                   _buildToggleOption(
-                    localizations.notifications,
+                    "Notifications",
                     Icons.notifications_active_rounded,
                     ref.watch(tesbihReminderProvider).reminderEnabled,
                     (value) async {
@@ -1170,8 +1165,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     Brightness brightness, {
     Widget? trailing,
   }) {
-    bool isNotificationToggle =
-        title == AppLocalizations.of(context)!.notifications;
+    bool isNotificationToggle = title == "Notifications";
 
     bool isDisabled =
         isNotificationToggle &&
@@ -1331,7 +1325,6 @@ class _TargetDialogState extends State<_TargetDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
     // Use widget.brightness here as it's passed to _TargetDialog
     final brightness = widget.brightness;
     final bool isDarkMode = brightness == Brightness.dark;
@@ -1341,18 +1334,15 @@ class _TargetDialogState extends State<_TargetDialog> {
           isDarkMode
               ? AppColors.surface(brightness)
               : AppColors.background(brightness),
-      title: Text(
-        localizations.tesbihSetTarget,
-        style: AppTextStyles.sectionTitle(brightness),
-      ),
+      title: Text("Set Target", style: AppTextStyles.sectionTitle(brightness)),
       content: TextField(
         controller: _controller,
         keyboardType: TextInputType.number,
         style: AppTextStyles.prayerTime(brightness),
         decoration: InputDecoration(
-          labelText: localizations.tesbihTarget,
+          labelText: "Target",
           labelStyle: AppTextStyles.label(brightness),
-          hintText: localizations.tesbihEnterTarget,
+          hintText: "Enter target",
           hintStyle: AppTextStyles.label(
             brightness,
           ).copyWith(color: AppColors.textSecondary(brightness).withAlpha(153)),
@@ -1383,7 +1373,7 @@ class _TargetDialogState extends State<_TargetDialog> {
           style: TextButton.styleFrom(
             foregroundColor: AppColors.textSecondary(brightness),
           ),
-          child: Text(localizations.cancel),
+          child: Text("Cancel"),
         ),
         TextButton(
           onPressed: () {
@@ -1404,7 +1394,7 @@ class _TargetDialogState extends State<_TargetDialog> {
           style: TextButton.styleFrom(
             foregroundColor: AppColors.primary(brightness),
           ),
-          child: Text(localizations.tesbihOk),
+          child: Text("OK"),
         ),
       ],
     );

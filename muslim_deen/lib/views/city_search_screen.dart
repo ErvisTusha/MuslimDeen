@@ -7,7 +7,6 @@ import 'package:flutter/services.dart'; // Added for SystemUiOverlayStyle
 import 'package:geocoding/geocoding.dart';
 
 // Local application imports
-import '../l10n/app_localizations.dart';
 import '../service_locator.dart';
 import '../services/location_service.dart';
 import '../services/logger_service.dart';
@@ -189,7 +188,7 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
       setState(() {
         _isLoading = false;
         if (_searchResults.isEmpty) {
-          _errorMessage = AppLocalizations.of(context)!.noLocationsFound;
+          _errorMessage = "No locations found";
         }
       });
     } catch (e, s) {
@@ -205,12 +204,12 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
 
       setState(() {
         _isLoading = false;
-        _errorMessage = AppLocalizations.of(context)!.searchError;
+        _errorMessage = "Search Error";
 
         // If we've tried multiple times, provide additional guidance
         if (_searchAttempts >= _maxSearchAttempts) {
           _errorMessage =
-              '${AppLocalizations.of(context)!.searchError} Try a different city name or format. Include country name for better results.';
+              'Search Error Try a different city name or format. Include country name for better results.';
         }
       });
     }
@@ -314,38 +313,44 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
         },
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.errorSetLocation),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error setting location")));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
     final brightness = Theme.of(context).brightness;
     final bool isDarkMode = brightness == Brightness.dark;
 
     // Define colors similar to TesbihView
-    final Color scaffoldBg = isDarkMode ? AppColors.surface(brightness) : AppColors.background(brightness);
-    final Color contentSurface = isDarkMode ? const Color(0xFF2C2C2C) : AppColors.primaryVariant(brightness); // For cards/containers
-    final Color textFieldBg = isDarkMode ? const Color(0xFF3C3C3C) : AppColors.background(brightness);
+    final Color scaffoldBg =
+        isDarkMode
+            ? AppColors.surface(brightness)
+            : AppColors.background(brightness);
+    final Color contentSurface =
+        isDarkMode
+            ? const Color(0xFF2C2C2C)
+            : AppColors.primaryVariant(brightness); // For cards/containers
+    final Color textFieldBg =
+        isDarkMode ? const Color(0xFF3C3C3C) : AppColors.background(brightness);
     final Color textColor = AppColors.textPrimary(brightness);
     final Color hintColor = AppColors.textSecondary(brightness);
     final Color iconColor = AppColors.iconInactive(brightness);
     final Color borderColor = AppColors.borderColor(brightness);
     final Color errorColor = AppColors.error(brightness);
-    final Color listTileSelectedColor = isDarkMode ? AppColors.accentGreen(brightness).withAlpha(50) : AppColors.primary(brightness).withAlpha(30);
-
+    final Color listTileSelectedColor =
+        isDarkMode
+            ? AppColors.accentGreen(brightness).withAlpha(50)
+            : AppColors.primary(brightness).withAlpha(30);
 
     return Scaffold(
       backgroundColor: scaffoldBg,
       appBar: AppBar(
         title: Text(
-          localizations.setLocationManually,
+          "Set Location Manually",
           style: AppTextStyles.appTitle(brightness),
         ),
         backgroundColor: AppColors.primary(brightness),
@@ -354,19 +359,23 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
         centerTitle: true,
         systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: AppColors.primary(brightness),
-          statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.light,
+          statusBarIconBrightness:
+              isDarkMode ? Brightness.light : Brightness.light,
         ),
       ),
       body: Column(
         children: [
           Container(
-            color: contentSurface, // Search bar container with distinct background
+            color:
+                contentSurface, // Search bar container with distinct background
             padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 12.0),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: localizations.searchCity,
-                hintStyle: AppTextStyles.label(brightness).copyWith(color: hintColor),
+                hintText: "Search for a city",
+                hintStyle: AppTextStyles.label(
+                  brightness,
+                ).copyWith(color: hintColor),
                 prefixIcon: Icon(Icons.search, color: iconColor),
                 filled: true,
                 fillColor: textFieldBg,
@@ -376,29 +385,40 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
-                  borderSide: BorderSide(color: borderColor.withAlpha(isDarkMode ? 150 : 200)),
+                  borderSide: BorderSide(
+                    color: borderColor.withAlpha(isDarkMode ? 150 : 200),
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
-                  borderSide: BorderSide(color: AppColors.primary(brightness), width: 1.5),
+                  borderSide: BorderSide(
+                    color: AppColors.primary(brightness),
+                    width: 1.5,
+                  ),
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 16.0),
-                suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: Icon(Icons.clear, color: iconColor),
-                      onPressed: () {
-                        _searchController.clear();
-                        // Optionally, also clear search results and error messages
-                        setState(() {
-                          _searchResults.clear();
-                          _errorMessage = null;
-                          _isLoading = false;
-                        });
-                      },
-                    )
-                  : null,
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 14.0,
+                  horizontal: 16.0,
+                ),
+                suffixIcon:
+                    _searchController.text.isNotEmpty
+                        ? IconButton(
+                          icon: Icon(Icons.clear, color: iconColor),
+                          onPressed: () {
+                            _searchController.clear();
+                            // Optionally, also clear search results and error messages
+                            setState(() {
+                              _searchResults.clear();
+                              _errorMessage = null;
+                              _isLoading = false;
+                            });
+                          },
+                        )
+                        : null,
               ),
-              style: AppTextStyles.prayerTime(brightness).copyWith(color: textColor),
+              style: AppTextStyles.prayerTime(
+                brightness,
+              ).copyWith(color: textColor),
               autofocus: true,
               onChanged: (value) => setState(() {}), // To rebuild suffix icon
             ),
@@ -409,7 +429,9 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
               padding: const EdgeInsets.all(24.0),
               child: Center(
                 child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentGreen(brightness)),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppColors.accentGreen(brightness),
+                  ),
                   strokeWidth: 3,
                 ),
               ),
@@ -419,20 +441,28 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
             Container(
               width: double.infinity,
               color: contentSurface,
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-              margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+                vertical: 16.0,
+              ),
+              margin: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
+              ),
               decoration: BoxDecoration(
                 color: contentSurface,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: errorColor.withAlpha(100))
+                border: Border.all(color: errorColor.withAlpha(100)),
               ),
               child: Text(
                 _errorMessage!,
-                style: AppTextStyles.label(brightness).copyWith(color: errorColor, fontSize: 15),
+                style: AppTextStyles.label(
+                  brightness,
+                ).copyWith(color: errorColor, fontSize: 15),
                 textAlign: TextAlign.center,
               ),
             ),
-          
+
           if (_searchController.text.isNotEmpty &&
               _searchResults.isEmpty &&
               !_isLoading &&
@@ -440,85 +470,122 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
             Container(
               width: double.infinity,
               color: contentSurface,
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-              margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-               decoration: BoxDecoration(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+                vertical: 16.0,
+              ),
+              margin: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
+              ),
+              decoration: BoxDecoration(
                 color: contentSurface,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: borderColor.withAlpha(isDarkMode ? 100: 150))
+                border: Border.all(
+                  color: borderColor.withAlpha(isDarkMode ? 100 : 150),
+                ),
               ),
               child: Text(
-                _searchController.text.length < 3 // Adjusted for better UX
+                _searchController.text.length <
+                        3 // Adjusted for better UX
                     ? "Type at least 3 characters to search"
                     : "No locations found for \"${_searchController.text}\"",
-                style: AppTextStyles.label(brightness).copyWith(color: hintColor, fontSize: 15),
+                style: AppTextStyles.label(
+                  brightness,
+                ).copyWith(color: hintColor, fontSize: 15),
                 textAlign: TextAlign.center,
               ),
             ),
 
           Expanded(
-            child: _searchResults.isNotEmpty
-              ? Container(
-                  margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  decoration: BoxDecoration(
-                    color: contentSurface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: borderColor.withAlpha(isDarkMode ? 100 : 150)),
-                  ),
-                  child: ClipRRect( // To ensure border radius is respected by ListView
-                    borderRadius: BorderRadius.circular(11), // Slightly less than container to avoid visual glitches
-                    child: ListView.separated(
-                      padding: EdgeInsets.zero, // Remove default padding
-                      itemCount: _searchResults.length,
-                      separatorBuilder: (context, index) => Divider(
-                        color: borderColor.withAlpha(isDarkMode ? 70 : 100),
-                        height: 1,
-                        indent: 16,
-                        endIndent: 16,
+            child:
+                _searchResults.isNotEmpty
+                    ? Container(
+                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      decoration: BoxDecoration(
+                        color: contentSurface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: borderColor.withAlpha(isDarkMode ? 100 : 150),
+                        ),
                       ),
-                      itemBuilder: (context, index) {
-                        final result = _searchResults[index];
-                        return Material( // For InkWell splash effect
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () => _selectLocation(result),
-                            splashColor: listTileSelectedColor,
-                            highlightColor: listTileSelectedColor.withAlpha(80),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          result['name'],
-                                          style: AppTextStyles.prayerName(brightness).copyWith(color: textColor, fontSize: 16),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '${result['latitude'].toStringAsFixed(4)}, ${result['longitude'].toStringAsFixed(4)}',
-                                          style: AppTextStyles.label(brightness).copyWith(color: hintColor, fontSize: 13),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Icon(
-                                    Icons.arrow_forward_ios,
-                                    size: 18,
-                                    color: iconColor,
-                                  ),
-                                ],
+                      child: ClipRRect(
+                        // To ensure border radius is respected by ListView
+                        borderRadius: BorderRadius.circular(
+                          11,
+                        ), // Slightly less than container to avoid visual glitches
+                        child: ListView.separated(
+                          padding: EdgeInsets.zero, // Remove default padding
+                          itemCount: _searchResults.length,
+                          separatorBuilder:
+                              (context, index) => Divider(
+                                color: borderColor.withAlpha(
+                                  isDarkMode ? 70 : 100,
+                                ),
+                                height: 1,
+                                indent: 16,
+                                endIndent: 16,
                               ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                )
-              : const SizedBox.shrink(), // Show nothing if no results and no messages
+                          itemBuilder: (context, index) {
+                            final result = _searchResults[index];
+                            return Material(
+                              // For InkWell splash effect
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () => _selectLocation(result),
+                                splashColor: listTileSelectedColor,
+                                highlightColor: listTileSelectedColor.withAlpha(
+                                  80,
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16.0,
+                                    vertical: 14.0,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              result['name'],
+                                              style: AppTextStyles.prayerName(
+                                                brightness,
+                                              ).copyWith(
+                                                color: textColor,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              '${result['latitude'].toStringAsFixed(4)}, ${result['longitude'].toStringAsFixed(4)}',
+                                              style: AppTextStyles.label(
+                                                brightness,
+                                              ).copyWith(
+                                                color: hintColor,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Icon(
+                                        Icons.arrow_forward_ios,
+                                        size: 18,
+                                        color: iconColor,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    )
+                    : const SizedBox.shrink(), // Show nothing if no results and no messages
           ),
         ],
       ),

@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Added for SystemUiOverlayStyle
 
 // Local application imports
-import '../l10n/app_localizations.dart';
 import '../styles/app_styles.dart';
 
 class AboutScreen extends StatelessWidget {
@@ -13,20 +12,25 @@ class AboutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
     final brightness = Theme.of(context).brightness;
     final bool isDarkMode = brightness == Brightness.dark;
 
     // Define colors similar to TesbihView
-    final Color scaffoldBg = isDarkMode ? AppColors.surface(brightness) : AppColors.background(brightness);
-    final Color contentSurface = isDarkMode ? const Color(0xFF2C2C2C) : AppColors.primaryVariant(brightness);
+    final Color scaffoldBg =
+        isDarkMode
+            ? AppColors.surface(brightness)
+            : AppColors.background(brightness);
+    final Color contentSurface =
+        isDarkMode
+            ? const Color(0xFF2C2C2C)
+            : AppColors.primaryVariant(brightness);
     final Color textColor = AppColors.textPrimary(brightness);
 
     return Scaffold(
       backgroundColor: scaffoldBg,
       appBar: AppBar(
         title: Text(
-          localizations.aboutTitle,
+          "About", // Replaced localizations.aboutTitle
           style: AppTextStyles.appTitle(brightness),
         ),
         backgroundColor: AppColors.primary(brightness),
@@ -35,7 +39,8 @@ class AboutScreen extends StatelessWidget {
         centerTitle: true,
         systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: AppColors.primary(brightness),
-          statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.light,
+          statusBarIconBrightness:
+              isDarkMode ? Brightness.light : Brightness.light,
         ),
       ),
       body: Center(
@@ -47,7 +52,9 @@ class AboutScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(12.0),
             boxShadow: [
               BoxShadow(
-                color: AppColors.shadowColor(brightness).withAlpha(isDarkMode ? 30 : 50),
+                color: AppColors.shadowColor(
+                  brightness,
+                ).withAlpha(isDarkMode ? 30 : 50),
                 spreadRadius: 1,
                 blurRadius: 5,
                 offset: const Offset(0, 2),
@@ -60,19 +67,25 @@ class AboutScreen extends StatelessWidget {
               Text(
                 'Muslim Deen App',
                 textAlign: TextAlign.center,
-                style: AppTextStyles.sectionTitle(brightness).copyWith(color: textColor),
+                style: AppTextStyles.sectionTitle(
+                  brightness,
+                ).copyWith(color: textColor),
               ),
               const SizedBox(height: 8),
               Text(
                 'Version 1.0.0', // Consider localizing if needed
                 textAlign: TextAlign.center,
-                style: AppTextStyles.label(brightness).copyWith(color: textColor.withAlpha(200)),
+                style: AppTextStyles.label(
+                  brightness,
+                ).copyWith(color: textColor.withAlpha(200)),
               ),
               const SizedBox(height: 24),
               Text(
                 'Developed with Flutter.', // Consider localizing
                 textAlign: TextAlign.center,
-                style: AppTextStyles.label(brightness).copyWith(color: textColor), // Changed to label as bodyText is not defined
+                style: AppTextStyles.label(brightness).copyWith(
+                  color: textColor,
+                ), // Changed to label as bodyText is not defined
               ),
             ],
           ),

@@ -12,7 +12,7 @@ import 'package:hijri/hijri_calendar.dart';
 import 'package:intl/intl.dart';
 // import 'package:provider/provider.dart'; // Removed
 
-import '../l10n/app_localizations.dart';
+// import '../l10n/app_localizations.dart'; // Removed
 import '../models/app_settings.dart';
 import '../models/custom_exceptions.dart'; // Added
 import '../providers/providers.dart'; // Changed for Riverpod
@@ -369,21 +369,21 @@ class _HomeViewState extends ConsumerState<HomeView> {
     }
 
     // Use localized names based on the prayer string from adhan library
-    final localizations = AppLocalizations.of(context)!;
+    // final localizations = AppLocalizations.of(context)!; // Removed AppLocalizations
 
     // Use if-else statements instead of switch with non-constant patterns
     if (prayer == adhan.Prayer.fajr) {
-      return localizations.prayerNameFajr;
+      return "Fajr"; // Replaced localizations.prayerNameFajr;
     } else if (prayer == adhan.Prayer.sunrise) {
-      return localizations.prayerNameSunrise;
+      return "Sunrise"; // Replaced localizations.prayerNameSunrise;
     } else if (prayer == adhan.Prayer.dhuhr) {
-      return localizations.prayerNameDhuhr;
+      return "Dhuhr"; // Replaced localizations.prayerNameDhuhr;
     } else if (prayer == adhan.Prayer.asr) {
-      return localizations.prayerNameAsr;
+      return "Asr"; // Replaced localizations.prayerNameAsr;
     } else if (prayer == adhan.Prayer.maghrib) {
-      return localizations.prayerNameMaghrib;
+      return "Maghrib"; // Replaced localizations.prayerNameMaghrib;
     } else if (prayer == adhan.Prayer.isha) {
-      return localizations.prayerNameIsha;
+      return "Isha"; // Replaced localizations.prayerNameIsha;
     } else {
       return prayer[0].toUpperCase() + prayer.substring(1); // Fallback
     }
@@ -716,7 +716,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
     // Ensure widget is still mounted before accessing context or scheduling
     if (!mounted) return;
 
-    final localizations = AppLocalizations.of(context)!;
+    // final localizations = AppLocalizations.of(context)!; // Removed
     // Use read here as this function is called from post-frame callbacks or FutureBuilder,
     // and we don't want this specific function call to trigger rebuilds on settings change.
     // The watch() in the build method handles reacting to settings changes.
@@ -735,29 +735,31 @@ class _HomeViewState extends ConsumerState<HomeView> {
       switch (prayer) {
         case PrayerNotification.fajr:
           prayerTime = prayerTimes.fajr;
-          localizedName = localizations.prayerNameFajr;
+          localizedName = "Fajr"; // Replaced localizations.prayerNameFajr;
           break;
         case PrayerNotification.sunrise:
           // Sunrise notification is included for completeness, but typically not enabled by default.
           // The UI switch and settings map control whether it's actually scheduled.
           prayerTime = prayerTimes.sunrise;
-          localizedName = localizations.prayerNameSunrise;
+          localizedName =
+              "Sunrise"; // Replaced localizations.prayerNameSunrise;
           break;
         case PrayerNotification.dhuhr:
           prayerTime = prayerTimes.dhuhr;
-          localizedName = localizations.prayerNameDhuhr;
+          localizedName = "Dhuhr"; // Replaced localizations.prayerNameDhuhr;
           break;
         case PrayerNotification.asr:
           prayerTime = prayerTimes.asr;
-          localizedName = localizations.prayerNameAsr;
+          localizedName = "Asr"; // Replaced localizations.prayerNameAsr;
           break;
         case PrayerNotification.maghrib:
           prayerTime = prayerTimes.maghrib;
-          localizedName = localizations.prayerNameMaghrib;
+          localizedName =
+              "Maghrib"; // Replaced localizations.prayerNameMaghrib;
           break;
         case PrayerNotification.isha:
           prayerTime = prayerTimes.isha;
-          localizedName = localizations.prayerNameIsha;
+          localizedName = "Isha"; // Replaced localizations.prayerNameIsha;
           break;
       }
 
@@ -771,8 +773,10 @@ class _HomeViewState extends ConsumerState<HomeView> {
           id:
               prayer
                   .index, // Use enum index as a unique ID for each notification
-          localizedTitle: localizations.notificationPrayerTitle(localizedName),
-          localizedBody: localizations.notificationPrayerBody(localizedName),
+          localizedTitle:
+              "Prayer Time", // Replaced localizations.notificationPrayerTitle(localizedName);
+          localizedBody:
+              "It's time for $localizedName prayer.", // Replaced localizations.notificationPrayerBody(localizedName);
           prayerTime: prayerTime,
           isEnabled: true,
         );
@@ -785,24 +789,24 @@ class _HomeViewState extends ConsumerState<HomeView> {
 
   // Helper to map prayer name string to PrayerNotification enum
   PrayerNotification? _getPrayerEnumFromString(String name) {
-    final localizations = AppLocalizations.of(context)!;
+    // final localizations = AppLocalizations.of(context)!; // Removed
 
-    if (name == localizations.prayerNameFajr) {
+    if (name == "Fajr") {
       return PrayerNotification.fajr;
     }
-    if (name == localizations.prayerNameSunrise) {
+    if (name == "Sunrise") {
       return PrayerNotification.sunrise;
     }
-    if (name == localizations.prayerNameDhuhr) {
+    if (name == "Dhuhr") {
       return PrayerNotification.dhuhr;
     }
-    if (name == localizations.prayerNameAsr) {
+    if (name == "Asr") {
       return PrayerNotification.asr;
     }
-    if (name == localizations.prayerNameMaghrib) {
+    if (name == "Maghrib") {
       return PrayerNotification.maghrib;
     }
-    if (name == localizations.prayerNameIsha) {
+    if (name == "Isha") {
       return PrayerNotification.isha;
     }
     return null;
@@ -812,7 +816,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
   Widget build(BuildContext context) {
     // Use watch to rebuild on any settings change
     final appSettings = ref.watch(settingsProvider);
-    final localizations = AppLocalizations.of(context)!;
+    // final localizations = AppLocalizations.of(context)!; // Removed
     final brightness = Theme.of(context).brightness;
     final bool isDarkMode = brightness == Brightness.dark;
 
@@ -842,7 +846,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
       backgroundColor: scaffoldBg,
       appBar: AppBar(
         title: Text(
-          localizations.appTitle,
+          "Prayer Times", // Replaced localizations.appTitle;
           style: AppTextStyles.appTitle(brightness),
         ),
         backgroundColor: AppColors.primary(brightness),
@@ -862,10 +866,12 @@ class _HomeViewState extends ConsumerState<HomeView> {
             return _buildMainContent(
               isLoading: true,
               prayerTimes: _prayerTimes,
-              displayCity: _lastKnownCity ?? localizations.loading,
+              displayCity:
+                  _lastKnownCity ??
+                  "Loading...", // Replaced localizations.loading;
               displayCountry: _lastKnownCountry,
               appSettings: appSettings,
-              localizations: localizations,
+              // localizations: localizations, // Removed
               brightness: brightness,
               isDarkMode: isDarkMode,
               scaffoldBg: scaffoldBg,
@@ -916,7 +922,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
                           fontWeight: FontWeight.w600,
                         ), // Changed to label
                       ),
-                      label: Text(localizations.retry),
+                      label: Text("Retry"), // Replaced localizations.retry;
                     ),
                     if (errorMessage.contains('permission') ||
                         errorMessage.contains('permanently denied'))
@@ -925,7 +931,9 @@ class _HomeViewState extends ConsumerState<HomeView> {
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.primary(brightness),
                         ),
-                        child: Text(localizations.openAppSettings),
+                        child: Text(
+                          "Open App Settings",
+                        ), // Replaced localizations.openAppSettings;
                       ),
                     if (errorMessage.contains('services are disabled'))
                       TextButton(
@@ -934,7 +942,9 @@ class _HomeViewState extends ConsumerState<HomeView> {
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.primary(brightness),
                         ),
-                        child: Text(localizations.openLocationSettings),
+                        child: Text(
+                          "Open Location Settings",
+                        ), // Replaced localizations.openLocationSettings;
                       ),
                   ],
                 ),
@@ -951,7 +961,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
               displayCity: loadedCity,
               displayCountry: loadedCountry,
               appSettings: appSettings,
-              localizations: localizations,
+              // localizations: localizations, // Removed
               brightness: brightness,
               isDarkMode: isDarkMode,
               scaffoldBg: scaffoldBg,
@@ -973,7 +983,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    localizations.unexpectedError(localizations.unknown),
+                    "An unexpected error occurred.", // Replaced localizations.unexpectedError(localizations.unknown);
                     style: AppTextStyles.label(
                       brightness,
                     ).copyWith(color: AppColors.textSecondary(brightness)),
@@ -999,7 +1009,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
                         fontWeight: FontWeight.w600,
                       ), // Changed to label
                     ),
-                    label: Text(localizations.retry),
+                    label: Text("Retry"), // Replaced localizations.retry;
                   ),
                 ],
               ),
@@ -1017,7 +1027,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
     required String? displayCity,
     required String? displayCountry,
     required AppSettings appSettings,
-    required AppLocalizations localizations,
+    // required AppLocalizations localizations, // Removed
     required Brightness brightness,
     required bool isDarkMode,
     required Color scaffoldBg,
@@ -1140,8 +1150,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
                           Flexible(
                             child: Text(
                               displayCity ??
-                                  localizations
-                                      .loading, // Show loading if city is null
+                                  "Loading...", // Replaced localizations.loading;
                               style: AppTextStyles.date(
                                 brightness,
                               ).copyWith(fontSize: 15),
@@ -1204,7 +1213,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      localizations.currentPrayerTitle,
+                      "Current Prayer", // Replaced localizations.currentPrayerTitle;
                       style: AppTextStyles.label(
                         brightness,
                       ).copyWith(color: AppColors.textSecondary(brightness)),
@@ -1224,7 +1233,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      localizations.nextPrayerTitle,
+                      "Next Prayer", // Replaced localizations.nextPrayerTitle;
                       style: AppTextStyles.label(
                         brightness,
                       ).copyWith(color: AppColors.textSecondary(brightness)),
@@ -1254,7 +1263,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
                           textStyle: AppTextStyles.countdownTimer(
                             brightness,
                           ).copyWith(color: AppColors.accentGreen(brightness)),
-                          localizations: localizations,
+                          // localizations: localizations, // Removed
                         );
                       },
                     ),
@@ -1270,7 +1279,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              localizations.prayerTimesTitle,
+              "Prayer Times", // Replaced localizations.prayerTimesTitle;
               style: AppTextStyles.sectionTitle(
                 brightness,
               ).copyWith(color: AppColors.textPrimary(brightness)),
@@ -1331,27 +1340,33 @@ class _HomeViewState extends ConsumerState<HomeView> {
                       switch (prayerEnum) {
                         case PrayerNotification.fajr:
                           prayerTime = prayerTimes?.fajr;
-                          prayerNameString = localizations.prayerNameFajr;
+                          prayerNameString =
+                              "Fajr"; // Replaced localizations.prayerNameFajr;
                           break;
                         case PrayerNotification.sunrise:
                           prayerTime = prayerTimes?.sunrise;
-                          prayerNameString = localizations.prayerNameSunrise;
+                          prayerNameString =
+                              "Sunrise"; // Replaced localizations.prayerNameSunrise;
                           break;
                         case PrayerNotification.dhuhr:
                           prayerTime = prayerTimes?.dhuhr;
-                          prayerNameString = localizations.prayerNameDhuhr;
+                          prayerNameString =
+                              "Dhuhr"; // Replaced localizations.prayerNameDhuhr;
                           break;
                         case PrayerNotification.asr:
                           prayerTime = prayerTimes?.asr;
-                          prayerNameString = localizations.prayerNameAsr;
+                          prayerNameString =
+                              "Asr"; // Replaced localizations.prayerNameAsr;
                           break;
                         case PrayerNotification.maghrib:
                           prayerTime = prayerTimes?.maghrib;
-                          prayerNameString = localizations.prayerNameMaghrib;
+                          prayerNameString =
+                              "Maghrib"; // Replaced localizations.prayerNameMaghrib;
                           break;
                         case PrayerNotification.isha:
                           prayerTime = prayerTimes?.isha;
-                          prayerNameString = localizations.prayerNameIsha;
+                          prayerNameString =
+                              "Isha"; // Replaced localizations.prayerNameIsha;
                           break;
                       }
 
@@ -1496,20 +1511,26 @@ class _HomeViewState extends ConsumerState<HomeView> {
 
   IconData _getPrayerIcon(String prayerName) {
     // Get localizations from context
-    final localizations = AppLocalizations.of(context)!;
+    // final localizations = AppLocalizations.of(context)!; // Removed
 
     // Use standardized checks with localized prayer names
-    if (prayerName == localizations.prayerNameFajr) {
+    if (prayerName == "Fajr") {
+      // Replaced localizations.prayerNameFajr;
       return Icons.wb_sunny_outlined; // Dawn/Sunrise icon
-    } else if (prayerName == localizations.prayerNameSunrise) {
+    } else if (prayerName == "Sunrise") {
+      // Replaced localizations.prayerNameSunrise;
       return Icons.wb_twilight_outlined; // Sunrise icon
-    } else if (prayerName == localizations.prayerNameDhuhr) {
+    } else if (prayerName == "Dhuhr") {
+      // Replaced localizations.prayerNameDhuhr;
       return Icons.wb_sunny; // Midday sun
-    } else if (prayerName == localizations.prayerNameAsr) {
+    } else if (prayerName == "Asr") {
+      // Replaced localizations.prayerNameAsr;
       return Icons.wb_twilight; // Afternoon/twilight
-    } else if (prayerName == localizations.prayerNameMaghrib) {
+    } else if (prayerName == "Maghrib") {
+      // Replaced localizations.prayerNameMaghrib;
       return Icons.brightness_4_outlined; // Sunset icon
-    } else if (prayerName == localizations.prayerNameIsha) {
+    } else if (prayerName == "Isha") {
+      // Replaced localizations.prayerNameIsha;
       return Icons.nights_stay; // Moon/night icon
     } else {
       return Icons.access_time; // Fallback icon
@@ -1522,13 +1543,13 @@ class _HomeViewState extends ConsumerState<HomeView> {
 class PrayerCountdownTimer extends StatefulWidget {
   final Duration initialDuration;
   final TextStyle? textStyle; // Optional style for the text
-  final AppLocalizations localizations; // Add localizations parameter
+  // final AppLocalizations localizations; // Removed
 
   const PrayerCountdownTimer({
     super.key,
     required this.initialDuration,
     this.textStyle,
-    required this.localizations, // Add localizations parameter
+    // required this.localizations, // Removed
   });
 
   @override
@@ -1593,12 +1614,8 @@ class _PrayerCountdownTimerState extends State<PrayerCountdownTimer> {
     // Determine the text to display based on the duration
     final String displayText =
         _currentDuration.isNegative
-            ? widget
-                .localizations
-                .now // Use localized "Now" string
-            : widget.localizations.homeTimeIn(
-              _formatDuration(_currentDuration),
-            ); // Use localized "In XX:XX:XX" format
+            ? "Now" // Replaced widget.localizations.now;
+            : "In ${_formatDuration(_currentDuration)}"; // Replaced widget.localizations.homeTimeIn(_formatDuration(_currentDuration));
 
     return Text(
       displayText,

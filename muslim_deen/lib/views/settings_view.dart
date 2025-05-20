@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:audioplayers/audioplayers.dart';
 
-import '../l10n/app_localizations.dart';
 import '../models/app_settings.dart';
 import '../providers/providers.dart';
 import '../providers/settings_notifier.dart';
@@ -276,20 +275,16 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
   @override
   Widget build(BuildContext context) {
-    // Corrected signature
-    final appLocalizations = AppLocalizations.of(context)!;
-    // Access ref as an instance member of ConsumerState
-    final settings = ref.watch(settingsProvider); // AppSettings
-    final settingsNotifier = ref.read(
-      settingsProvider.notifier,
-    ); // SettingsNotifier
+    final settings = ref.watch(settingsProvider);
+    final settingsNotifier = ref.read(settingsProvider.notifier);
+    // final appLocalizations = AppLocalizations.of(context)!;
 
     final brightness = Theme.of(context).brightness;
 
     return Scaffold(
       backgroundColor: AppColors.background(brightness),
       appBar: AppBar(
-        title: Text(appLocalizations.settings, style: AppTextStyles.appTitle(brightness)),
+        title: Text("Settings", style: AppTextStyles.appTitle(brightness)),
         backgroundColor: AppColors.primary(brightness),
         elevation: 2.0,
         shadowColor: AppColors.shadowColor(brightness),
@@ -303,54 +298,47 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         controller: _scrollController,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
-          _buildSectionHeader(appLocalizations.appearance, brightness),
+          _buildSectionHeader("Appearance", brightness),
 
           _buildSettingsItem(
             icon: Icons.language,
-            title: appLocalizations.language,
-            subtitle: _getLocaleName(settings.language, appLocalizations),
+            title: "Language",
+            subtitle: "English",
             onTap: () {
               _logger.logInteraction(
                 'SettingsView',
                 'Change language',
-                data: {'current': settings.language},
+                data: {'current': "English"},
               );
-              _showLanguageSelectionDialog(
-                context,
-                settings.language,
-                settingsNotifier,
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Language selection is temporarily disabled."),
+                ),
               );
             },
           ),
 
           _buildSettingsItem(
             icon: Icons.color_lens_outlined,
-            title: appLocalizations.theme,
-            subtitle: _getThemeName(settings.themeMode, appLocalizations),
+            title: "Theme",
+            subtitle: _getThemeName(settings.themeMode),
             onTap: () {
               _logger.logInteraction(
                 'SettingsView',
                 'Change theme',
                 data: {'current': settings.themeMode.toString()},
               );
-              _showThemeSelectionDialog(
-                context,
-                settings.themeMode,
-                settingsNotifier,
-              );
+              _showThemePicker(context, settings.themeMode, settingsNotifier);
             },
           ),
 
-          _buildSectionHeader(appLocalizations.tesbihSound, brightness),
+          _buildSectionHeader("Tesbih & Sound", brightness),
 
           _buildSettingsItem(
             icon: Icons.music_note_outlined,
-            title:
-                appLocalizations
-                    .azanSound, // Assuming 'azanSound' is in AppLocalizations
+            title: "Azan Sound",
             subtitle: _getAzanSoundDisplayName(
               settings.azanSoundForStandardPrayers,
-              appLocalizations,
             ),
             onTap: () {
               _logger.logInteraction(
@@ -367,7 +355,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           ),
 
           _buildSectionHeader(
-            appLocalizations.notifications,
+            "Notifications",
             brightness,
             trailing:
                 ref.watch(settingsProvider.notifier).areNotificationsBlocked
@@ -392,18 +380,16 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 );
                 settingsNotifier.setPrayerNotification(prayer, value);
               },
-              appLocalizations: appLocalizations,
             ),
           ),
 
-          _buildSectionHeader(appLocalizations.prayerCalculation, brightness),
+          _buildSectionHeader("Prayer Calculation", brightness),
 
           _buildSettingsItem(
             icon: Icons.calculate_outlined,
-            title: appLocalizations.calculationMethod,
+            title: "Calculation Method",
             subtitle: _getCalculationMethodName(
               settings.calculationMethod,
-              appLocalizations,
             ),
             onTap: () {
               _logger.logInteraction(
@@ -411,29 +397,21 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 'Change calculation method',
                 data: {'current': settings.calculationMethod},
               );
-              _showCalculationMethodDialog(
-                context,
-                settings.calculationMethod,
-                settingsNotifier,
-              );
+              _showCalculationMethodPicker(context, settings.calculationMethod, settingsNotifier);
             },
           ),
 
           _buildSettingsItem(
             icon: Icons.school_outlined,
-            title: appLocalizations.asrTime,
-            subtitle: _getMadhabName(settings.madhab, appLocalizations),
+            title: "Asr Time",
+            subtitle: _getMadhabName(settings.madhab),
             onTap: () {
               _logger.logInteraction(
                 'SettingsView',
                 'Change madhab',
                 data: {'current': settings.madhab},
               );
-              _showMadhabSelectionDialog(
-                context,
-                settings.madhab,
-                settingsNotifier,
-              );
+              _showMadhabPicker(context, settings.madhab, settingsNotifier);
             },
           ),
 
@@ -442,8 +420,8 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSectionHeader(appLocalizations.location, brightness),
-                _buildLocationTile(context, appLocalizations),
+                _buildSectionHeader("Location", brightness),
+                _buildLocationTile(context),
               ],
             ),
           ),
@@ -454,16 +432,15 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildSectionHeader(
-                _getFallbackString('dateTime'),
+                "Date & Time",
                 brightness,
                 // key: _dateKey, // Removed GlobalKey from here
               ),
               _buildSettingsItem(
                 icon: Icons.calendar_today,
-                title: _getFallbackString('dateFormat'),
+                title: "Date Format",
                 subtitle: _getDateFormatName(
                   settings.dateFormatOption,
-                  appLocalizations,
                 ),
                 onTap: () {
                   _logger.logInteraction(
@@ -480,10 +457,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ),
               _buildSettingsItem(
                 icon: Icons.access_time,
-                title: _getFallbackString('timeFormat'),
+                title: "Time Format",
                 subtitle: _getTimeFormatName(
                   settings.timeFormat,
-                  appLocalizations,
                 ),
                 onTap: () {
                   _logger.logInteraction(
@@ -501,12 +477,12 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             ],
           ),
 
-          _buildSectionHeader(appLocalizations.other, brightness),
+          _buildSectionHeader("Other", brightness),
 
           _buildSettingsItem(
             icon: Icons.info_outline,
-            title: appLocalizations.about,
-            subtitle: appLocalizations.aboutAppSubtitle,
+            title: "About",
+            subtitle: "About this app",
             onTap: () {
               _logger.logInteraction('SettingsView', 'Open about screen');
               Navigator.push(
@@ -573,7 +549,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     required PrayerNotification prayer,
     required bool value,
     required ValueChanged<bool> onChanged,
-    required AppLocalizations appLocalizations,
   }) {
     final localSettingsNotifier = ref.read(settingsProvider.notifier);
     final bool isBlocked = localSettingsNotifier.areNotificationsBlocked;
@@ -593,13 +568,13 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         children: [
           SwitchListTile(
             title: Text(
-              _getPrayerName(prayer, appLocalizations),
+              _getPrayerName(prayer),
               style: AppTextStyles.prayerName(brightness).copyWith(
                 color: isBlocked ? AppColors.iconInactive(brightness) : null,
               ),
             ),
             subtitle: Text(
-              "Receive notification for ${_getPrayerName(prayer, appLocalizations)} prayer",
+              "Receive notification for ${_getPrayerName(prayer)} prayer",
               style: AppTextStyles.label(brightness).copyWith(
                 color: isBlocked ? AppColors.iconInactive(brightness) : null,
               ),
@@ -644,7 +619,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
   Widget _buildLocationTile(
     BuildContext context,
-    AppLocalizations appLocalizations,
   ) {
     final brightness = Theme.of(context).brightness;
     return Container(
@@ -662,7 +636,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               color: AppColors.iconInactive(brightness),
             ),
             title: Text(
-              appLocalizations.location,
+              "Location",
               style: AppTextStyles.prayerName(brightness),
             ),
             subtitle: FutureBuilder<bool?>(
@@ -670,7 +644,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Text(
-                    appLocalizations.loading,
+                    "Loading",
                     style: AppTextStyles.label(brightness),
                   );
                 }
@@ -682,7 +656,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     future: _locationService.getLocationName(),
                     builder: (context, nameSnapshot) {
                       return Text(
-                        nameSnapshot.data ?? appLocalizations.unknownLocation,
+                        nameSnapshot.data ?? "Unknown Location",
                         style: AppTextStyles.label(brightness),
                       );
                     },
@@ -690,7 +664,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 } else {
                   return _isLoadingLocation
                       ? Text(
-                        appLocalizations.loading,
+                        "Loading",
                         style: AppTextStyles.label(brightness),
                       )
                       : _currentPosition != null
@@ -699,7 +673,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                         style: AppTextStyles.label(brightness),
                       )
                       : Text(
-                        appLocalizations.notSet,
+                        "Not Set",
                         style: AppTextStyles.label(brightness),
                       );
                 }
@@ -724,7 +698,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   }
 
   void _showLocationOptionsDialog(BuildContext context) {
-    final appLocalizations = AppLocalizations.of(context)!;
     final brightness = Theme.of(context).brightness;
 
     showDialog(
@@ -733,7 +706,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         return AlertDialog(
           backgroundColor: AppColors.background(brightness),
           title: Text(
-            appLocalizations.location,
+            "Location",
             style: AppTextStyles.sectionTitle(brightness),
           ),
           content: Column(
@@ -762,7 +735,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ListTile(
                 leading: Icon(Icons.search, color: AppColors.primary(brightness)),
                 title: Text(
-                  appLocalizations.setLocationManually,
+                  "Set Location Manually",
                   style: AppTextStyles.prayerName(brightness),
                 ),
                 onTap: () async {
@@ -792,7 +765,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
               style: TextButton.styleFrom(foregroundColor: AppColors.primary(brightness)),
-              child: Text(appLocalizations.cancel),
+              child: Text("Cancel"),
             ),
           ],
         );
@@ -800,237 +773,43 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     );
   }
 
-  void _showLanguageSelectionDialog(
-    BuildContext context,
-    String currentLanguage,
-    SettingsNotifier settingsNotifier,
-  ) {
-    final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
+  void _showThemePicker(BuildContext context, ThemeMode currentThemeMode, SettingsNotifier notifier) {
     final brightness = Theme.of(context).brightness;
-    final Map<String, String> languages = {
-      'en': 'English',
-      'ar': 'العربية',
-      'fr': 'Français',
-      'es': 'Español',
-      'pt': 'Português',
-      'sq': 'Shqip',
-      'tr': 'Türkçe',
-    };
+    final bool isDarkMode = brightness == Brightness.dark;
+    final Color dialogBgColor =
+        isDarkMode ? const Color(0xFF2C2C2C) : Colors.white;
+    final Color textColor = AppColors.textPrimary(brightness);
+    final Color accentColor = AppColors.accentGreen(brightness);
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: AppColors.background(brightness),
+          backgroundColor: dialogBgColor,
           title: Text(
-            appLocalizations.selectLanguage,
-            style: AppTextStyles.sectionTitle(brightness),
+            "Select Theme",
+            style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
           ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: languages.length,
-              itemBuilder: (BuildContext context, int index) {
-                final entry = languages.entries.elementAt(index);
-                return RadioListTile<String>(
-                  title: Text(entry.value, style: AppTextStyles.prayerName(brightness)),
-                  value: entry.key,
-                  groupValue: currentLanguage,
-                  activeColor: AppColors.primary(brightness),
-                  onChanged: (value) {
-                    if (value != null) {
-                      settingsNotifier.updateLanguage(value);
-                      Navigator.pop(context);
-                    }
-                  },
-                );
-              },
-            ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: ThemeMode.values.map((themeMode) {
+              return RadioListTile<ThemeMode>(
+                title: Text(
+                  _getThemeName(themeMode),
+                  style: TextStyle(color: textColor),
+                ),
+                value: themeMode,
+                groupValue: currentThemeMode, // Use passed currentThemeMode
+                activeColor: accentColor,
+                onChanged: (ThemeMode? value) {
+                  if (value != null) {
+                    notifier.updateThemeMode(value); // Corrected method name
+                    Navigator.of(context).pop();
+                  }
+                },
+              );
+            }).toList(),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary(brightness)),
-              child: Text(appLocalizations.cancel),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showThemeSelectionDialog(
-    BuildContext context,
-    ThemeMode currentThemeMode,
-    SettingsNotifier settingsNotifier,
-  ) {
-    final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
-    final brightness = Theme.of(context).brightness;
-    final Map<ThemeMode, String> themes = {
-      ThemeMode.system: appLocalizations.system,
-      ThemeMode.light: appLocalizations.light,
-      ThemeMode.dark: appLocalizations.dark,
-    };
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: AppColors.background(brightness),
-          title: Text(
-            appLocalizations.theme,
-            style: AppTextStyles.sectionTitle(brightness),
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: themes.length,
-              itemBuilder: (BuildContext context, int index) {
-                final entry = themes.entries.elementAt(index);
-                return RadioListTile<ThemeMode>(
-                  title: Text(entry.value, style: AppTextStyles.prayerName(brightness)),
-                  value: entry.key,
-                  groupValue: currentThemeMode,
-                  activeColor: AppColors.primary(brightness),
-                  onChanged: (value) {
-                    if (value != null) {
-                      settingsNotifier.updateThemeMode(value);
-                      Navigator.pop(context);
-                    }
-                  },
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary(brightness)),
-              child: Text(appLocalizations.cancel),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showCalculationMethodDialog(
-    BuildContext context,
-    String currentCalculationMethod,
-    SettingsNotifier settingsNotifier,
-  ) {
-    final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
-    final brightness = Theme.of(context).brightness;
-    final Map<String, String> calculationMethods = {
-      'MuslimWorldLeague': appLocalizations.muslimWorldLeague,
-      'Egyptian': appLocalizations.egyptian,
-      'Karachi': appLocalizations.karachi,
-      'UmmAlQura': appLocalizations.ummAlQura,
-      'Dubai': appLocalizations.dubai,
-      'MoonsightingCommittee': appLocalizations.moonsightingCommittee,
-      'NorthAmerica': appLocalizations.northAmerica,
-      'Kuwait': appLocalizations.kuwait,
-      'Qatar': appLocalizations.qatar,
-      'Singapore': appLocalizations.singapore,
-      'Turkey': appLocalizations.turkey,
-      'Tehran': appLocalizations.tehran,
-    };
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: AppColors.background(brightness),
-          title: Text(
-            appLocalizations.calculationMethod,
-            style: AppTextStyles.sectionTitle(brightness),
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: calculationMethods.length,
-              itemBuilder: (BuildContext context, int index) {
-                final entry = calculationMethods.entries.elementAt(index);
-                return RadioListTile<String>(
-                  title: Text(entry.value, style: AppTextStyles.prayerName(brightness)),
-                  value: entry.key,
-                  groupValue: currentCalculationMethod,
-                  activeColor: AppColors.primary(brightness),
-                  onChanged: (value) {
-                    if (value != null) {
-                      settingsNotifier.updateCalculationMethod(value);
-                      Navigator.pop(context);
-                    }
-                  },
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary(brightness)),
-              child: Text(appLocalizations.cancel),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showMadhabSelectionDialog(
-    BuildContext context,
-    String currentMadhab,
-    SettingsNotifier settingsNotifier,
-  ) {
-    final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
-    final brightness = Theme.of(context).brightness;
-    final Map<String, String> madhabs = {
-      'shafi': appLocalizations.shafi,
-      'hanafi': appLocalizations.hanafi,
-    };
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: AppColors.background(brightness),
-          title: Text(
-            appLocalizations.asrTime,
-            style: AppTextStyles.sectionTitle(brightness),
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: madhabs.length,
-              itemBuilder: (BuildContext context, int index) {
-                final entry = madhabs.entries.elementAt(index);
-                return RadioListTile<String>(
-                  title: Text(entry.value, style: AppTextStyles.prayerName(brightness)),
-                  value: entry.key,
-                  groupValue: currentMadhab,
-                  activeColor: AppColors.primary(brightness),
-                  onChanged: (value) {
-                    if (value != null) {
-                      settingsNotifier.updateMadhab(value);
-                      Navigator.pop(context);
-                    }
-                  },
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary(brightness)),
-              child: Text(appLocalizations.cancel),
-            ),
-          ],
         );
       },
     );
@@ -1041,7 +820,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     String currentAzanSound,
     SettingsNotifier settingsNotifier,
   ) {
-    final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
     final brightness = Theme.of(context).brightness;
     final List<String> azanSounds = [
       'makkah_adhan.mp3',
@@ -1062,7 +840,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             return AlertDialog(
               backgroundColor: AppColors.background(brightness),
               title: Text(
-                appLocalizations.azanSound,
+                "Azan Sound",
                 style: AppTextStyles.sectionTitle(brightness),
               ),
               content: SizedBox(
@@ -1074,7 +852,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                     final soundFile = azanSounds[index];
                     return RadioListTile<String>(
                       title: Text(
-                        _getAzanSoundDisplayName(soundFile, appLocalizations),
+                        _getAzanSoundDisplayName(soundFile),
                         style: AppTextStyles.prayerName(brightness),
                       ),
                       value: soundFile,
@@ -1117,7 +895,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.primary(brightness),
                   ),
-                  child: Text(appLocalizations.cancel),
+                  child: Text("Cancel"),
                 ),
                 TextButton(
                   onPressed: () async {
@@ -1150,146 +928,89 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
   String _getAzanSoundDisplayName(
     String fileName,
-    AppLocalizations appLocalizations,
   ) {
     // Helper to convert filename to a more readable display name
     // This could be enhanced with actual localized names if available
-    if (fileName.isEmpty) return appLocalizations.notSet; // Or some default
+    if (fileName.isEmpty) return "Not Set"; // Or some default
     String name = fileName.replaceAll('_adhan.mp3', '').replaceAll('_', ' ');
     name = name.replaceAll('azaan ', ''); // for azaan_turkish
     name = name[0].toUpperCase() + name.substring(1);
     if (name.toLowerCase().contains('makkah')) {
-      return appLocalizations.makkahAdhan;
+      return "Makkah Adhan";
     }
     if (name.toLowerCase().contains('madinah')) {
-      return appLocalizations.madinahAdhan;
+      return "Madinah Adhan";
     }
     if (name.toLowerCase().contains('alaqsa')) {
-      return appLocalizations.alAqsaAdhan;
+      return "Al-Aqsa Adhan";
     }
     if (name.toLowerCase().contains('turkish')) {
-      return appLocalizations.turkishAdhan;
+      return "Turkish Adhan";
     }
     return name; // Fallback to a processed name
   }
 
-  String _getLocaleName(
-    String languageCode,
-    AppLocalizations appLocalizations,
-  ) {
-    switch (languageCode) {
-      case 'en':
-        return 'English';
-      case 'ar':
-        return 'العربية';
-      case 'fr':
-        return 'Français';
-      case 'es':
-        return 'Español';
-      case 'pt':
-        return 'Português';
-      case 'sq':
-        return 'Shqip';
-      case 'tr':
-        return 'Türkçe';
-      default:
-        return 'English';
-    }
-  }
-
-  String _getThemeName(ThemeMode themeMode, AppLocalizations appLocalizations) {
+  String _getThemeName(ThemeMode themeMode) {
     switch (themeMode) {
       case ThemeMode.system:
-        return appLocalizations.system;
+        return "System";
       case ThemeMode.light:
-        return appLocalizations.light;
+        return "Light";
       case ThemeMode.dark:
-        return appLocalizations.dark;
+        return "Dark";
     }
   }
 
-  String _getCalculationMethodName(
-    String method,
-    AppLocalizations appLocalizations,
-  ) {
-    switch (method) {
-      case 'MuslimWorldLeague':
-        return appLocalizations.muslimWorldLeague;
-      case 'Egyptian':
-        return appLocalizations.egyptian;
-      case 'Karachi':
-        return appLocalizations.karachi;
-      case 'UmmAlQura':
-        return appLocalizations.ummAlQura;
-      case 'Dubai':
-        return appLocalizations.dubai;
-      case 'MoonsightingCommittee':
-        return appLocalizations.moonsightingCommittee;
-      case 'NorthAmerica':
-        return appLocalizations.northAmerica;
-      case 'Kuwait':
-        return appLocalizations.kuwait;
-      case 'Qatar':
-        return appLocalizations.qatar;
-      case 'Singapore':
-        return appLocalizations.singapore;
-      case 'Turkey':
-        return appLocalizations.turkey;
-      case 'Tehran':
-        return appLocalizations.tehran;
-      default:
-        return appLocalizations.muslimWorldLeague;
-    }
+  String _getCalculationMethodName(String method) { // Added this function
+    // This is a placeholder. You might want to map keys to display names.
+    // For example, if method is 'MuslimWorldLeague', return 'Muslim World League'
+    // This depends on how your calculation method strings are stored and how you want to display them.
+    return method;
   }
 
-  String _getMadhabName(String madhab, AppLocalizations appLocalizations) {
-    switch (madhab) {
-      case 'shafi':
-        return appLocalizations.shafi;
-      case 'hanafi':
-        return appLocalizations.hanafi;
-      default:
-        return appLocalizations.shafi;
-    }
+  String _getMadhabName(String madhab) { // Changed Madhab to String
+    // Assuming madhab is stored as a string like 'shafi' or 'hanafi'
+    if (madhab.toLowerCase() == 'shafi') return "Shafi";
+    if (madhab.toLowerCase() == 'hanafi') return "Hanafi";
+    return madhab; // Fallback to the raw string if not recognized
   }
 
   String _getPrayerName(
     PrayerNotification prayer,
-    AppLocalizations appLocalizations,
   ) {
     switch (prayer) {
       case PrayerNotification.fajr:
-        return appLocalizations.fajr;
+        return "Fajr";
       case PrayerNotification.sunrise:
-        return appLocalizations.sunrise;
+        return "Sunrise";
       case PrayerNotification.dhuhr:
-        return appLocalizations.dhuhr;
+        return "Dhuhr";
       case PrayerNotification.asr:
-        return appLocalizations.asr;
+        return "Asr";
       case PrayerNotification.maghrib:
-        return appLocalizations.maghrib;
+        return "Maghrib";
       case PrayerNotification.isha:
-        return appLocalizations.isha;
+        return "Isha";
     }
   }
 
-  String _getDateFormatName(DateFormatOption option, AppLocalizations loc) {
+  String _getDateFormatName(DateFormatOption option) {
     switch (option) {
       case DateFormatOption.dayMonthYear:
-        return _getFallbackString('dayMonthYear');
+        return "Day Month Year";
       case DateFormatOption.monthDayYear:
-        return _getFallbackString('monthDayYear');
+        return "Month Day Year";
       case DateFormatOption.yearMonthDay:
-        return _getFallbackString('yearMonthDay');
+        return "Year Month Day";
     }
   }
 
-  String _getTimeFormatName(TimeFormat format, AppLocalizations loc) {
+  String _getTimeFormatName(TimeFormat format) {
     switch (format) {
       case TimeFormat.twelveHour:
-        return _getFallbackString('twelveHour');
+        return "12-hour";
       case TimeFormat.twentyFourHour:
-        return _getFallbackString('twentyFourHour');
+        return "24-hour";
     }
   }
 
@@ -1298,7 +1019,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     DateFormatOption currentDateFormatOption,
     SettingsNotifier notifier,
   ) {
-    final loc = AppLocalizations.of(context)!;
     final brightness = Theme.of(context).brightness;
     showDialog(
       context: context,
@@ -1306,7 +1026,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           (ctx) => AlertDialog(
             backgroundColor: AppColors.background(brightness),
             title: Text(
-              _getFallbackString('dateFormat'),
+              "Date Format",
               style: AppTextStyles.sectionTitle(brightness),
             ),
             content: Column(
@@ -1316,7 +1036,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                       .map(
                         (opt) => RadioListTile<DateFormatOption>(
                           title: Text(
-                            _getDateFormatName(opt, loc),
+                            _getDateFormatName(opt),
                             style: AppTextStyles.prayerName(brightness),
                           ),
                           value: opt,
@@ -1339,7 +1059,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     TimeFormat currentTimeFormat,
     SettingsNotifier notifier,
   ) {
-    final loc = AppLocalizations.of(context)!;
     final brightness = Theme.of(context).brightness;
     showDialog(
       context: context,
@@ -1347,7 +1066,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           (ctx) => AlertDialog(
             backgroundColor: AppColors.background(brightness),
             title: Text(
-              _getFallbackString('timeFormat'),
+              "Time Format",
               style: AppTextStyles.sectionTitle(brightness),
             ),
             content: Column(
@@ -1357,7 +1076,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                       .map(
                         (fmt) => RadioListTile<TimeFormat>(
                           title: Text(
-                            _getTimeFormatName(fmt, loc),
+                            _getTimeFormatName(fmt),
                             style: AppTextStyles.prayerName(brightness),
                           ),
                           value: fmt,
@@ -1375,30 +1094,138 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     );
   }
 
-  // Remove the _showDistanceUnitDialog method
+  void _showCalculationMethodPicker(
+    BuildContext context,
+    String currentCalculationMethod, // Add currentCalculationMethod parameter
+    SettingsNotifier notifier,
+  ) {
+    final brightness = Theme.of(context).brightness;
+    final bool isDarkMode = brightness == Brightness.dark;
+    final Color dialogBgColor =
+        isDarkMode ? const Color(0xFF2C2C2C) : Colors.white;
+    final Color textColor = AppColors.textPrimary(brightness);
+    final Color accentColor = AppColors.accentGreen(brightness);
 
-  // Add these fallback methods at the end of the class
-  String _getFallbackString(String key) {
-    // Fallback strings for when localization keys aren't available
-    switch (key) {
-      case 'dateTime':
-        return 'Date & Time';
-      case 'dateFormat':
-        return 'Date Format';
-      case 'timeFormat':
-        return 'Time Format';
-      case 'dayMonthYear':
-        return 'Day Month Year';
-      case 'monthDayYear':
-        return 'Month Day Year';
-      case 'yearMonthDay':
-        return 'Year Month Day';
-      case 'twelveHour':
-        return '12-hour';
-      case 'twentyFourHour':
-        return '24-hour';
-      default:
-        return key;
-    }
+    // Placeholder for actual calculation methods
+    // You need to define how you get these. Example:
+    final List<String> calculationMethods = [
+      'MuslimWorldLeague', 
+      'Egyptian', 
+      'Karachi', 
+      'UmmAlQura', 
+      'Dubai', 
+      'MoonsightingCommittee', 
+      'NorthAmerica', 
+      'Kuwait', 
+      'Qatar', 
+      'Singapore', 
+      'Tehran', 
+      'Turkey'
+      ];
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: dialogBgColor,
+          title: Text(
+            "Select Calculation Method",
+            style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: calculationMethods.length,
+              itemBuilder: (context, index) {
+                final method = calculationMethods[index];
+                return RadioListTile<String>(
+                  title: Text(
+                    _getCalculationMethodName(method), // Use helper to get display name
+                    style: TextStyle(color: textColor),
+                  ),
+                  value: method,
+                  groupValue: currentCalculationMethod, // Use passed currentCalculationMethod
+                  onChanged: (String? value) {
+                    if (value != null) {
+                      notifier.updateCalculationMethod(value); // Corrected method name
+                      _recalculatePrayerTimes(newMethod: value);
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  activeColor: accentColor,
+                  controlAffinity: ListTileControlAffinity.trailing,
+                  tileColor: dialogBgColor,
+                  selectedTileColor: accentColor.withAlpha((255 * 0.1).round()),
+                );
+              },
+            ),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showMadhabPicker(BuildContext context, String currentMadhab, SettingsNotifier notifier) { // Add currentMadhab parameter
+    final brightness = Theme.of(context).brightness;
+    final bool isDarkMode = brightness == Brightness.dark;
+    final Color dialogBgColor =
+        isDarkMode ? const Color(0xFF2C2C2C) : Colors.white;
+    final Color textColor = AppColors.textPrimary(brightness);
+    final Color accentColor = AppColors.accentGreen(brightness);
+    
+    // Placeholder for actual madhab options
+    // You need to define how you get these. Example:
+    final List<String> madhabs = ['shafi', 'hanafi']; 
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: dialogBgColor,
+          title: Text(
+            "Select Madhab",
+            style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: madhabs.map((madhab) { // Use the string list
+              return RadioListTile<String>(
+                title: Text(
+                  _getMadhabName(madhab), // Use helper to get display name
+                  style: TextStyle(color: textColor),
+                ),
+                value: madhab,
+                groupValue: currentMadhab, // Use passed currentMadhab
+                onChanged: (String? value) { // Changed Madhab to String
+                  if (value != null) {
+                    notifier.updateMadhab(value); // Corrected method name
+                    _recalculatePrayerTimes(newMadhab: value);
+                    Navigator.of(context).pop();
+                  }
+                },
+                activeColor: accentColor,
+                controlAffinity: ListTileControlAffinity.trailing,
+                tileColor: dialogBgColor,
+                selectedTileColor: accentColor.withAlpha((255 * 0.1).round()),
+              );
+            }).toList(),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _recalculatePrayerTimes({
+    String? newMethod, // Changed PrayerCalculationMethod to String
+    String? newMadhab, // Changed Madhab to String
+  }) async {
+    // Your logic to recalculate prayer times based on newMethod and newMadhab
   }
 }
