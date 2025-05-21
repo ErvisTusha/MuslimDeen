@@ -8,21 +8,17 @@ import '../services/logger_service.dart';
 class Result<T> {
   final T? _value;
   final AppError? _error;
-  
-  const Result.success(T value)
-      : _value = value,
-        _error = null;
-  
-  const Result.failure(AppError error)
-      : _error = error,
-        _value = null;
-  
+
+  const Result.success(T value) : _value = value, _error = null;
+
+  const Result.failure(AppError error) : _error = error, _value = null;
+
   bool get isSuccess => _error == null;
   bool get isFailure => _error != null;
-  
+
   T get value => _value!;
   AppError get error => _error!;
-  
+
   R fold<R>(R Function(T) onSuccess, R Function(AppError) onFailure) {
     if (isSuccess) {
       return onSuccess(_value as T);
@@ -39,7 +35,7 @@ class AppError {
   final String? details;
   final StackTrace? stackTrace;
   final Object? originalException;
-  
+
   const AppError({
     required this.message,
     this.code,
@@ -47,7 +43,7 @@ class AppError {
     this.stackTrace,
     this.originalException,
   });
-  
+
   @override
   String toString() {
     final buffer = StringBuffer('AppError: $message');
@@ -55,7 +51,7 @@ class AppError {
     if (details != null) buffer.write('\nDetails: $details');
     return buffer.toString();
   }
-  
+
   static AppError fromException(Object e, [StackTrace? stack]) {
     return AppError(
       message: e.toString(),
@@ -69,52 +65,52 @@ class AppError {
 class ErrorHandlerService {
   final LoggerService _logger = locator<LoggerService>();
   final _errorController = StreamController<AppError>.broadcast();
-  
+
   Stream<AppError> get errorStream => _errorController.stream;
-  
-  void reportError(AppError error) {
+
+  void reportError(AppError error, {String? context}) {
     _logger.error(
-      'App error: ${error.message}',
+      'App error${context != null ? ' in $context' : ''}: ${error.message}',
       error: error.originalException,
       stackTrace: error.stackTrace,
+      data: {'code': error.code, 'details': error.details},
     );
-    
+
     _errorController.add(error);
-    
-    // Add reporting to external services if needed
-    // e.g. Firebase Crashlytics, Sentry, etc.
+
+    // Consider adding reporting to external services like Firebase Crashlytics or Sentry here.
   }
-  
-  Future<Result<T>> guard<T>(Future<T> Function() fn) async {
+
+  Future<Result<T>> guard<T>(Future<T> Function() fn, {String? context}) async {
     try {
       final result = await fn();
       return Result.success(result);
     } catch (e, stack) {
-      final error = AppError(
+      final appError = AppError(
         message: e.toString(),
         stackTrace: stack,
         originalException: e,
       );
-      reportError(error);
-      return Result.failure(error);
+      reportError(appError, context: context);
+      return Result.failure(appError);
     }
   }
-  
-  Result<T> guardSync<T>(T Function() fn) {
+
+  Result<T> guardSync<T>(T Function() fn, {String? context}) {
     try {
       final result = fn();
       return Result.success(result);
     } catch (e, stack) {
-      final error = AppError(
+      final appError = AppError(
         message: e.toString(),
         stackTrace: stack,
         originalException: e,
       );
-      reportError(error);
-      return Result.failure(error);
+      reportError(appError, context: context);
+      return Result.failure(appError);
     }
   }
-  
+
   void dispose() {
     _errorController.close();
   }

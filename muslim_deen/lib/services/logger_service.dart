@@ -35,7 +35,7 @@ class LoggerService {
       'type': 'user_interaction',
       'feature': feature,
       'action': action,
-      'data': data,
+      if (data != null) 'data': data,
       'timestamp': DateTime.now().toIso8601String(),
     });
   }
@@ -46,7 +46,7 @@ class LoggerService {
       'type': 'navigation',
       'from': from,
       'to': to,
-      'data': data,
+      if (data != null) 'data': data,
       'timestamp': DateTime.now().toIso8601String(),
     });
   }
@@ -57,20 +57,15 @@ class LoggerService {
     Map<String, dynamic>? data,
     StackTrace? stackTrace,
   }) {
-    if (data != null) {
-      _logger.d({'message': message, 'data': data}, stackTrace: stackTrace);
-    } else {
-      _logger.d(message, stackTrace: stackTrace);
-    }
+    _logger.d({
+      'message': message,
+      if (data != null) 'data': data,
+    }, stackTrace: stackTrace);
   }
 
   // Info logs
   void info(dynamic message, {Map<String, dynamic>? data}) {
-    if (data != null) {
-      _logger.i({'message': message, 'data': data});
-    } else {
-      _logger.i(message);
-    }
+    _logger.i({'message': message, if (data != null) 'data': data});
   }
 
   // Warning logs
@@ -79,11 +74,10 @@ class LoggerService {
     Map<String, dynamic>? data,
     StackTrace? stackTrace,
   }) {
-    if (data != null) {
-      _logger.w({'message': message, 'data': data}, stackTrace: stackTrace);
-    } else {
-      _logger.w(message, stackTrace: stackTrace);
-    }
+    _logger.w({
+      'message': message,
+      if (data != null) 'data': data,
+    }, stackTrace: stackTrace);
   }
 
   // Error logs
@@ -93,14 +87,10 @@ class LoggerService {
     Map<String, dynamic>? data,
     StackTrace? stackTrace,
   }) {
-    if (data != null) {
-      _logger.e(
-        {'message': message, 'error': error, 'data': data},
-        error: error,
-        stackTrace: stackTrace,
-      );
-    } else {
-      _logger.e(message, error: error, stackTrace: stackTrace);
-    }
+    _logger.e(
+      {'message': message, if (data != null) 'data': data},
+      error: error,
+      stackTrace: stackTrace,
+    );
   }
 }

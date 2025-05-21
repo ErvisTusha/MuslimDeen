@@ -74,7 +74,8 @@ class LocationService {
   static const String _manualLngKey = 'manual_longitude';
   static const String _locationNameKey = 'location_name';
   static const String _useManualLocationKey = 'use_manual_location';
-  static const String _lastKnownPositionKey = 'last_known_position';
+  // static const String _lastKnownPositionKey = 'last_known_position'; // Replaced by direct use in methods
+
   LocationService();
 
   // Initialize with debouncing to prevent multiple rapid initializations
@@ -309,7 +310,9 @@ class LocationService {
   Future<void> _loadLastPosition() async {
     if (_disposed) return;
     try {
-      final String? lastPosJson = _prefs?.getString(_lastKnownPositionKey);
+      final String? lastPosJson = _prefs?.getString(
+        'last_known_position',
+      ); // Direct string usage
       if (lastPosJson != null) {
         _lastKnownPosition = Position.fromMap(jsonDecode(lastPosJson));
         _logger.info(
@@ -332,7 +335,7 @@ class LocationService {
     try {
       _lastKnownPosition = position;
       await _prefs?.setString(
-        _lastKnownPositionKey,
+        'last_known_position', // Direct string usage
         jsonEncode(position.toJson()),
       );
       _logger.info(
@@ -373,12 +376,17 @@ class LocationService {
     await _prefs?.setDouble(_manualLngKey, longitude);
     _manualLngCached = longitude; // Update cache
 
-    if (name != null) {
+    if (name != null && name.isNotEmpty) {
+      // Added check for empty name
       await _prefs?.setString(_locationNameKey, name);
       _locationNameCached = name; // Update cache
+    } else {
+      await _prefs?.remove(_locationNameKey); // Remove if name is null or empty
+      _locationNameCached = null;
     }
     _logger.debug(
-        "Set manual location (Lat: $latitude, Lng: $longitude, Name: $name) and updated cache.");
+      "Set manual location (Lat: $latitude, Lng: $longitude, Name: $name) and updated cache.",
+    );
   }
 
   /// Get the current location either from device or manual settings
@@ -394,7 +402,8 @@ class LocationService {
           DateTime.now().difference(_lastDevicePositionFetchTime!) <
               _deviceLocationCacheDuration) {
         _logger.info(
-            'Using cached device position (fetched less than ${_deviceLocationCacheDuration.inSeconds}s ago).');
+          'Using cached device position (fetched less than ${_deviceLocationCacheDuration.inSeconds}s ago).',
+        );
         return _cachedDevicePosition!;
       }
 
@@ -402,14 +411,16 @@ class LocationService {
         final hasPermission = await _checkLocationPermission();
         if (!hasPermission) {
           _logger.warning(
-              'Location permission denied while attempting to get device location.');
+            'Location permission denied while attempting to get device location.',
+          );
           return _getLastKnownLocationOrDefault();
         }
 
         final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
         if (!isServiceEnabled) {
           _logger.warning(
-              'Location services disabled while attempting to get device location.');
+            'Location services disabled while attempting to get device location.',
+          );
           return _getLastKnownLocationOrDefault();
         }
 
@@ -419,25 +430,34 @@ class LocationService {
             accuracy: LocationAccuracy.high,
             timeLimit: Duration(seconds: 10),
           ),
-        ).timeout(const Duration(seconds: 12), onTimeout: () {
-          _logger.warning('Geolocator.getCurrentPosition timed out.');
-          throw TimeoutException('Location request timed out');
-        });
+        ).timeout(
+          const Duration(seconds: 12),
+          onTimeout: () {
+            _logger.warning('Geolocator.getCurrentPosition timed out.');
+            throw TimeoutException('Location request timed out');
+          },
+        );
 
         _cachedDevicePosition = position;
         _lastDevicePositionFetchTime = DateTime.now();
         await cacheCurrentLocation(
-            position); // This also saves to persistent _lastKnownPosition
+          position,
+        ); // This also saves to persistent _lastKnownPosition
         _logger.info(
-            'Fetched and cached new device position: ${position.latitude}, ${position.longitude}');
+          'Fetched and cached new device position: ${position.latitude}, ${position.longitude}',
+        );
         return position;
       } on TimeoutException {
         _logger.warning(
-            'Location request timed out, using fallback from _getLastKnownLocationOrDefault.');
+          'Location request timed out, using fallback from _getLastKnownLocationOrDefault.',
+        );
         return _getLastKnownLocationOrDefault();
       } catch (e, s) {
-        _logger.error('Error getting current device location',
-            error: e, stackTrace: s);
+        _logger.error(
+          'Error getting current device location',
+          error: e,
+          stackTrace: s,
+        );
         return _getLastKnownLocationOrDefault();
       }
     }
@@ -451,13 +471,15 @@ class LocationService {
 
     if (lat == null || lng == null) {
       _logger.warning(
-          "Manual location (lat/lng) not found in cache or SharedPreferences.");
+        "Manual location (lat/lng) not found in cache or SharedPreferences.",
+      );
       throw const LocationServiceException(
         'Manual location not set. Please set a location in settings.',
       );
     }
     _logger.debug(
-        "Returning manual location - Lat: $lat, Lng: $lng from cache/prefs.");
+      "Returning manual location - Lat: $lat, Lng: $lng from cache/prefs.",
+    );
     return Position(
       latitude: lat,
       longitude: lng,
@@ -473,15 +495,7 @@ class LocationService {
   }
 
   Future<String?> getLocationName() async {
-    // Prefer cached value
-    if (_locationNameCached != null) {
-      _logger.debug("Returning cached location name: $_locationNameCached");
-      return _locationNameCached;
-    }
-    // Fallback to SharedPreferences if not initialized (should not happen in normal flow)
-    final nameFromPrefs = _prefs?.getString(_locationNameKey);
-    _logger.debug("Returning location name from SharedPreferences: $nameFromPrefs");
-    return nameFromPrefs;
+    return _locationNameCached ?? _prefs?.getString(_locationNameKey);
   }
 
   // Method to update location name in cache and SharedPreferences
@@ -495,7 +509,8 @@ class LocationService {
       await _prefs?.setString(_locationNameKey, newName);
       _locationNameCached = newName;
       _logger.debug(
-          "Updated location name to '$newName' in cache and SharedPreferences.");
+        "Updated location name to '$newName' in cache and SharedPreferences.",
+      );
     }
   }
 
@@ -542,7 +557,8 @@ class LocationService {
           // This will also update the _useManualLocationCached via setUseManualLocation
           await setUseManualLocation(false);
           _logger.info(
-              'Default location set to use device location (and updated cache).');
+            'Default location set to use device location (and updated cache).',
+          );
         } else {
           // Ensure cache is consistent if key already exists
           _useManualLocationCached =
@@ -560,6 +576,7 @@ class LocationService {
 
   /// Check if location permission is granted
   Future<bool> _checkLocationPermission() async {
+    // This method is identical to hasLocationPermission, consider removing one.
     try {
       final permission = await Geolocator.checkPermission();
       return permission == LocationPermission.whileInUse ||
@@ -573,20 +590,34 @@ class LocationService {
   /// Gets last known location from shared preferences or returns default
   Future<Position> _getLastKnownLocationOrDefault() async {
     try {
-      // Try to get cached location from preferences
       if (_lastKnownPosition != null) {
         _logger.info('Using last known position as fallback');
         return _lastKnownPosition!;
       }
 
-      // Try to get manual location as fallback
-      if (_prefs?.containsKey(_manualLatKey) == true &&
-          _prefs?.containsKey(_manualLngKey) == true) {
-        _logger.info('Using manual location as fallback');
-        return getManualLocation();
+      // Try to get manual location as fallback if manual mode is active and lat/lng are set
+      if (isUsingManualLocation()) {
+        final manualLat = _manualLatCached ?? _prefs?.getDouble(_manualLatKey);
+        final manualLng = _manualLngCached ?? _prefs?.getDouble(_manualLngKey);
+        if (manualLat != null && manualLng != null) {
+          _logger.info(
+            'Using manual location as fallback because it is active and set.',
+          );
+          return Position(
+            latitude: manualLat,
+            longitude: manualLng,
+            timestamp: DateTime.now(),
+            accuracy: 0,
+            altitude: 0,
+            heading: 0,
+            speed: 0,
+            speedAccuracy: 0,
+            altitudeAccuracy: 0,
+            headingAccuracy: 0,
+          );
+        }
       }
 
-      // If no cached location, return a default location (Mecca)
       _logger.info('Using default Mecca coordinates as fallback');
       return Position(
         latitude: 21.422487,
@@ -623,12 +654,18 @@ class LocationService {
   /// The short-term _cachedDevicePosition is handled in getLocation().
   Future<void> cacheCurrentLocation(Position position) async {
     try {
-      await _saveLastPosition(position); // Saves to SharedPreferences for fallback
+      await _saveLastPosition(
+        position,
+      ); // Saves to SharedPreferences for fallback
       _logger.debug(
-          "Persistent _lastKnownPosition updated in SharedPreferences.");
+        "Persistent _lastKnownPosition updated in SharedPreferences.",
+      );
     } catch (e, s) {
-      _logger.error('Error caching location to _lastKnownPosition',
-          error: e, stackTrace: s);
+      _logger.error(
+        'Error caching location to _lastKnownPosition',
+        error: e,
+        stackTrace: s,
+      );
     }
   }
 }

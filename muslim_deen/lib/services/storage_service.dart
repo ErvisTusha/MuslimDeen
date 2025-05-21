@@ -34,43 +34,32 @@ class StorageService {
     return _prefs!;
   }
 
-  /// Saves the user's location coordinates and optional location name
+  /// Saves the user's location coordinates and optional location name.
+  /// Does not affect the 'useManualLocation' flag; that should be set separately via [setUseManualLocation].
   Future<void> saveLocation(
     double latitude,
     double longitude, {
     String? locationName,
-    bool setManualMode =
-        true, // Add parameter with default value true for backward compatibility
   }) async {
     final prefs = _getPrefs();
     await prefs.setDouble(_keyLatitude, latitude);
     await prefs.setDouble(_keyLongitude, longitude);
-    if (locationName != null) {
+
+    if (locationName != null && locationName.isNotEmpty) {
       await prefs.setString(_keyLocationName, locationName);
-    }
-    // Only set manual location flag if requested
-    if (setManualMode) {
-      await prefs.setBool(_keyUseManualLocation, true);
-      locator<LoggerService>().info(
-        "Location saved (manual)",
-        data: {
-          'latitude': latitude,
-          'longitude': longitude,
-          'locationName': locationName,
-          'manual': true,
-        },
-      );
     } else {
-      locator<LoggerService>().info(
-        "Location saved (device)",
-        data: {
-          'latitude': latitude,
-          'longitude': longitude,
-          'locationName': locationName,
-          'manual': false,
-        },
-      );
+      // If locationName is null or empty, remove it to keep data clean.
+      await prefs.remove(_keyLocationName);
     }
+
+    locator<LoggerService>().info(
+      "User location data (lat, lon, name) saved to SharedPreferences.",
+      data: {
+        'latitude': latitude,
+        'longitude': longitude,
+        'locationName': locationName ?? 'N/A',
+      },
+    );
   }
 
   /// Returns the stored latitude or null if not set

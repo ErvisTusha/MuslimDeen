@@ -7,15 +7,13 @@ class CacheService {
   final SharedPreferences _prefs;
   final LoggerService _logger = locator<LoggerService>();
 
-  // Cache expiration times in minutes
   static const int _defaultExpirationMinutes = 60; // 1 hour
   static const int qiblaExpirationMinutes = 1440; // 24 hours
   static const int mosquesExpirationMinutes = 720; // 12 hours
-  static const int oneDayInMinutes = 24 * 60; // 24 hours
+  // static const int oneDayInMinutes = 24 * 60; // 24 hours // Unused
 
   CacheService(this._prefs);
 
-  /// Saves data to cache with expiration time
   Future<bool> setCache(
     String key,
     dynamic data, {
@@ -28,7 +26,6 @@ class CacheService {
               .add(Duration(minutes: expirationMinutes))
               .millisecondsSinceEpoch;
 
-      // Save the data and its expiration timestamp
       await _prefs.setString('${key}_data', jsonData);
       await _prefs.setInt('${key}_expiration', timestamp);
 
@@ -46,25 +43,20 @@ class CacheService {
     }
   }
 
-  /// Gets data from cache if it exists and is not expired
   T? getCache<T>(String key) {
     try {
-      // Check if the cache exists
       if (!_prefs.containsKey('${key}_data') ||
           !_prefs.containsKey('${key}_expiration')) {
         return null;
       }
 
-      // Check if the cache is expired
       final int expiration = _prefs.getInt('${key}_expiration') ?? 0;
       if (expiration < DateTime.now().millisecondsSinceEpoch) {
-        // Cache expired, clean it up
         _prefs.remove('${key}_data');
         _prefs.remove('${key}_expiration');
         return null;
       }
 
-      // Retrieve and decode the cached data
       final String jsonData = _prefs.getString('${key}_data') ?? '';
       final dynamic decodedData = jsonDecode(jsonData);
 
@@ -79,7 +71,6 @@ class CacheService {
     }
   }
 
-  /// Removes a specific cache entry
   Future<bool> removeCache(String key) async {
     try {
       await _prefs.remove('${key}_data');
@@ -95,7 +86,6 @@ class CacheService {
     }
   }
 
-  /// Clears all cache entries
   Future<bool> clearAllCache() async {
     try {
       final Set<String> keys = _prefs.getKeys();
@@ -115,7 +105,6 @@ class CacheService {
     }
   }
 
-  /// Returns all unique base keys stored in the cache.
   Set<String> getAllBaseKeys() {
     final allStoredKeys = _prefs.getKeys();
     final baseKeys = <String>{};
@@ -123,13 +112,14 @@ class CacheService {
       if (key.endsWith('_data')) {
         baseKeys.add(key.substring(0, key.length - '_data'.length));
       }
-      // No need to check for '_expiration' as '_data' implies its existence
     }
-    _logger.info('Retrieved all base keys from cache.', data: {'count': baseKeys.length});
+    _logger.info(
+      'Retrieved all base keys from cache.',
+      data: {'count': baseKeys.length},
+    );
     return baseKeys;
   }
 
-  /// Generate a cache key for location-based data
   String generateLocationCacheKey(
     String prefix,
     double latitude,

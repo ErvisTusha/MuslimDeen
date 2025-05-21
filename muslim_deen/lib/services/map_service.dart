@@ -14,7 +14,7 @@ class Mosque {
 
   Mosque({required this.name, required this.location, this.id, this.distance});
 
-  // Added to support serialization for caching
+  // Supports serialization for caching
   Map<String, dynamic> toJson() {
     return {
       'name': name,
@@ -27,7 +27,7 @@ class Mosque {
     };
   }
 
-  // Added to support deserialization from cache
+  // Supports deserialization from cache
   factory Mosque.fromJson(Map<String, dynamic> json) {
     return Mosque(
       name: json['name'] as String,
@@ -45,25 +45,30 @@ class MapService {
   final CacheService? cacheService;
   final LoggerService _logger = locator<LoggerService>();
 
+  static const String _overpassApiUrl =
+      'https://overpass-api.de/api/interpreter';
+
   MapService({this.cacheService});
 
   Future<List<Mosque>> findNearbyMosques(
     Position position, {
-    double radius = 5000.0,
-    int limit = 20,
+    double radius = 5000.0, // Default radius in meters
+    int limit = 20, // Default limit for number of results
     bool useCache = true,
   }) async {
-    if (useCache && cacheService != null) {
-      final cacheKey = cacheService!.generateLocationCacheKey(
-        'mosques',
-        position.latitude,
-        position.longitude,
-        radius: radius,
-      );
-      final cachedData = cacheService!.getCache<List<dynamic>>(cacheKey);
+    final String cacheKey =
+        cacheService?.generateLocationCacheKey(
+          'mosques',
+          position.latitude,
+          position.longitude,
+          radius: radius,
+        ) ??
+        'mosques_${position.latitude}_${position.longitude}_$radius'; // Fallback key if cacheService is null
 
+    if (useCache && cacheService != null) {
+      final cachedData = cacheService!.getCache<List<dynamic>>(cacheKey);
       if (cachedData != null) {
-        _logger.info('Returning cached mosques');
+        _logger.info('Returning cached mosques for key: $cacheKey');
         return cachedData
             .map((item) => Mosque.fromJson(item as Map<String, dynamic>))
             .toList();
@@ -71,7 +76,7 @@ class MapService {
     }
 
     _logger.info(
-      'Searching for mosques',
+      'Searching for mosques (cache miss or cache disabled)',
       data: {
         'latitude': position.latitude,
         'longitude': position.longitude,
@@ -80,8 +85,11 @@ class MapService {
     );
 
     try {
-      final double radiusDegrees = radius / 111000;
+      // Approximate conversion: 1 degree of latitude ~ 111 km.
+      // This is a simplification; longitude conversion varies with latitude.
+      final double radiusDegrees = radius / 111000.0;
 
+      // Overpass QL query to find Muslim places of worship
       final query = '''
       [out:json];
       (
@@ -98,7 +106,7 @@ class MapService {
       out center;
       ''';
 
-      final url = Uri.parse('https://overpass-api.de/api/interpreter');
+      final url = Uri.parse(_overpassApiUrl);
       final response = await http.post(
         url,
         body: query,
@@ -113,10 +121,12 @@ class MapService {
             elements.map((element) {
               double lat, lon;
 
+              // Extract coordinates based on element type
               if (element['type'] == 'node') {
                 lat = element['lat'] as double;
                 lon = element['lon'] as double;
               } else {
+                // 'way' or 'relation'
                 lat = element['center']['lat'] as double;
                 lon = element['center']['lon'] as double;
               }
@@ -135,27 +145,25 @@ class MapService {
                 mosqueLocation,
               );
 
-              final String mosqueName;
-              if (tags != null &&
-                  tags['name'] != null &&
-                  (tags['name'] as String).isNotEmpty) {
-                mosqueName = tags['name'] as String;
-              } else if (tags != null &&
-                  tags['name:en'] != null &&
-                  (tags['name:en'] as String).isNotEmpty) {
-                mosqueName = tags['name:en'] as String;
-              } else {
-                mosqueName = 'Unnamed Mosque';
-              }
+              // Determine mosque name, falling back to English name or a default
+              final String mosqueName =
+                  tags?['name'] as String? ??
+                  tags?['name:en'] as String? ??
+                  'Unnamed Mosque';
+
+              // Ensure name is not empty after fallbacks
+              final finalMosqueName =
+                  mosqueName.isNotEmpty ? mosqueName : 'Unnamed Mosque';
 
               return Mosque(
                 id: element['id'].toString(),
-                name: mosqueName,
+                name: finalMosqueName,
                 location: mosqueLocation,
                 distance: distanceInMeters,
               );
             }).toList();
 
+        // Sort mosques by distance (ascending)
         mosques.sort(
           (a, b) => (a.distance ?? double.infinity).compareTo(
             b.distance ?? double.infinity,
@@ -164,17 +172,11 @@ class MapService {
 
         final result = mosques.take(limit).toList();
 
-        // Cache the result
+        // Cache the result if cacheService is available
         if (cacheService != null) {
-          final cacheKey = cacheService!.generateLocationCacheKey(
-            'mosques',
-            position.latitude,
-            position.longitude,
-            radius: radius,
-          );
           final jsonList = result.map((mosque) => mosque.toJson()).toList();
           cacheService!.setCache(
-            cacheKey,
+            cacheKey, // Use the same cacheKey generated earlier
             jsonList,
             expirationMinutes: CacheService.mosquesExpirationMinutes,
           );
@@ -192,76 +194,22 @@ class MapService {
     } catch (e, s) {
       _logger.error(
         'Error in findNearbyMosques',
-        data: {'error': e.toString(), 'stackTrace': s.toString()},
+        error: e, // Pass the actual error object
+        data: {'details': e.toString()}, // Keep original string data if needed
+        stackTrace: s,
       );
       return [];
     }
   }
 
+  /* TODO: Implement mosque detail fetching logic if needed in the future.
+  // This might involve another Overpass API query using the mosque's ID (node/way/relation ID)
+  // or querying a different API if available.
   Future<Map<String, dynamic>?> getMosqueDetails(String id) async {
-    if (cacheService != null) {
-      final cacheKey = 'mosque_detail_$id';
-      final cachedDetails = cacheService!.getCache<Map<String, dynamic>>(
-        cacheKey,
-      );
-
-      if (cachedDetails != null) {
-        _logger.info('Returning cached mosque details for id: $id');
-        return cachedDetails;
-      }
-    }
-
-    try {
-      final String overpassQuery = '''[out:json];
-(
-  node(id:$id);
-  way(id:$id);
-  relation(id:$id);
-);
-out body;''';
-
-      final Uri requestUri = Uri.parse(
-        'https://overpass-api.de/api/interpreter',
-      );
-      final http.Response response = await http.post(
-        requestUri,
-        headers: {'Content-Type': 'text/plain'},
-        body: overpassQuery,
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> json = jsonDecode(
-          utf8.decode(response.bodyBytes),
-        ) as Map<String, dynamic>;
-        final List<dynamic> elements = json['elements'] as List<dynamic>;
-        if (elements.isNotEmpty) {
-          final result = elements.first as Map<String, dynamic>;
-
-          // Cache the result
-          if (cacheService != null) {
-            final cacheKey = 'mosque_detail_$id';
-            cacheService!.setCache(
-              cacheKey,
-              result,
-              expirationMinutes: CacheService.mosquesExpirationMinutes,
-            );
-          }
-
-          return result;
-        }
-      }
-      _logger.warning(
-        'Could not fetch mosque details for id: $id, status: ${response.statusCode}',
-      );
-      return null;
-    } catch (error, s) {
-      _logger.error(
-        'Failed to fetch mosque details for id: $id',
-        data: {'error': error.toString(), 'stackTrace': s.toString()},
-      );
-      return null;
-    }
+    _logger.warning('getMosqueDetails is not yet implemented.', data: {'id': id});
+    return null;
   }
+  */
 
   void clearCache() {
     if (cacheService != null) {

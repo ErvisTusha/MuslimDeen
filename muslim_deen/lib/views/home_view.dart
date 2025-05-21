@@ -34,7 +34,8 @@ class HomeView extends ConsumerStatefulWidget {
   ConsumerState<HomeView> createState() => _HomeViewState(); // Changed
 }
 
-class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver {
+class _HomeViewState extends ConsumerState<HomeView>
+    with WidgetsBindingObserver {
   // Changed
   final LocationService _locationService = locator<LocationService>();
   final PrayerService _prayerService = locator<PrayerService>();
@@ -110,15 +111,15 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
           settings.dateFormatOption == DateFormatOption.dayMonthYear
               ? 'd MMMM yyyy'
               : settings.dateFormatOption == DateFormatOption.monthDayYear
-                  ? 'MMMM d, yyyy'
-                  : 'yyyy MMMM d';
-      _gregorianDateFormatter =
-          DateFormat(gregorianDatePattern, locale.toString());
+              ? 'MMMM d, yyyy'
+              : 'yyyy MMMM d';
+      _gregorianDateFormatter = DateFormat(
+        gregorianDatePattern,
+        locale.toString(),
+      );
 
       _timeFormatter = DateFormat(
-        settings.timeFormat == TimeFormat.twentyFourHour
-            ? 'HH:mm'
-            : 'hh:mm a',
+        settings.timeFormat == TimeFormat.twentyFourHour ? 'HH:mm' : 'hh:mm a',
         locale.toString(),
       );
       _cachedSettingsForFormatters = settings;
@@ -285,7 +286,9 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
     }
   }
 
-  PrayerNotification? _getPrayerNotificationFromAdhanPrayer(String adhanPrayer) {
+  PrayerNotification? _getPrayerNotificationFromAdhanPrayer(
+    String adhanPrayer,
+  ) {
     if (adhanPrayer == adhan.Prayer.fajr) return PrayerNotification.fajr;
     if (adhanPrayer == adhan.Prayer.sunrise) return PrayerNotification.sunrise;
     if (adhanPrayer == adhan.Prayer.dhuhr) return PrayerNotification.dhuhr;
@@ -307,10 +310,12 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
       final currentPrayerStr = _prayerService.getCurrentPrayer();
       final nextPrayerStr = _prayerService.getNextPrayer();
 
-      final newCurrentPrayerEnum =
-          _getPrayerNotificationFromAdhanPrayer(currentPrayerStr);
-      final newNextPrayerEnum =
-          _getPrayerNotificationFromAdhanPrayer(nextPrayerStr);
+      final newCurrentPrayerEnum = _getPrayerNotificationFromAdhanPrayer(
+        currentPrayerStr,
+      );
+      final newNextPrayerEnum = _getPrayerNotificationFromAdhanPrayer(
+        nextPrayerStr,
+      );
 
       String currentPrayerDisplayName = '---';
       if (newCurrentPrayerEnum != null && _prayerTimes != null) {
@@ -319,10 +324,12 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
       } else if (newCurrentPrayerEnum != null) {
         // Fallback if _prayerTimes is somehow null but enum is not
         // This case should ideally not happen if data is loaded correctly
-        currentPrayerDisplayName = newCurrentPrayerEnum.toString().split('.').last;
-         _logger.warning("_prayerTimes was null in _updatePrayerTimingsDisplay for current prayer, using enum name.");
+        currentPrayerDisplayName =
+            newCurrentPrayerEnum.toString().split('.').last;
+        _logger.warning(
+          "_prayerTimes was null in _updatePrayerTimingsDisplay for current prayer, using enum name.",
+        );
       }
-
 
       String nextPrayerDisplayName = '---';
       if (newNextPrayerEnum != null && _prayerTimes != null) {
@@ -330,9 +337,10 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
             _getPrayerDisplayInfo(newNextPrayerEnum, _prayerTimes!).name;
       } else if (newNextPrayerEnum != null) {
         nextPrayerDisplayName = newNextPrayerEnum.toString().split('.').last;
-        _logger.warning("_prayerTimes was null in _updatePrayerTimingsDisplay for next prayer, using enum name.");
+        _logger.warning(
+          "_prayerTimes was null in _updatePrayerTimingsDisplay for next prayer, using enum name.",
+        );
       }
-
 
       if (mounted) {
         final bool currentPrayerChanged =
@@ -370,7 +378,8 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
   }
 
   /// Scrolls the list view to the specified prayer item.
-  void _scrollToPrayer(PrayerNotification? prayerEnum) { // Changed parameter
+  void _scrollToPrayer(PrayerNotification? prayerEnum) {
+    // Changed parameter
     if (prayerEnum == null) {
       _logger.warning("Cannot scroll, prayerEnum is null.");
       return;
@@ -395,7 +404,11 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
       );
       _logger.debug(
         "Scrolling to prayer",
-        data: {'prayerEnum': prayerEnum.toString(), 'index': index, 'offset': offset},
+        data: {
+          'prayerEnum': prayerEnum.toString(),
+          'index': index,
+          'offset': offset,
+        },
       );
     } else {
       _logger.warning(
@@ -526,7 +539,6 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
               position.latitude,
               position.longitude,
               locationName: locationNameToUse,
-              setManualMode: false,
             );
             _logger.info(
               "Updated location in storage",
@@ -543,7 +555,6 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
               position.latitude,
               position.longitude,
               locationName: locationNameToUse,
-              setManualMode: false,
             );
           }
         } catch (e, s) {
@@ -648,7 +659,7 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
       );
 
       // Get the next prayer time for the countdown timer
-      final nextPrayerTime = _prayerService.getNextPrayerTime();
+      final DateTime? nextPrayerTime = await _prayerService.getNextPrayerTime();
 
       // Update state variables *before* scheduling notifications
       _prayerTimes = calculatedPrayerTimes;
@@ -668,9 +679,10 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
           // The _updatePrayerTimingsDisplay call above handles this.
           // If _currentPrayerEnum is not null, scroll to it.
           if (_currentPrayerEnum != null) {
-             WidgetsBinding.instance.addPostFrameCallback((_) { // Ensure scroll happens after build
-                if(mounted) _scrollToPrayer(_currentPrayerEnum);
-             });
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              // Ensure scroll happens after build
+              if (mounted) _scrollToPrayer(_currentPrayerEnum);
+            });
           }
         }
       });
@@ -770,7 +782,9 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
   }
 
   PrayerDisplayInfoData _getPrayerDisplayInfo(
-      PrayerNotification prayerEnum, adhan.PrayerTimes? prayerTimes) {
+    PrayerNotification prayerEnum,
+    adhan.PrayerTimes? prayerTimes,
+  ) {
     DateTime? time;
     String name;
     IconData icon;
@@ -829,14 +843,17 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
         _lastKnownCity = null;
         _lastKnownCountry = null;
       }
-      _dataLoadingFuture = _fetchDataAndScheduleNotifications().whenComplete(() {
-        if (mounted) {
-          _isUiFetchInProgress = false;
-        } else {
-          _isUiFetchInProgress = false; // Ensure it's reset even if not mounted
-        }
-        _logger.debug("_isUiFetchInProgress reset after UI refresh fetch.");
-      });
+      _dataLoadingFuture = _fetchDataAndScheduleNotifications().whenComplete(
+        () {
+          if (mounted) {
+            _isUiFetchInProgress = false;
+          } else {
+            _isUiFetchInProgress =
+                false; // Ensure it's reset even if not mounted
+          }
+          _logger.debug("_isUiFetchInProgress reset after UI refresh fetch.");
+        },
+      );
     });
   }
 
@@ -847,13 +864,10 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.accentGreen(brightness),
         foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 24,
-          vertical: 12,
-        ),
-        textStyle: AppTextStyles.label(brightness).copyWith(
-          fontWeight: FontWeight.w600,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        textStyle: AppTextStyles.label(
+          brightness,
+        ).copyWith(fontWeight: FontWeight.w600),
       ),
       label: Text("Retry"), // Replaced localizations.retry;
     );
@@ -1251,12 +1265,12 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
                               isLoading
                                   ? Duration.zero
                                   : initialCountdownDuration,
-                             textStyle: AppTextStyles.countdownTimer(
-                               brightness,
-                             ).copyWith(color: AppColors.accentGreen(brightness)),
-                           );
-                         },
-                       ),
+                          textStyle: AppTextStyles.countdownTimer(
+                            brightness,
+                          ).copyWith(color: AppColors.accentGreen(brightness)),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -1324,12 +1338,16 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
                         ),
                     itemBuilder: (context, index) {
                       final prayerEnum = prayerOrder[index];
-                      final prayerInfo =
-                          _getPrayerDisplayInfo(prayerEnum, prayerTimes);
+                      final prayerInfo = _getPrayerDisplayInfo(
+                        prayerEnum,
+                        prayerTimes,
+                      );
 
                       // final bool isEnabled = settings.notifications[prayerEnum] ?? false; // Unused
-                      final bool isCurrent = !isLoading &&
-                          _currentPrayerEnum == prayerInfo.prayerEnum; // Compare enums
+                      final bool isCurrent =
+                          !isLoading &&
+                          _currentPrayerEnum ==
+                              prayerInfo.prayerEnum; // Compare enums
 
                       return PrayerListItem(
                         prayerInfo: prayerInfo,

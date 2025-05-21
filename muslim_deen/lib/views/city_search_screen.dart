@@ -1,9 +1,11 @@
 // Standard library imports
 import 'dart:async';
 
-// Third-party package imports
+// Flutter imports
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Added for SystemUiOverlayStyle
+
+// Third-party package imports
 import 'package:geocoding/geocoding.dart';
 
 // Local application imports
@@ -57,6 +59,7 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
         data: {'query': searchText},
       );
       if (searchText.isNotEmpty) {
+        _searchAttempts = 0; // Reset attempts for a new search
         _searchPlaces(searchText);
       } else {
         setState(() {
@@ -70,13 +73,25 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
   Future<void> _searchPlaces(String query) async {
     if (query.isEmpty) return;
 
+    // Prevent API calls for very short queries
+    if (query.trim().length < 3) {
+      setState(() {
+        _isLoading = false;
+        _searchResults.clear();
+        _errorMessage = "Type at least 3 characters to search";
+      });
+      _logger.info('Search query too short: "$query"');
+      return;
+    }
+
     _logger.info('Searching places for query: $query');
     setState(() {
       _isLoading = true;
       _errorMessage = null;
       _searchResults.clear();
-      _searchAttempts++;
+      // _searchAttempts++; // Moved to _onSearchChanged or manage per query
     });
+    _searchAttempts++; // Increment for the current query attempt
 
     try {
       // Add search query formatting to improve geocoding results
@@ -250,7 +265,6 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
 
   // Helper method to normalize text by removing diacritics/accents
   String _normalizeString(String input) {
-    // Common diacritics replacements
     const Map<String, String> accentsMap = {
       'á': 'a', 'à': 'a', 'ä': 'a', 'â': 'a', 'ã': 'a',
       'é': 'e', 'è': 'e', 'ë': 'e', 'ê': 'e',
@@ -259,10 +273,14 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
       'ú': 'u', 'ù': 'u', 'ü': 'u', 'û': 'u',
       'ý': 'y', 'ÿ': 'y',
       'ç': 'c', 'ñ': 'n', 'ß': 'ss',
-      // Albanian specific characters
       // Turkish specific characters
-      'ı': 'i', 'ğ': 'g', 'ş': 's',
-      // Additional special characters
+      'ı': 'i', 'İ': 'I',
+      'ğ': 'g', 'Ğ': 'G',
+      'ş': 's', 'Ş': 'S',
+      // Uppercase versions for existing ö and ü, if not already covered by toLowerCase()
+      'Ö': 'O',
+      'Ü': 'U',
+      // Additional special characters (consider adding uppercase versions if needed)
       'ž': 'z', 'š': 's', 'đ': 'd', 'ć': 'c', 'č': 'c',
     };
 
@@ -402,7 +420,7 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
           if (_errorMessage != null && !_isLoading)
             Container(
               width: double.infinity,
-              color: contentSurface,
+              // color: contentSurface, // Removed: Already in BoxDecoration
               padding: const EdgeInsets.symmetric(
                 horizontal: 20.0,
                 vertical: 16.0,
@@ -431,7 +449,7 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
               _errorMessage == null)
             Container(
               width: double.infinity,
-              color: contentSurface,
+              // color: contentSurface, // Removed: Already in BoxDecoration
               padding: const EdgeInsets.symmetric(
                 horizontal: 20.0,
                 vertical: 16.0,

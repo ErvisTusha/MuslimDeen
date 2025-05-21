@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -13,12 +12,7 @@ import '../services/logger_service.dart';
 import '../models/app_settings.dart'; // Added for AppSettings
 
 /// Represents the current status of notification permissions
-enum NotificationPermissionStatus {
-  granted,
-  denied,
-  notDetermined,
-  restricted,
-}
+enum NotificationPermissionStatus { granted, denied, notDetermined, restricted }
 
 /// Configuration for a scheduled notification
 class NotificationConfig {
@@ -96,9 +90,6 @@ class NotificationService {
       NotificationPermissionStatus.notDetermined;
   bool _hasExactAlarmPermission = false;
   bool _disposed = false;
-
-  static const String _exactAlarmPermissionKey =
-      'exact_alarm_permission_granted';
 
   final _permissionStatusController =
       StreamController<NotificationPermissionStatus>.broadcast();
@@ -315,7 +306,8 @@ class NotificationService {
     );
     if (details.payload != null && details.payload!.isNotEmpty) {
       try {
-        final Map<String, dynamic> payloadData = jsonDecode(details.payload!) as Map<String, dynamic>;
+        final Map<String, dynamic> payloadData =
+            jsonDecode(details.payload!) as Map<String, dynamic>;
         _logger.debug("Decoded notification payload", data: payloadData);
         // Handle navigation or actions based on payload
       } catch (e) {
@@ -339,26 +331,28 @@ class NotificationService {
 
   Future<bool> _checkExactAlarmsSupport({bool checkOnly = false}) async {
     if (defaultTargetPlatform != TargetPlatform.android || _disposed) {
-      return defaultTargetPlatform != TargetPlatform.android;
+      // For non-Android or if disposed, exact alarms are not an issue or service is down.
+      // Consider non-Android as having "exact alarm" capability by default.
+      _hasExactAlarmPermission =
+          (defaultTargetPlatform != TargetPlatform.android && !_disposed);
+      return _hasExactAlarmPermission;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    
     try {
-      final androidPlugin = _notificationsPlugin
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >();
+      final androidPlugin =
+          _notificationsPlugin
+              .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin
+              >();
 
       if (androidPlugin != null) {
         // First check if we can schedule exact alarms
         final bool? canScheduleExact =
             await androidPlugin.canScheduleExactNotifications();
-            
+
         _hasExactAlarmPermission = canScheduleExact ?? false;
-        
+
         if (_hasExactAlarmPermission) {
-          await prefs.setBool(_exactAlarmPermissionKey, true);
           _logger.info('Exact alarm permission is granted.');
           return true;
         }
@@ -366,48 +360,45 @@ class NotificationService {
         // Permission not granted, try to request it if not in checkOnly mode
         if (!checkOnly) {
           _logger.info('Requesting exact alarm permission...');
-          
-          // Try requesting SCHEDULE_EXACT_ALARM / USE_EXACT_ALARM permission.
-          // The plugin's requestExactAlarmsPermission method handles the appropriate
-          // system calls based on the Android version.
-          final bool? exactRequested = await androidPlugin.requestExactAlarmsPermission();
+
+          final bool? exactRequested =
+              await androidPlugin.requestExactAlarmsPermission();
           _hasExactAlarmPermission = exactRequested ?? false;
-          
-          // The second call and specific try-catch for USE_EXACT_ALARM is removed
-          // as the single call to requestExactAlarmsPermission should handle it.
 
           if (_hasExactAlarmPermission) {
-            await prefs.setBool(_exactAlarmPermissionKey, true);
             _logger.info('Exact alarm permission GRANTED after request.');
           } else {
-            await prefs.remove(_exactAlarmPermissionKey);
             _logger.warning(
               'Exact alarm permission DENIED. User needs to enable in settings.',
             );
           }
         } else {
-          await prefs.remove(_exactAlarmPermissionKey);
-          _logger.warning('Exact alarm permission is NOT granted.');
+          // checkOnly was true, and permission was not initially granted
+          _logger.warning(
+            'Exact alarm permission is NOT granted (checkOnly mode).',
+          );
         }
-        
+
         return _hasExactAlarmPermission;
       }
 
       // Non-Android platforms don't need exact alarm permission
+      // This case should ideally be caught by the initial check, but as a fallback:
       if (defaultTargetPlatform == TargetPlatform.iOS ||
           defaultTargetPlatform == TargetPlatform.macOS) {
-        _hasExactAlarmPermission = true;
+        _hasExactAlarmPermission =
+            true; // iOS/macOS don't have this specific "exact alarm" permission concept like Android S+
         return true;
       }
 
-      return false;
+      return false; // Should not be reached if platform is Android, iOS, or macOS
     } catch (e, s) {
       _logger.error(
         'Error checking/requesting exact alarms support',
         error: e,
         stackTrace: s,
       );
-      await prefs.remove(_exactAlarmPermissionKey);
+      _hasExactAlarmPermission = false; // Ensure flag is false on error
       return false;
     }
   }
@@ -503,6 +494,8 @@ class NotificationService {
     // or have a clear mapping from id to PrayerNotification type.
 
     PrayerNotification? prayerType;
+    // Ensure PrayerNotification.values is accessible and id is within bounds.
+    // This check assumes PrayerNotification enum is defined and imported.
     if (id >= 0 && id < PrayerNotification.values.length) {
       prayerType = PrayerNotification.values[id];
     }
@@ -513,10 +506,11 @@ class NotificationService {
         prayerType == PrayerNotification.isha) {
       // Use selected Azan for Dhuhr, Asr, Maghrib, Isha
       // For now, using a default Azan from AppSettings or a hardcoded one
-      soundName = appSettings?.azanSoundForStandardPrayers ?? 'makkah_adhan.mp3';
+      soundName =
+          appSettings?.azanSoundForStandardPrayers ?? 'makkah_adhan.mp3';
       useCustomSound = true;
     } else if (prayerType == PrayerNotification.fajr ||
-               prayerType == PrayerNotification.sunrise) {
+        prayerType == PrayerNotification.sunrise) {
       // Use default system sound for Fajr and Sunrise
       soundName = null; // Indicates default system sound
       useCustomSound = false;
@@ -527,11 +521,21 @@ class NotificationService {
       soundName = null;
       useCustomSound = false;
     }
-    
-    _logger.info('Notification sound determined', data: {'id': id, 'prayerType': prayerType?.toString(), 'soundName': soundName, 'useCustomSound': useCustomSound});
 
+    _logger.info(
+      'Notification sound determined',
+      data: {
+        'id': id,
+        'prayerType': prayerType?.toString(),
+        'soundName': soundName,
+        'useCustomSound': useCustomSound,
+      },
+    );
 
-    final androidDetails = _createAndroidPrayerDetails(soundName, useCustomSound);
+    final androidDetails = _createAndroidPrayerDetails(
+      soundName,
+      useCustomSound,
+    );
     final darwinDetails = _createDarwinPrayerDetails(soundName, useCustomSound);
 
     final platformDetails = NotificationDetails(
@@ -581,11 +585,17 @@ class NotificationService {
     }
   }
 
-  AndroidNotificationDetails _createAndroidPrayerDetails(String? soundName, bool useCustomSound) {
+  AndroidNotificationDetails _createAndroidPrayerDetails(
+    String? soundName,
+    bool useCustomSound,
+  ) {
     // For Android, if using custom sound, it must be in res/raw and name without extension
-    final String? androidSound = useCustomSound && soundName != null
-        ? (soundName.endsWith('.mp3') ? soundName.substring(0, soundName.length - 4) : soundName)
-        : null;
+    final String? androidSound =
+        useCustomSound && soundName != null
+            ? (soundName.endsWith('.mp3')
+                ? soundName.substring(0, soundName.length - 4)
+                : soundName)
+            : null;
 
     return AndroidNotificationDetails(
       NotificationChannel.prayer.id,
@@ -598,7 +608,10 @@ class NotificationService {
       ledOnMs: 1000,
       ledOffMs: 500,
       playSound: true, // Always true, sound selection handles custom/default
-      sound: useCustomSound && androidSound != null ? RawResourceAndroidNotificationSound(androidSound) : null,
+      sound:
+          useCustomSound && androidSound != null
+              ? RawResourceAndroidNotificationSound(androidSound)
+              : null,
       showWhen: true,
       usesChronometer: false,
       visibility: NotificationVisibility.public,
@@ -606,13 +619,19 @@ class NotificationService {
     );
   }
 
-  DarwinNotificationDetails _createDarwinPrayerDetails(String? soundName, bool useCustomSound) {
+  DarwinNotificationDetails _createDarwinPrayerDetails(
+    String? soundName,
+    bool useCustomSound,
+  ) {
     // For iOS/macOS, if using custom sound, it's the full filename in the bundle
     return DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true, // Always true, sound selection handles custom/default
-      sound: useCustomSound && soundName != null ? soundName : null, // Use null for default system sound
+      sound:
+          useCustomSound && soundName != null
+              ? soundName
+              : null, // Use null for default system sound
       categoryIdentifier: 'prayerTime',
     );
   }
@@ -686,7 +705,7 @@ class NotificationService {
 
   Future<void> cleanupExpiredNotifications() async {
     if (!_isInitialized || _disposed) return;
-    
+
     try {
       final List<PendingNotificationRequest> pendingNotifications =
           await _notificationsPlugin.pendingNotificationRequests();
@@ -697,9 +716,8 @@ class NotificationService {
       for (final notification in pendingNotifications) {
         if (notification.payload != null && notification.payload!.isNotEmpty) {
           try {
-            final Map<String, dynamic> payloadData = jsonDecode(
-              notification.payload!,
-            ) as Map<String, dynamic>;
+            final Map<String, dynamic> payloadData =
+                jsonDecode(notification.payload!) as Map<String, dynamic>;
             if (payloadData.containsKey('prayerTime')) {
               final scheduledTime = DateTime.tryParse(
                 payloadData['prayerTime'] as String,
@@ -721,7 +739,7 @@ class NotificationService {
           }
         }
       }
-      
+
       if (cleanedCount > 0) {
         _logger.info('Cleaned up $cleanedCount expired notifications');
       }
@@ -759,6 +777,10 @@ class NotificationService {
       }
     } else if (defaultTargetPlatform == TargetPlatform.iOS ||
         defaultTargetPlatform == TargetPlatform.macOS) {
+      // Note: This will prompt the user for permission if it hasn't been determined yet.
+      // This is because requestPermission() is called, which actively seeks user consent.
+      // DarwinInitializationSettings are set not to request permission on init,
+      // so this explicit call handles the initial request if needed.
       await requestPermission();
     }
   }
