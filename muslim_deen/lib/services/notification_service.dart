@@ -118,9 +118,13 @@ class NotificationService {
   Future<void> init() async {
     if (_isInitialized || _disposed) return;
     _logger.info('NotificationService initialization started.');
-    
+
     await _initializeTimezone();
     await _initializeNotificationsPlugin();
+    // Clean up expired notifications on startup
+    if (_isInitialized && !_disposed) {
+      cleanupExpiredNotifications();
+    }
   }
 
   Future<void> _initializeTimezone() async {

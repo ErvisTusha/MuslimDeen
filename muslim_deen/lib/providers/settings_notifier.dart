@@ -19,6 +19,8 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   final LoggerService _logger;
   final PrayerService _prayerService; // Added PrayerService instance
   StreamSubscription<NotificationPermissionStatus>? _permissionSubscription;
+  Timer? _saveSettingsDebounceTimer;
+  static const Duration _saveSettingsDebounceDuration = Duration(milliseconds: 750); // Increased debounce time
 
   SettingsNotifier(
     this._storage,
@@ -56,36 +58,44 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     }
   }
 
+  void _debouncedSaveSettings() {
+    _saveSettingsDebounceTimer?.cancel();
+    _saveSettingsDebounceTimer = Timer(_saveSettingsDebounceDuration, () {
+      _saveSettings();
+      _logger.debug("Debounced _saveSettings executed.");
+    });
+  }
+
   Future<void> updateCalculationMethod(String method) async {
     state = state.copyWith(calculationMethod: method);
-    await _saveSettings();
+    _debouncedSaveSettings();
     await _recalculateAndRescheduleNotifications();
   }
 
   Future<void> updateMadhab(String madhab) async {
     state = state.copyWith(madhab: madhab);
-    await _saveSettings();
+    _debouncedSaveSettings();
     await _recalculateAndRescheduleNotifications();
   }
 
   Future<void> updateThemeMode(ThemeMode mode) async {
     state = state.copyWith(themeMode: mode);
-    await _saveSettings();
+    _debouncedSaveSettings();
   }
 
   Future<void> updateLanguage(String language) async {
     state = state.copyWith(language: language);
-    await _saveSettings();
+    _debouncedSaveSettings();
   }
 
   Future<void> updateTimeFormat(TimeFormat format) async {
     state = state.copyWith(timeFormat: format);
-    await _saveSettings();
+    _debouncedSaveSettings();
   }
 
   Future<void> updateDateFormatOption(DateFormatOption option) async {
     state = state.copyWith(dateFormatOption: option);
-    await _saveSettings();
+    _debouncedSaveSettings();
   }
 
   Future<void> setPrayerNotification(
@@ -102,7 +112,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     );
     updatedNotifications[prayer] = enabled;
     state = state.copyWith(notifications: updatedNotifications);
-    await _saveSettings();
+    _debouncedSaveSettings();
+    // Notification rescheduling is typically handled by HomeView's settings listener
+    // or _recalculateAndRescheduleNotifications if called directly by an offset change.
+    // For a simple toggle, HomeView's listener should pick it up.
+    // If direct reschedule is needed here, call: await _recalculateAndRescheduleNotifications();
   }
 
   Future<void> _updateNotificationPermissionStatus(
@@ -110,13 +124,15 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   ) async {
     if (state.notificationPermissionStatus != status) {
       state = state.copyWith(notificationPermissionStatus: status);
-      await _saveSettings();
+      _debouncedSaveSettings();
     }
   }
 
   Future<void> updateAzanSoundForStandardPrayers(String sound) async {
     state = state.copyWith(azanSoundForStandardPrayers: sound);
-    await _saveSettings();
+    _debouncedSaveSettings();
+    // This change might require rescheduling notifications if the sound is part of the notification payload.
+    // Assuming NotificationService handles this or _recalculateAndRescheduleNotifications is called if needed.
   }
 
   Future<void> checkNotificationPermissionStatus() async {
@@ -125,37 +141,37 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
 
   Future<void> updateFajrOffset(int offset) async {
     state = state.copyWith(fajrOffset: offset);
-    await _saveSettings();
+    _debouncedSaveSettings();
     await _recalculateAndRescheduleNotifications();
   }
 
   Future<void> updateSunriseOffset(int offset) async {
     state = state.copyWith(sunriseOffset: offset);
-    await _saveSettings();
+    _debouncedSaveSettings();
     await _recalculateAndRescheduleNotifications();
   }
 
   Future<void> updateDhuhrOffset(int offset) async {
     state = state.copyWith(dhuhrOffset: offset);
-    await _saveSettings();
+    _debouncedSaveSettings();
     await _recalculateAndRescheduleNotifications();
   }
 
   Future<void> updateAsrOffset(int offset) async {
     state = state.copyWith(asrOffset: offset);
-    await _saveSettings();
+    _debouncedSaveSettings();
     await _recalculateAndRescheduleNotifications();
   }
 
   Future<void> updateMaghribOffset(int offset) async {
     state = state.copyWith(maghribOffset: offset);
-    await _saveSettings();
+    _debouncedSaveSettings();
     await _recalculateAndRescheduleNotifications();
   }
 
   Future<void> updateIshaOffset(int offset) async {
     state = state.copyWith(ishaOffset: offset);
-    await _saveSettings();
+    _debouncedSaveSettings();
     await _recalculateAndRescheduleNotifications();
   }
 
@@ -274,6 +290,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   @override
   void dispose() {
     _permissionSubscription?.cancel();
+    _saveSettingsDebounceTimer?.cancel();
     super.dispose();
   }
 }

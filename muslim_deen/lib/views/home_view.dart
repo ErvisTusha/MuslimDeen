@@ -43,7 +43,7 @@ class HomeView extends ConsumerStatefulWidget {
   ConsumerState<HomeView> createState() => _HomeViewState(); // Changed
 }
 
-class _HomeViewState extends ConsumerState<HomeView> {
+class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver {
   // Changed
   final LocationService _locationService = locator<LocationService>();
   final PrayerService _prayerService = locator<PrayerService>();
@@ -52,7 +52,6 @@ class _HomeViewState extends ConsumerState<HomeView> {
   final LoggerService _logger = locator<LoggerService>();
   final ScrollController _scrollController = ScrollController();
   static const double _prayerItemHeight = 80.0;
-  Timer? _permissionCheckTimer;
   Timer? _dailyRefreshTimer; // VoidCallback? _settingsListener; // Removed
   // AppSettings? _previousSettings; // Removed
   ProviderSubscription? _settingsListenerSubscription; // Added for listenManual
@@ -61,15 +60,13 @@ class _HomeViewState extends ConsumerState<HomeView> {
   _lastKnownCountry; // Note: Loading/error states are managed through FutureBuilder
   // late final SettingsProvider _settingsProvider; // Removed
 
-  void _startPermissionCheck() {
-    _permissionCheckTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) {
-        ref
-            .read(settingsProvider.notifier)
-            .checkNotificationPermissionStatus(); // Changed
-      }
-    });
-  }
+  bool _isUiFetchInProgress = false; // Flag for UI-triggered fetches
+
+  // Cached DateFormat instances
+  late DateFormat _gregorianDateFormatter;
+  late DateFormat _timeFormatter;
+  AppSettings? _cachedSettingsForFormatters;
+  Locale? _cachedLocaleForFormatters;
 
   adhan.PrayerTimes? _prayerTimes;
   String _nextPrayerName = '';
@@ -81,14 +78,15 @@ class _HomeViewState extends ConsumerState<HomeView> {
   void initState() {
     super.initState();
     _logger.info('HomeView initialized');
+    WidgetsBinding.instance.addObserver(this); // Add observer
+
     // Initial data load and scheduling
     _dataLoadingFuture = _fetchDataAndScheduleNotifications();
 
-    // Initial permission check and start periodic check
+    // Initial permission check
     ref
         .read(settingsProvider.notifier)
         .checkNotificationPermissionStatus(); // Changed
-    _startPermissionCheck();
 
     // Listen to settings changes using Riverpod with listenManual
     _settingsListenerSubscription = ref.listenManual<AppSettings>(
@@ -109,12 +107,48 @@ class _HomeViewState extends ConsumerState<HomeView> {
     _startDailyRefreshTimer();
   }
 
+  void _initOrUpdateDateFormatters(AppSettings settings, Locale locale) {
+    if (_cachedSettingsForFormatters == null ||
+        _cachedLocaleForFormatters == null ||
+        _cachedSettingsForFormatters!.dateFormatOption !=
+            settings.dateFormatOption ||
+        _cachedSettingsForFormatters!.timeFormat != settings.timeFormat ||
+        _cachedLocaleForFormatters != locale) {
+      final gregorianDatePattern =
+          settings.dateFormatOption == DateFormatOption.dayMonthYear
+              ? 'd MMMM yyyy'
+              : settings.dateFormatOption == DateFormatOption.monthDayYear
+                  ? 'MMMM d, yyyy'
+                  : 'yyyy MMMM d';
+      _gregorianDateFormatter =
+          DateFormat(gregorianDatePattern, locale.toString());
+
+      _timeFormatter = DateFormat(
+        settings.timeFormat == TimeFormat.twentyFourHour
+            ? 'HH:mm'
+            : 'hh:mm a',
+        locale.toString(),
+      );
+      _cachedSettingsForFormatters = settings;
+      _cachedLocaleForFormatters = locale;
+      _logger.debug("DateFormatters updated.");
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final settings = ref.read(settingsProvider);
+    final locale = Localizations.localeOf(context);
+    _initOrUpdateDateFormatters(settings, locale);
+  }
+
   @override
   void dispose() {
     _logger.debug('HomeView dispose started');
+    WidgetsBinding.instance.removeObserver(this); // Remove observer
 
     // First, stop any active timers to prevent new location/notification requests
-    _permissionCheckTimer?.cancel();
     _dailyRefreshTimer?.cancel();
     _settingsListenerSubscription?.close(); // Dispose of the settings listener
 
@@ -142,6 +176,17 @@ class _HomeViewState extends ConsumerState<HomeView> {
     super.dispose();
 
     _logger.info('HomeView cleanup completed');
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      _logger.info("App resumed, checking notification permissions.");
+      if (mounted) {
+        ref.read(settingsProvider.notifier).checkNotificationPermissionStatus();
+      }
+    }
   }
 
   /// Starts a timer to refresh prayer times daily around midnight.
@@ -726,6 +771,8 @@ class _HomeViewState extends ConsumerState<HomeView> {
     await _notificationService
         .cancelAllNotifications(); // Clear existing before scheduling new ones
 
+    final List<Map<String, dynamic>> notificationConfigs = [];
+
     for (var prayer in PrayerNotification.values) {
       DateTime? prayerTime;
       String localizedName;
@@ -733,52 +780,55 @@ class _HomeViewState extends ConsumerState<HomeView> {
       switch (prayer) {
         case PrayerNotification.fajr:
           prayerTime = prayerTimes.fajr;
-          localizedName = "Fajr"; // Replaced localizations.prayerNameFajr;
+          localizedName = "Fajr";
           break;
         case PrayerNotification.sunrise:
-          // Sunrise notification is included for completeness, but typically not enabled by default.
-          // The UI switch and settings map control whether it's actually scheduled.
           prayerTime = prayerTimes.sunrise;
-          localizedName =
-              "Sunrise"; // Replaced localizations.prayerNameSunrise;
+          localizedName = "Sunrise";
           break;
         case PrayerNotification.dhuhr:
           prayerTime = prayerTimes.dhuhr;
-          localizedName = "Dhuhr"; // Replaced localizations.prayerNameDhuhr;
+          localizedName = "Dhuhr";
           break;
         case PrayerNotification.asr:
           prayerTime = prayerTimes.asr;
-          localizedName = "Asr"; // Replaced localizations.prayerNameAsr;
+          localizedName = "Asr";
           break;
         case PrayerNotification.maghrib:
           prayerTime = prayerTimes.maghrib;
-          localizedName =
-              "Maghrib"; // Replaced localizations.prayerNameMaghrib;
+          localizedName = "Maghrib";
           break;
         case PrayerNotification.isha:
           prayerTime = prayerTimes.isha;
-          localizedName = "Isha"; // Replaced localizations.prayerNameIsha;
+          localizedName = "Isha";
           break;
       }
 
-      // Get enabled status from SettingsProvider, default to false if not found
-      final bool isEnabled =
-          appSettings.notifications[prayer] ?? false; // Changed
+      final bool isEnabled = appSettings.notifications[prayer] ?? false;
 
-      // Only schedule if we have a valid time and notifications are enabled
       if (prayerTime != null && isEnabled) {
-        await _notificationService.schedulePrayerNotification(
-          id:
-              prayer
-                  .index, // Use enum index as a unique ID for each notification
-          localizedTitle:
-              "Prayer Time", // Replaced localizations.notificationPrayerTitle(localizedName);
-          localizedBody:
-              "It's time for $localizedName prayer.", // Replaced localizations.notificationPrayerBody(localizedName);
-          prayerTime: prayerTime,
-          isEnabled: true,
-        );
+        // Prepare config and add to list
+        notificationConfigs.add({
+          'id': prayer.index,
+          'localizedTitle': "Prayer Time: $localizedName", // Simplified title
+          'localizedBody': "It's time for $localizedName prayer.",
+          'prayerTime': prayerTime,
+          'isEnabled': true, // This is always true if we reach here
+          'appSettings': appSettings, // Pass the current appSettings
+        });
       }
+    }
+
+    // Now, iterate through the prepared configs and schedule them
+    for (final config in notificationConfigs) {
+      await _notificationService.schedulePrayerNotification(
+        id: config['id'] as int,
+        localizedTitle: config['localizedTitle'] as String,
+        localizedBody: config['localizedBody'] as String,
+        prayerTime: config['prayerTime'] as DateTime,
+        isEnabled: config['isEnabled'] as bool,
+        appSettings: config['appSettings'] as AppSettings,
+      );
     }
 
     // _notificationsScheduled = true; // Flag no longer needed
@@ -814,6 +864,9 @@ class _HomeViewState extends ConsumerState<HomeView> {
   Widget build(BuildContext context) {
     // Use watch to rebuild on any settings change
     final appSettings = ref.watch(settingsProvider);
+    final locale = Localizations.localeOf(context);
+    _initOrUpdateDateFormatters(appSettings, locale); // Update formatters
+
     // final localizations = AppLocalizations.of(context)!; // Removed
     final brightness = Theme.of(context).brightness;
     final bool isDarkMode = brightness == Brightness.dark;
@@ -904,9 +957,24 @@ class _HomeViewState extends ConsumerState<HomeView> {
                     ElevatedButton.icon(
                       icon: const Icon(Icons.refresh),
                       onPressed: () {
+                        if (_isUiFetchInProgress) {
+                          _logger.info(
+                              "UI fetch (error retry) already in progress, refresh skipped.");
+                          return;
+                        }
+                        _logger.info("UI refresh triggered (error retry).");
                         setState(() {
-                          _dataLoadingFuture =
-                              _fetchDataAndScheduleNotifications();
+                          _isUiFetchInProgress = true;
+                          _dataLoadingFuture = _fetchDataAndScheduleNotifications()
+                              .whenComplete(() {
+                            if (mounted) {
+                              _isUiFetchInProgress = false;
+                            } else {
+                              _isUiFetchInProgress = false;
+                            }
+                            _logger.debug(
+                                "_isUiFetchInProgress reset after error retry fetch.");
+                          });
                         });
                       },
                       style: ElevatedButton.styleFrom(
@@ -990,9 +1058,25 @@ class _HomeViewState extends ConsumerState<HomeView> {
                   ElevatedButton.icon(
                     icon: const Icon(Icons.refresh),
                     onPressed: () {
+                      if (_isUiFetchInProgress) {
+                        _logger.info(
+                            "UI fetch (unexpected error retry) already in progress, refresh skipped.");
+                        return;
+                      }
+                      _logger
+                          .info("UI refresh triggered (unexpected error retry).");
                       setState(() {
-                        _dataLoadingFuture =
-                            _fetchDataAndScheduleNotifications();
+                        _isUiFetchInProgress = true;
+                        _dataLoadingFuture = _fetchDataAndScheduleNotifications()
+                            .whenComplete(() {
+                          if (mounted) {
+                            _isUiFetchInProgress = false;
+                          } else {
+                            _isUiFetchInProgress = false;
+                          }
+                          _logger.debug(
+                              "_isUiFetchInProgress reset after unexpected error retry fetch.");
+                        });
                       });
                     },
                     style: ElevatedButton.styleFrom(
@@ -1035,23 +1119,12 @@ class _HomeViewState extends ConsumerState<HomeView> {
   }) {
     final settings = appSettings;
     final now = DateTime.now();
-    final datePattern =
-        settings.dateFormatOption == DateFormatOption.dayMonthYear
-            ? 'd MMMM yyyy'
-            : settings.dateFormatOption == DateFormatOption.monthDayYear
-            ? 'MMMM d, yyyy'
-            : 'yyyy MMMM d';
-    final formattedGregorian = DateFormat(
-      datePattern,
-      Localizations.localeOf(context).toString(),
-    ).format(now);
+    // Use cached formatters
+    final formattedGregorian = _gregorianDateFormatter.format(now);
     final hijri = HijriCalendar.now();
     final formattedHijri =
         '${hijri.hDay} ${hijri.longMonthName} ${hijri.hYear}';
-    final timeFormat = DateFormat(
-      settings.timeFormat == TimeFormat.twentyFourHour ? 'HH:mm' : 'hh:mm a',
-      Localizations.localeOf(context).toString(),
-    );
+    // _timeFormatter is used directly where needed (e.g., passed to _buildPrayerItemWithSwitch)
 
     final List<PrayerNotification> prayerOrder = [
       PrayerNotification.fajr,
@@ -1085,9 +1158,29 @@ class _HomeViewState extends ConsumerState<HomeView> {
                       settings: const RouteSettings(name: '/settings'),
                     ),
                   ).then((_) {
-                    setState(() {
-                      _dataLoadingFuture = _fetchDataAndScheduleNotifications();
-                    });
+                    if (mounted) {
+                      if (_isUiFetchInProgress) {
+                        _logger.info(
+                            "UI fetch (post-settings date tap) already in progress, refresh skipped.");
+                        return;
+                      }
+                      _logger
+                          .info("UI refresh triggered (post-settings date tap).");
+                      setState(() {
+                        _isUiFetchInProgress = true;
+                        _dataLoadingFuture =
+                            _fetchDataAndScheduleNotifications()
+                                .whenComplete(() {
+                          if (mounted) {
+                            _isUiFetchInProgress = false;
+                          } else {
+                            _isUiFetchInProgress = false;
+                          }
+                          _logger.debug(
+                              "_isUiFetchInProgress reset after post-settings date tap fetch.");
+                        });
+                      });
+                    }
                   });
                 },
                 child: Column(
@@ -1122,12 +1215,29 @@ class _HomeViewState extends ConsumerState<HomeView> {
                       ),
                     ).then((_) {
                       if (mounted) {
+                        if (_isUiFetchInProgress) {
+                          _logger.info(
+                              "UI fetch (post-settings location tap) already in progress, refresh skipped.");
+                          return;
+                        }
+                        _logger.info(
+                            "UI refresh triggered (post-settings location tap).");
                         setState(() {
+                          _isUiFetchInProgress = true;
                           _prayerTimes = null;
                           _lastKnownCity = null;
                           _lastKnownCountry = null;
                           _dataLoadingFuture =
-                              _fetchDataAndScheduleNotifications();
+                              _fetchDataAndScheduleNotifications()
+                                  .whenComplete(() {
+                            if (mounted) {
+                              _isUiFetchInProgress = false;
+                            } else {
+                              _isUiFetchInProgress = false;
+                            }
+                            _logger.debug(
+                                "_isUiFetchInProgress reset after post-settings location tap fetch.");
+                          });
                         });
                       }
                     });
@@ -1376,7 +1486,7 @@ class _HomeViewState extends ConsumerState<HomeView> {
                         prayerNameString,
                         prayerEnum,
                         prayerTime,
-                        timeFormat,
+                        _timeFormatter, // Use cached time formatter
                         isCurrent,
                         isEnabled,
                         brightness, // Pass brightness
@@ -1446,9 +1556,22 @@ class _HomeViewState extends ConsumerState<HomeView> {
               settings: const RouteSettings(name: '/settings'),
             ),
           ).then((_) {
-            setState(() {
-              _dataLoadingFuture = _fetchDataAndScheduleNotifications();
-            });
+            // This is a settings navigation, similar to the ones above.
+            // Decided not to add _isUiFetchInProgress here as it's less about rapid clicks
+            // and more about reacting to potential settings changes.
+            // The primary concern was for retry buttons and immediate refresh on date/location tap.
+            // If this also needs debouncing, the same pattern can be applied.
+            // For now, keeping it as is, as per the specific lines mentioned in the issue.
+            // If this becomes a problem, it can be wrapped with the _isUiFetchInProgress logic.
+            if (mounted) {
+                 // Standard refresh, not explicitly debounced by _isUiFetchInProgress here
+                 // as it's a less direct "rapid click" scenario compared to retry buttons.
+                 // If this needs debouncing, apply the same pattern as other UI fetches.
+                _logger.info("Refresh triggered after returning from settings (prayer item double tap).");
+                setState(() {
+                  _dataLoadingFuture = _fetchDataAndScheduleNotifications();
+                });
+            }
           });
         },
         splashColor:

@@ -18,8 +18,27 @@ import 'widgets/error_boundary.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await setupLocator(); // Initialize service locator first
-  await _requestPermissions(); // Then request permissions
-  tz.initializeTimeZones();
+
+  // Run non-critical async operations in parallel after locator setup
+  final List<Future<void>> startupFutures = [
+    _requestPermissions(), // Handles notification permission directly, location is deferred
+    Future<void>(() async => tz.initializeTimeZones()), // Wrap in a Future
+  ];
+  // LocationService.startPermissionFlow() is called during LocationService.init(),
+  // which is called by PrayerService.init(), which is called by HomeView.
+  // So, location permissions are handled later in the lifecycle.
+
+  try {
+    await Future.wait(startupFutures);
+    locator<LoggerService>().info("Parallel startup operations completed.");
+  } catch (e, s) {
+    locator<LoggerService>().error(
+      "Error during parallel startup operations",
+      error: e,
+      stackTrace: s,
+    );
+    // Decide if the app can continue or if this is a fatal error
+  }
 
   // Set up error handling for Flutter framework errors
   FlutterError.onError = (details) {
@@ -279,13 +298,17 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 2;
   final LoggerService _logger = locator<LoggerService>();
 
-  static final List<Widget> _widgetOptions = <Widget>[
-    TesbihView(),
-    QiblaView(),
-    HomeView(),
-    MosqueView(),
-    SettingsView(),
+  // Lazy load views using builder functions
+  static final List<Widget Function()> _widgetBuilders = <Widget Function()>[
+    TesbihView.new,
+    QiblaView.new,
+    HomeView.new,
+    MosqueView.new,
+    SettingsView.new,
   ];
+
+  // Cache for instantiated views to keep their state
+  final Map<int, Widget> _cachedWidgets = {};
 
   // Map of tab indexes to their names for better logging
   final Map<int, String> _tabNames = {
@@ -314,8 +337,16 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Widget currentView;
+    if (_cachedWidgets.containsKey(_selectedIndex)) {
+      currentView = _cachedWidgets[_selectedIndex]!;
+    } else {
+      currentView = _widgetBuilders[_selectedIndex]();
+      _cachedWidgets[_selectedIndex] = currentView;
+    }
+
     return Scaffold(
-      body: _widgetOptions.elementAt(_selectedIndex),
+      body: currentView, // Use the instantiated or cached view
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
