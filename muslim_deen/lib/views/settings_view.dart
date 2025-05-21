@@ -11,6 +11,7 @@ import '../service_locator.dart';
 import '../services/location_service.dart';
 import '../services/logger_service.dart';
 import '../styles/app_styles.dart';
+import '../widgets/settings_ui_elements.dart';
 import 'about_view.dart';
 import 'city_search_screen.dart';
 
@@ -298,9 +299,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         controller: _scrollController,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
-          _buildSectionHeader("Appearance", brightness),
+          const SettingsSectionHeader(title: "Appearance"),
 
-          _buildSettingsItem(
+          SettingsListItem(
             icon: Icons.language,
             title: "Language",
             subtitle: "English",
@@ -318,7 +319,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             },
           ),
 
-          _buildSettingsItem(
+          SettingsListItem(
             icon: Icons.color_lens_outlined,
             title: "Theme",
             subtitle: _getThemeName(settings.themeMode),
@@ -332,9 +333,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             },
           ),
 
-          _buildSectionHeader("Tesbih & Sound", brightness),
+          const SettingsSectionHeader(title: "Tesbih & Sound"),
 
-          _buildSettingsItem(
+          SettingsListItem(
             icon: Icons.music_note_outlined,
             title: "Azan Sound",
             subtitle: _getAzanSoundDisplayName(
@@ -354,18 +355,17 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             },
           ),
 
-          _buildSectionHeader(
-            "Notifications",
-            brightness,
+          SettingsSectionHeader(
+            title: "Notifications",
             trailing:
                 ref.watch(settingsProvider.notifier).areNotificationsBlocked
-                    ? Icon(
+                    ? const Icon(
                       Icons.notifications_off,
                       size: 16,
                       color: Colors.orange,
                     )
                     : null,
-            key: _notificationsKey,
+            sectionKey: _notificationsKey,
           ),
 
           ...PrayerNotification.values.map(
@@ -383,9 +383,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             ),
           ),
 
-          _buildSectionHeader("Prayer Calculation", brightness),
+          const SettingsSectionHeader(title: "Prayer Calculation"),
 
-          _buildSettingsItem(
+          SettingsListItem(
             icon: Icons.calculate_outlined,
             title: "Calculation Method",
             subtitle: _getCalculationMethodName(
@@ -401,7 +401,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             },
           ),
 
-          _buildSettingsItem(
+          SettingsListItem(
             icon: Icons.school_outlined,
             title: "Asr Time",
             subtitle: _getMadhabName(settings.madhab),
@@ -420,7 +420,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSectionHeader("Location", brightness),
+                const SettingsSectionHeader(title: "Location"),
                 _buildLocationTile(context),
               ],
             ),
@@ -431,12 +431,11 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             key: _dateKey, // Moved GlobalKey here
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionHeader(
-                "Date & Time",
-                brightness,
-                // key: _dateKey, // Removed GlobalKey from here
+              SettingsSectionHeader(
+                title: "Date & Time",
+                // sectionKey: _dateKey, // Removed GlobalKey from here
               ),
-              _buildSettingsItem(
+              SettingsListItem(
                 icon: Icons.calendar_today,
                 title: "Date Format",
                 subtitle: _getDateFormatName(
@@ -455,7 +454,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   );
                 },
               ),
-              _buildSettingsItem(
+              SettingsListItem(
                 icon: Icons.access_time,
                 title: "Time Format",
                 subtitle: _getTimeFormatName(
@@ -477,9 +476,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             ],
           ),
 
-          _buildSectionHeader("Other", brightness),
+          const SettingsSectionHeader(title: "Other"),
 
-          _buildSettingsItem(
+          SettingsListItem(
             icon: Icons.info_outline,
             title: "About",
             subtitle: "About this app",
@@ -492,55 +491,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             },
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title, Brightness brightness, {Widget? trailing, Key? key}) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 24, 8, 8),
-      child: Row(
-        key: key,
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: AppTextStyles.sectionTitle(brightness).copyWith(
-                color: AppColors.primary(brightness),
-              ),
-            ),
-          ),
-          if (trailing != null) trailing,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSettingsItem({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    final brightness = Theme.of(context).brightness;
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.background(brightness),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderColor(brightness)),
-      ),
-      child: ListTile(
-        leading: Icon(icon, color: AppColors.iconInactive(brightness)),
-        title: Text(title, style: AppTextStyles.prayerName(brightness)),
-        subtitle: Text(subtitle, style: AppTextStyles.label(brightness)),
-        trailing: Icon(
-          Icons.arrow_forward_ios,
-          size: 16,
-          color: AppColors.iconInactive(brightness),
-        ),
-        onTap: onTap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }

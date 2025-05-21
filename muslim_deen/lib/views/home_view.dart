@@ -13,6 +13,7 @@ import 'package:intl/intl.dart';
 
 import '../models/app_settings.dart';
 import '../models/custom_exceptions.dart'; // Added
+import '../models/prayer_display_info_data.dart';
 import '../providers/providers.dart'; // Changed for Riverpod
 import '../service_locator.dart';
 import '../services/location_service.dart';
@@ -21,19 +22,9 @@ import '../services/notification_service.dart';
 import '../services/prayer_service.dart';
 import '../services/storage_service.dart';
 import '../styles/app_styles.dart';
+import '../widgets/prayer_list_item.dart';
+import '../widgets/prayer_countdown_timer.dart';
 import 'settings_view.dart';
-
-String _formatDuration(Duration duration) {
-  if (duration.isNegative) {
-    return "00:00:00"; // Or handle as 'Now'/'Passed' if needed elsewhere
-  }
-  String twoDigits(int n) => n.toString().padLeft(2, "0");
-  duration = duration.abs(); // Ensure positive duration for formatting
-  final String twoDigitHours = twoDigits(duration.inHours);
-  final String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
-  final String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-  return "$twoDigitHours:$twoDigitMinutes:$twoDigitSeconds";
-}
 
 class HomeView extends ConsumerStatefulWidget {
   // Changed
@@ -71,6 +62,7 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
   adhan.PrayerTimes? _prayerTimes;
   String _nextPrayerName = '';
   String _currentPrayerName = '';
+  PrayerNotification? _currentPrayerEnum; // Added
   DateTime? _nextPrayerDateTime; // Stores the time of the next prayer
   late Future<Map<String, dynamic>> _dataLoadingFuture; // Renamed future
 
@@ -293,6 +285,16 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
     }
   }
 
+  PrayerNotification? _getPrayerNotificationFromAdhanPrayer(String adhanPrayer) {
+    if (adhanPrayer == adhan.Prayer.fajr) return PrayerNotification.fajr;
+    if (adhanPrayer == adhan.Prayer.sunrise) return PrayerNotification.sunrise;
+    if (adhanPrayer == adhan.Prayer.dhuhr) return PrayerNotification.dhuhr;
+    if (adhanPrayer == adhan.Prayer.asr) return PrayerNotification.asr;
+    if (adhanPrayer == adhan.Prayer.maghrib) return PrayerNotification.maghrib;
+    if (adhanPrayer == adhan.Prayer.isha) return PrayerNotification.isha;
+    return null; // For 'none' or other cases
+  }
+
   /// Updates the current/next prayer names and scrolls to the current prayer.
   /// The countdown timer is handled separately by PrayerCountdownTimer.
   void _updatePrayerTimingsDisplay() {
@@ -304,62 +306,76 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
     try {
       final currentPrayerStr = _prayerService.getCurrentPrayer();
       final nextPrayerStr = _prayerService.getNextPrayer();
-      // final timeRemaining = _prayerService.getTimeUntilNextPrayer(); // Duration is now handled by the timer widget
 
-      final formattedCurrentPrayer = _formatPrayerName(currentPrayerStr);
-      final formattedNextPrayer = _formatPrayerName(nextPrayerStr);
+      final newCurrentPrayerEnum =
+          _getPrayerNotificationFromAdhanPrayer(currentPrayerStr);
+      final newNextPrayerEnum =
+          _getPrayerNotificationFromAdhanPrayer(nextPrayerStr);
 
-      // Check if mounted before calling setState
+      String currentPrayerDisplayName = '---';
+      if (newCurrentPrayerEnum != null && _prayerTimes != null) {
+        currentPrayerDisplayName =
+            _getPrayerDisplayInfo(newCurrentPrayerEnum, _prayerTimes!).name;
+      } else if (newCurrentPrayerEnum != null) {
+        // Fallback if _prayerTimes is somehow null but enum is not
+        // This case should ideally not happen if data is loaded correctly
+        currentPrayerDisplayName = newCurrentPrayerEnum.toString().split('.').last;
+         _logger.warning("_prayerTimes was null in _updatePrayerTimingsDisplay for current prayer, using enum name.");
+      }
+
+
+      String nextPrayerDisplayName = '---';
+      if (newNextPrayerEnum != null && _prayerTimes != null) {
+        nextPrayerDisplayName =
+            _getPrayerDisplayInfo(newNextPrayerEnum, _prayerTimes!).name;
+      } else if (newNextPrayerEnum != null) {
+        nextPrayerDisplayName = newNextPrayerEnum.toString().split('.').last;
+        _logger.warning("_prayerTimes was null in _updatePrayerTimingsDisplay for next prayer, using enum name.");
+      }
+
+
       if (mounted) {
-        // Check if current prayer changed to trigger scroll
         final bool currentPrayerChanged =
-            _currentPrayerName != formattedCurrentPrayer;
+            _currentPrayerEnum != newCurrentPrayerEnum;
 
         setState(() {
-          _currentPrayerName = formattedCurrentPrayer;
-          _nextPrayerName = formattedNextPrayer;
-          // _timeTillNextPrayer = timeRemaining; // Duration state removed
+          _currentPrayerEnum = newCurrentPrayerEnum;
+          // _nextPrayerEnum was removed, newNextPrayerEnum is still used for _nextPrayerName
+          _currentPrayerName = currentPrayerDisplayName;
+          _nextPrayerName = nextPrayerDisplayName;
         });
 
-        // Scroll to the current prayer item if it changed
-        if (currentPrayerChanged &&
-            _currentPrayerName != '---' &&
-            _currentPrayerName != 'Error') {
-          // Use addPostFrameCallback to ensure the list view has been built/updated
+        if (currentPrayerChanged && _currentPrayerEnum != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              // Check mounted again inside callback
-              _scrollToPrayer(_currentPrayerName);
+              _scrollToPrayer(_currentPrayerEnum);
             }
           });
         }
       }
     } catch (e, s) {
-      // Handle potential errors from prayer service (e.g., not initialized)
       _logger.error(
         "Error updating prayer timings display",
         data: {'error': e.toString(), 'stackTrace': s.toString()},
       );
       if (mounted) {
         setState(() {
-          // Optionally reset display values or show an indicator
+          _currentPrayerEnum = null;
+          // _nextPrayerEnum was removed
           _currentPrayerName = 'Error';
           _nextPrayerName = 'Error';
-          // _timeTillNextPrayer = Duration.zero; // Duration state removed
         });
       }
     }
   }
 
   /// Scrolls the list view to the specified prayer item.
-  void _scrollToPrayer(String prayerName) {
-    // Find the index based on the string name within the PrayerNotification enum values
-    final prayerEnum = _getPrayerEnumFromString(prayerName);
+  void _scrollToPrayer(PrayerNotification? prayerEnum) { // Changed parameter
     if (prayerEnum == null) {
-      _logger.warning("Could not find enum for prayer name: $prayerName");
+      _logger.warning("Cannot scroll, prayerEnum is null.");
       return;
     }
-    // Use the order defined in _buildPrayerTimesUI for consistency
+
     final List<PrayerNotification> prayerOrder = [
       PrayerNotification.fajr,
       PrayerNotification.sunrise,
@@ -379,56 +395,17 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
       );
       _logger.debug(
         "Scrolling to prayer",
-        data: {'prayerName': prayerName, 'index': index, 'offset': offset},
+        data: {'prayerEnum': prayerEnum.toString(), 'index': index, 'offset': offset},
       );
     } else {
       _logger.warning(
         "Could not scroll to prayer",
         data: {
-          'prayerName': prayerName,
+          'prayerEnum': prayerEnum.toString(),
           'index': index,
           'hasClients': _scrollController.hasClients,
         },
       );
-    }
-  }
-
-  /// Formats standard prayer names from adhan library to localized display names.
-  /// Returns '---' for non-standard names or 'none'.
-  String _formatPrayerName(String prayer) {
-    final standardPrayers = {
-      adhan.Prayer.fajr,
-      adhan.Prayer.sunrise,
-      adhan.Prayer.dhuhr,
-      adhan.Prayer.asr,
-      adhan.Prayer.maghrib,
-      adhan.Prayer.isha,
-    };
-
-    if (prayer.isEmpty ||
-        prayer == adhan.Prayer.none ||
-        !standardPrayers.contains(prayer)) {
-      return '---';
-    }
-
-    // Use localized names based on the prayer string from adhan library
-    // final localizations = AppLocalizations.of(context)!; // Removed AppLocalizations
-
-    // Use if-else statements instead of switch with non-constant patterns
-    if (prayer == adhan.Prayer.fajr) {
-      return "Fajr"; // Replaced localizations.prayerNameFajr;
-    } else if (prayer == adhan.Prayer.sunrise) {
-      return "Sunrise"; // Replaced localizations.prayerNameSunrise;
-    } else if (prayer == adhan.Prayer.dhuhr) {
-      return "Dhuhr"; // Replaced localizations.prayerNameDhuhr;
-    } else if (prayer == adhan.Prayer.asr) {
-      return "Asr"; // Replaced localizations.prayerNameAsr;
-    } else if (prayer == adhan.Prayer.maghrib) {
-      return "Maghrib"; // Replaced localizations.prayerNameMaghrib;
-    } else if (prayer == adhan.Prayer.isha) {
-      return "Isha"; // Replaced localizations.prayerNameIsha;
-    } else {
-      return prayer[0].toUpperCase() + prayer.substring(1); // Fallback
     }
   }
 
@@ -683,14 +660,17 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
         if (mounted) {
           _scheduleAllPrayerNotifications(context, calculatedPrayerTimes);
           // Update display and scroll after scheduling
-          _updatePrayerTimingsDisplay();
-          final initialCurrentPrayer = _prayerService.getCurrentPrayer();
-          final formattedInitialCurrent = _formatPrayerName(
-            initialCurrentPrayer,
-          );
-          if (formattedInitialCurrent != '---' &&
-              formattedInitialCurrent != 'Error') {
-            _scrollToPrayer(formattedInitialCurrent);
+          _updatePrayerTimingsDisplay(); // This will now also set _currentPrayerEnum
+
+          // Scroll to the initial current prayer using the enum
+          // _updatePrayerTimingsDisplay would have set _currentPrayerEnum
+          // We need to ensure _currentPrayerEnum is set before calling _scrollToPrayer
+          // The _updatePrayerTimingsDisplay call above handles this.
+          // If _currentPrayerEnum is not null, scroll to it.
+          if (_currentPrayerEnum != null) {
+             WidgetsBinding.instance.addPostFrameCallback((_) { // Ensure scroll happens after build
+                if(mounted) _scrollToPrayer(_currentPrayerEnum);
+             });
           }
         }
       });
@@ -771,93 +751,112 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
     await _notificationService
         .cancelAllNotifications(); // Clear existing before scheduling new ones
 
-    final List<Map<String, dynamic>> notificationConfigs = [];
+    for (var prayerEnum in PrayerNotification.values) {
+      final prayerInfo = _getPrayerDisplayInfo(prayerEnum, prayerTimes);
+      final bool isEnabled = appSettings.notifications[prayerEnum] ?? false;
 
-    for (var prayer in PrayerNotification.values) {
-      DateTime? prayerTime;
-      String localizedName;
-
-      switch (prayer) {
-        case PrayerNotification.fajr:
-          prayerTime = prayerTimes.fajr;
-          localizedName = "Fajr";
-          break;
-        case PrayerNotification.sunrise:
-          prayerTime = prayerTimes.sunrise;
-          localizedName = "Sunrise";
-          break;
-        case PrayerNotification.dhuhr:
-          prayerTime = prayerTimes.dhuhr;
-          localizedName = "Dhuhr";
-          break;
-        case PrayerNotification.asr:
-          prayerTime = prayerTimes.asr;
-          localizedName = "Asr";
-          break;
-        case PrayerNotification.maghrib:
-          prayerTime = prayerTimes.maghrib;
-          localizedName = "Maghrib";
-          break;
-        case PrayerNotification.isha:
-          prayerTime = prayerTimes.isha;
-          localizedName = "Isha";
-          break;
-      }
-
-      final bool isEnabled = appSettings.notifications[prayer] ?? false;
-
-      if (prayerTime != null && isEnabled) {
-        // Prepare config and add to list
-        notificationConfigs.add({
-          'id': prayer.index,
-          'localizedTitle': "Prayer Time: $localizedName", // Simplified title
-          'localizedBody': "It's time for $localizedName prayer.",
-          'prayerTime': prayerTime,
-          'isEnabled': true, // This is always true if we reach here
-          'appSettings': appSettings, // Pass the current appSettings
-        });
+      if (prayerInfo.time != null && isEnabled) {
+        await _notificationService.schedulePrayerNotification(
+          id: prayerEnum.index,
+          localizedTitle: "Prayer Time: ${prayerInfo.name}", // Simplified title
+          localizedBody: "It's time for ${prayerInfo.name} prayer.",
+          prayerTime: prayerInfo.time!,
+          isEnabled: true, // This is always true if we reach here
+          appSettings: appSettings, // Pass the current appSettings
+        );
       }
     }
-
-    // Now, iterate through the prepared configs and schedule them
-    for (final config in notificationConfigs) {
-      await _notificationService.schedulePrayerNotification(
-        id: config['id'] as int,
-        localizedTitle: config['localizedTitle'] as String,
-        localizedBody: config['localizedBody'] as String,
-        prayerTime: config['prayerTime'] as DateTime,
-        isEnabled: config['isEnabled'] as bool,
-        appSettings: config['appSettings'] as AppSettings,
-      );
-    }
-
-    // _notificationsScheduled = true; // Flag no longer needed
     _logger.info("Finished scheduling/rescheduling notifications.");
   }
 
-  // Helper to map prayer name string to PrayerNotification enum
-  PrayerNotification? _getPrayerEnumFromString(String name) {
-    // final localizations = AppLocalizations.of(context)!; // Removed
+  PrayerDisplayInfoData _getPrayerDisplayInfo(
+      PrayerNotification prayerEnum, adhan.PrayerTimes? prayerTimes) {
+    DateTime? time;
+    String name;
+    IconData icon;
 
-    if (name == "Fajr") {
-      return PrayerNotification.fajr;
+    switch (prayerEnum) {
+      case PrayerNotification.fajr:
+        time = prayerTimes?.fajr;
+        name = "Fajr";
+        icon = Icons.wb_sunny_outlined; // Dawn/Sunrise icon
+        break;
+      case PrayerNotification.sunrise:
+        time = prayerTimes?.sunrise;
+        name = "Sunrise";
+        icon = Icons.wb_twilight_outlined; // Sunrise icon
+        break;
+      case PrayerNotification.dhuhr:
+        time = prayerTimes?.dhuhr;
+        name = "Dhuhr";
+        icon = Icons.wb_sunny; // Midday sun
+        break;
+      case PrayerNotification.asr:
+        time = prayerTimes?.asr;
+        name = "Asr";
+        icon = Icons.wb_twilight; // Afternoon/twilight
+        break;
+      case PrayerNotification.maghrib:
+        time = prayerTimes?.maghrib;
+        name = "Maghrib";
+        icon = Icons.brightness_4_outlined; // Sunset icon
+        break;
+      case PrayerNotification.isha:
+        time = prayerTimes?.isha;
+        name = "Isha";
+        icon = Icons.nights_stay; // Moon/night icon
+        break;
     }
-    if (name == "Sunrise") {
-      return PrayerNotification.sunrise;
+    return PrayerDisplayInfoData(
+      name: name,
+      time: time,
+      prayerEnum: prayerEnum,
+      iconData: icon,
+    );
+  }
+
+  /// Handles the logic for refreshing UI data, typically after returning from settings.
+  void _triggerUIRefresh({bool clearLocationCache = false}) {
+    if (_isUiFetchInProgress) {
+      _logger.info("UI fetch already in progress, refresh skipped.");
+      return;
     }
-    if (name == "Dhuhr") {
-      return PrayerNotification.dhuhr;
-    }
-    if (name == "Asr") {
-      return PrayerNotification.asr;
-    }
-    if (name == "Maghrib") {
-      return PrayerNotification.maghrib;
-    }
-    if (name == "Isha") {
-      return PrayerNotification.isha;
-    }
-    return null;
+    _logger.info("UI refresh triggered.");
+    setState(() {
+      _isUiFetchInProgress = true;
+      if (clearLocationCache) {
+        _prayerTimes = null;
+        _lastKnownCity = null;
+        _lastKnownCountry = null;
+      }
+      _dataLoadingFuture = _fetchDataAndScheduleNotifications().whenComplete(() {
+        if (mounted) {
+          _isUiFetchInProgress = false;
+        } else {
+          _isUiFetchInProgress = false; // Ensure it's reset even if not mounted
+        }
+        _logger.debug("_isUiFetchInProgress reset after UI refresh fetch.");
+      });
+    });
+  }
+
+  Widget _buildRetryButton(Brightness brightness) {
+    return ElevatedButton.icon(
+      icon: const Icon(Icons.refresh),
+      onPressed: _triggerUIRefresh,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.accentGreen(brightness),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 24,
+          vertical: 12,
+        ),
+        textStyle: AppTextStyles.label(brightness).copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      label: Text("Retry"), // Replaced localizations.retry;
+    );
   }
 
   @override
@@ -954,42 +953,7 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 20),
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.refresh),
-                      onPressed: () {
-                        if (_isUiFetchInProgress) {
-                          _logger.info(
-                              "UI fetch (error retry) already in progress, refresh skipped.");
-                          return;
-                        }
-                        _logger.info("UI refresh triggered (error retry).");
-                        setState(() {
-                          _isUiFetchInProgress = true;
-                          _dataLoadingFuture = _fetchDataAndScheduleNotifications()
-                              .whenComplete(() {
-                            if (mounted) {
-                              _isUiFetchInProgress = false;
-                            } else {
-                              _isUiFetchInProgress = false;
-                            }
-                            _logger.debug(
-                                "_isUiFetchInProgress reset after error retry fetch.");
-                          });
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.accentGreen(brightness),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                        textStyle: AppTextStyles.label(brightness).copyWith(
-                          fontWeight: FontWeight.w600,
-                        ), // Changed to label
-                      ),
-                      label: Text("Retry"), // Replaced localizations.retry;
-                    ),
+                    _buildRetryButton(brightness),
                     if (errorMessage.contains('permission') ||
                         errorMessage.contains('permanently denied'))
                       TextButton(
@@ -1055,43 +1019,7 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.refresh),
-                    onPressed: () {
-                      if (_isUiFetchInProgress) {
-                        _logger.info(
-                            "UI fetch (unexpected error retry) already in progress, refresh skipped.");
-                        return;
-                      }
-                      _logger
-                          .info("UI refresh triggered (unexpected error retry).");
-                      setState(() {
-                        _isUiFetchInProgress = true;
-                        _dataLoadingFuture = _fetchDataAndScheduleNotifications()
-                            .whenComplete(() {
-                          if (mounted) {
-                            _isUiFetchInProgress = false;
-                          } else {
-                            _isUiFetchInProgress = false;
-                          }
-                          _logger.debug(
-                              "_isUiFetchInProgress reset after unexpected error retry fetch.");
-                        });
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accentGreen(brightness),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      textStyle: AppTextStyles.label(brightness).copyWith(
-                        fontWeight: FontWeight.w600,
-                      ), // Changed to label
-                    ),
-                    label: Text("Retry"), // Replaced localizations.retry;
-                  ),
+                  _buildRetryButton(brightness),
                 ],
               ),
             );
@@ -1117,7 +1045,6 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
     required Color currentPrayerItemBorder,
     required Color currentPrayerItemText,
   }) {
-    final settings = appSettings;
     final now = DateTime.now();
     // Use cached formatters
     final formattedGregorian = _gregorianDateFormatter.format(now);
@@ -1159,27 +1086,7 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
                     ),
                   ).then((_) {
                     if (mounted) {
-                      if (_isUiFetchInProgress) {
-                        _logger.info(
-                            "UI fetch (post-settings date tap) already in progress, refresh skipped.");
-                        return;
-                      }
-                      _logger
-                          .info("UI refresh triggered (post-settings date tap).");
-                      setState(() {
-                        _isUiFetchInProgress = true;
-                        _dataLoadingFuture =
-                            _fetchDataAndScheduleNotifications()
-                                .whenComplete(() {
-                          if (mounted) {
-                            _isUiFetchInProgress = false;
-                          } else {
-                            _isUiFetchInProgress = false;
-                          }
-                          _logger.debug(
-                              "_isUiFetchInProgress reset after post-settings date tap fetch.");
-                        });
-                      });
+                      _triggerUIRefresh();
                     }
                   });
                 },
@@ -1215,30 +1122,7 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
                       ),
                     ).then((_) {
                       if (mounted) {
-                        if (_isUiFetchInProgress) {
-                          _logger.info(
-                              "UI fetch (post-settings location tap) already in progress, refresh skipped.");
-                          return;
-                        }
-                        _logger.info(
-                            "UI refresh triggered (post-settings location tap).");
-                        setState(() {
-                          _isUiFetchInProgress = true;
-                          _prayerTimes = null;
-                          _lastKnownCity = null;
-                          _lastKnownCountry = null;
-                          _dataLoadingFuture =
-                              _fetchDataAndScheduleNotifications()
-                                  .whenComplete(() {
-                            if (mounted) {
-                              _isUiFetchInProgress = false;
-                            } else {
-                              _isUiFetchInProgress = false;
-                            }
-                            _logger.debug(
-                                "_isUiFetchInProgress reset after post-settings location tap fetch.");
-                          });
-                        });
+                        _triggerUIRefresh(clearLocationCache: true);
                       }
                     });
                   },
@@ -1367,13 +1251,12 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
                               isLoading
                                   ? Duration.zero
                                   : initialCountdownDuration,
-                          textStyle: AppTextStyles.countdownTimer(
-                            brightness,
-                          ).copyWith(color: AppColors.accentGreen(brightness)),
-                          // localizations: localizations, // Removed
-                        );
-                      },
-                    ),
+                             textStyle: AppTextStyles.countdownTimer(
+                               brightness,
+                             ).copyWith(color: AppColors.accentGreen(brightness)),
+                           );
+                         },
+                       ),
                   ],
                 ),
               ),
@@ -1441,60 +1324,23 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
                         ),
                     itemBuilder: (context, index) {
                       final prayerEnum = prayerOrder[index];
-                      DateTime? prayerTime;
-                      String prayerNameString;
+                      final prayerInfo =
+                          _getPrayerDisplayInfo(prayerEnum, prayerTimes);
 
-                      switch (prayerEnum) {
-                        case PrayerNotification.fajr:
-                          prayerTime = prayerTimes?.fajr;
-                          prayerNameString =
-                              "Fajr"; // Replaced localizations.prayerNameFajr;
-                          break;
-                        case PrayerNotification.sunrise:
-                          prayerTime = prayerTimes?.sunrise;
-                          prayerNameString =
-                              "Sunrise"; // Replaced localizations.prayerNameSunrise;
-                          break;
-                        case PrayerNotification.dhuhr:
-                          prayerTime = prayerTimes?.dhuhr;
-                          prayerNameString =
-                              "Dhuhr"; // Replaced localizations.prayerNameDhuhr;
-                          break;
-                        case PrayerNotification.asr:
-                          prayerTime = prayerTimes?.asr;
-                          prayerNameString =
-                              "Asr"; // Replaced localizations.prayerNameAsr;
-                          break;
-                        case PrayerNotification.maghrib:
-                          prayerTime = prayerTimes?.maghrib;
-                          prayerNameString =
-                              "Maghrib"; // Replaced localizations.prayerNameMaghrib;
-                          break;
-                        case PrayerNotification.isha:
-                          prayerTime = prayerTimes?.isha;
-                          prayerNameString =
-                              "Isha"; // Replaced localizations.prayerNameIsha;
-                          break;
-                      }
+                      // final bool isEnabled = settings.notifications[prayerEnum] ?? false; // Unused
+                      final bool isCurrent = !isLoading &&
+                          _currentPrayerEnum == prayerInfo.prayerEnum; // Compare enums
 
-                      final bool isEnabled =
-                          settings.notifications[prayerEnum] ?? false;
-                      final bool isCurrent =
-                          !isLoading && _currentPrayerName == prayerNameString;
-
-                      return _buildPrayerItemWithSwitch(
-                        prayerNameString,
-                        prayerEnum,
-                        prayerTime,
-                        _timeFormatter, // Use cached time formatter
-                        isCurrent,
-                        isEnabled,
-                        brightness, // Pass brightness
-                        isDarkMode,
-                        contentSurface,
-                        currentPrayerItemBg,
-                        currentPrayerItemBorder,
-                        currentPrayerItemText,
+                      return PrayerListItem(
+                        prayerInfo: prayerInfo,
+                        timeFormatter: _timeFormatter,
+                        isCurrent: isCurrent,
+                        brightness: brightness,
+                        contentSurfaceColor: contentSurface,
+                        currentPrayerItemBgColor: currentPrayerItemBg,
+                        currentPrayerItemBorderColor: currentPrayerItemBorder,
+                        currentPrayerItemTextColor: currentPrayerItemText,
+                        onRefresh: _triggerUIRefresh,
                       );
                     },
                   ),
@@ -1512,239 +1358,6 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildPrayerItemWithSwitch(
-    String name,
-    PrayerNotification prayerEnum,
-    DateTime? time,
-    DateFormat format,
-    bool isCurrent,
-    bool isEnabled,
-    Brightness brightness,
-    bool isDarkMode,
-    Color contentSurfaceColor, // Renamed from contentSurface to avoid conflict
-    Color currentPrayerItemBgColor, // Renamed
-    Color currentPrayerItemBorderColor, // Renamed
-    Color currentPrayerItemTextColor, // Renamed
-  ) {
-    final Color itemBackgroundColor =
-        isCurrent
-            ? currentPrayerItemBgColor
-            : contentSurfaceColor; // Use contentSurfaceColor for non-current
-    // final Color itemBorderColor = isCurrent ? currentPrayerItemBorderColor : AppColors.borderColor(brightness).withAlpha(0); // No border for non-current if inside a card
-    final Color itemIconColor =
-        isCurrent
-            ? currentPrayerItemTextColor
-            : AppColors.iconInactive(brightness);
-    final Color itemTextColor =
-        isCurrent
-            ? currentPrayerItemTextColor
-            : AppColors.textPrimary(brightness);
-
-    return Material(
-      // For InkWell splash
-      color: Colors.transparent, // Make Material transparent
-      child: InkWell(
-        onDoubleTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute<void>(
-              builder:
-                  (context) => const SettingsView(scrollToNotifications: true),
-              settings: const RouteSettings(name: '/settings'),
-            ),
-          ).then((_) {
-            // This is a settings navigation, similar to the ones above.
-            // Decided not to add _isUiFetchInProgress here as it's less about rapid clicks
-            // and more about reacting to potential settings changes.
-            // The primary concern was for retry buttons and immediate refresh on date/location tap.
-            // If this also needs debouncing, the same pattern can be applied.
-            // For now, keeping it as is, as per the specific lines mentioned in the issue.
-            // If this becomes a problem, it can be wrapped with the _isUiFetchInProgress logic.
-            if (mounted) {
-                 // Standard refresh, not explicitly debounced by _isUiFetchInProgress here
-                 // as it's a less direct "rapid click" scenario compared to retry buttons.
-                 // If this needs debouncing, apply the same pattern as other UI fetches.
-                _logger.info("Refresh triggered after returning from settings (prayer item double tap).");
-                setState(() {
-                  _dataLoadingFuture = _fetchDataAndScheduleNotifications();
-                });
-            }
-          });
-        },
-        splashColor:
-            isCurrent
-                ? currentPrayerItemTextColor.withAlpha((0.1 * 255).round())
-                : AppColors.primary(brightness).withAlpha((0.1 * 255).round()),
-        highlightColor:
-            isCurrent
-                ? currentPrayerItemTextColor.withAlpha((0.05 * 255).round())
-                : AppColors.primary(brightness).withAlpha((0.05 * 255).round()),
-        child: Container(
-          // margin: const EdgeInsets.symmetric(vertical: 0), // Removed margin, handled by separator
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
-          ), // Adjusted padding
-          decoration: BoxDecoration(
-            // This decoration is now for the InkWell's child, or remove if list items are plain
-            color: itemBackgroundColor, // Applied calculated background
-            // borderRadius: BorderRadius.circular(10), // Removed if list items are plain within a card
-            border: Border(
-              // Apply border only if current, or rely on Divider
-              top: BorderSide(
-                color: Colors.transparent,
-              ), // Example: only bottom border from divider
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                _getPrayerIcon(name),
-                color: itemIconColor,
-                size: 22, // Slightly smaller icon
-              ),
-              const SizedBox(width: 16), // Increased spacing
-              Text(
-                name,
-                style: AppTextStyles.prayerName(brightness).copyWith(
-                  color: itemTextColor,
-                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                time != null ? format.format(time.toLocal()) : '---',
-                style: AppTextStyles.prayerTime(brightness).copyWith(
-                  color: itemTextColor,
-                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  IconData _getPrayerIcon(String prayerName) {
-    // Get localizations from context
-    // final localizations = AppLocalizations.of(context)!; // Removed
-
-    // Use standardized checks with localized prayer names
-    if (prayerName == "Fajr") {
-      // Replaced localizations.prayerNameFajr;
-      return Icons.wb_sunny_outlined; // Dawn/Sunrise icon
-    } else if (prayerName == "Sunrise") {
-      // Replaced localizations.prayerNameSunrise;
-      return Icons.wb_twilight_outlined; // Sunrise icon
-    } else if (prayerName == "Dhuhr") {
-      // Replaced localizations.prayerNameDhuhr;
-      return Icons.wb_sunny; // Midday sun
-    } else if (prayerName == "Asr") {
-      // Replaced localizations.prayerNameAsr;
-      return Icons.wb_twilight; // Afternoon/twilight
-    } else if (prayerName == "Maghrib") {
-      // Replaced localizations.prayerNameMaghrib;
-      return Icons.brightness_4_outlined; // Sunset icon
-    } else if (prayerName == "Isha") {
-      // Replaced localizations.prayerNameIsha;
-      return Icons.nights_stay; // Moon/night icon
-    } else {
-      return Icons.access_time; // Fallback icon
-    }
-  }
-}
-
-/// A widget that displays a countdown timer for the next prayer.
-/// It manages its own timer to update every second, optimizing rebuilds.
-class PrayerCountdownTimer extends StatefulWidget {
-  final Duration initialDuration;
-  final TextStyle? textStyle; // Optional style for the text
-  // final AppLocalizations localizations; // Removed
-
-  const PrayerCountdownTimer({
-    super.key,
-    required this.initialDuration,
-    this.textStyle,
-    // required this.localizations, // Removed
-  });
-
-  @override
-  State<PrayerCountdownTimer> createState() => _PrayerCountdownTimerState();
-}
-
-class _PrayerCountdownTimerState extends State<PrayerCountdownTimer> {
-  late Duration _currentDuration;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentDuration = widget.initialDuration;
-    _startInternalTimer();
-  }
-
-  @override
-  void didUpdateWidget(PrayerCountdownTimer oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // If the initial duration passed from the parent changes (e.g., prayer time updated),
-    // reset the timer with the new duration.
-    if (widget.initialDuration != oldWidget.initialDuration) {
-      _timer?.cancel();
-      _currentDuration = widget.initialDuration;
-      _startInternalTimer();
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  void _startInternalTimer() {
-    // Only start timer if duration is positive
-    if (_currentDuration.isNegative) {
-      // Ensure the display is correct even if the initial duration is negative
-      if (mounted) setState(() {});
-      return;
-    }
-
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      setState(() {
-        _currentDuration = _currentDuration - const Duration(seconds: 1);
-        if (_currentDuration.isNegative) {
-          // Stop the timer when it reaches zero or becomes negative
-          timer.cancel();
-          // Optionally: Trigger a callback to notify parent that timer finished
-        }
-      });
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Determine the text to display based on the duration
-    final String displayText =
-        _currentDuration.isNegative
-            ? "Now" // Replaced widget.localizations.now;
-            : "In ${_formatDuration(_currentDuration)}"; // Replaced widget.localizations.homeTimeIn(_formatDuration(_currentDuration));
-
-    return Text(
-      displayText,
-      style:
-          widget.textStyle ??
-          const TextStyle(
-            fontSize: 14,
-            color: Colors.grey,
-          ), // Use provided style or default
     );
   }
 }

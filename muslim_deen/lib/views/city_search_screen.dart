@@ -11,6 +11,8 @@ import '../service_locator.dart';
 import '../services/location_service.dart';
 import '../services/logger_service.dart';
 import '../styles/app_styles.dart';
+import '../widgets/city_search_bar.dart';
+import '../widgets/city_search_results_list.dart';
 
 class CitySearchScreen extends StatefulWidget {
   const CitySearchScreen({super.key});
@@ -365,65 +367,25 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
       ),
       body: Column(
         children: [
-          Container(
-            color:
-                contentSurface, // Search bar container with distinct background
-            padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 12.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: "Search for a city",
-                hintStyle: AppTextStyles.label(
-                  brightness,
-                ).copyWith(color: hintColor),
-                prefixIcon: Icon(Icons.search, color: iconColor),
-                filled: true,
-                fillColor: textFieldBg,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                  borderSide: BorderSide(color: borderColor),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                  borderSide: BorderSide(
-                    color: borderColor.withAlpha(isDarkMode ? 150 : 200),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                  borderSide: BorderSide(
-                    color: AppColors.primary(brightness),
-                    width: 1.5,
-                  ),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 14.0,
-                  horizontal: 16.0,
-                ),
-                suffixIcon:
-                    _searchController.text.isNotEmpty
-                        ? IconButton(
-                          icon: Icon(Icons.clear, color: iconColor),
-                          onPressed: () {
-                            _searchController.clear();
-                            // Optionally, also clear search results and error messages
-                            setState(() {
-                              _searchResults.clear();
-                              _errorMessage = null;
-                              _isLoading = false;
-                            });
-                          },
-                        )
-                        : null,
-              ),
-              style: AppTextStyles.prayerTime(
-                brightness,
-              ).copyWith(color: textColor),
-              autofocus: true,
-              onChanged: (value) => setState(() {}), // To rebuild suffix icon
-            ),
+          CitySearchBar(
+            controller: _searchController,
+            brightness: brightness,
+            contentSurfaceColor: contentSurface,
+            textFieldBackgroundColor: textFieldBg,
+            textColor: textColor,
+            hintColor: hintColor,
+            iconColor: iconColor,
+            borderColor: borderColor,
+            onClear: () {
+              _searchController.clear();
+              setState(() {
+                _searchResults.clear();
+                _errorMessage = null;
+                _isLoading = false;
+              });
+            },
+            onChanged: (value) => setState(() {}), // To rebuild suffix icon
           ),
-
           if (_isLoading)
             Padding(
               padding: const EdgeInsets.all(24.0),
@@ -498,94 +460,17 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
             ),
 
           Expanded(
-            child:
-                _searchResults.isNotEmpty
-                    ? Container(
-                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      decoration: BoxDecoration(
-                        color: contentSurface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: borderColor.withAlpha(isDarkMode ? 100 : 150),
-                        ),
-                      ),
-                      child: ClipRRect(
-                        // To ensure border radius is respected by ListView
-                        borderRadius: BorderRadius.circular(
-                          11,
-                        ), // Slightly less than container to avoid visual glitches
-                        child: ListView.separated(
-                          padding: EdgeInsets.zero, // Remove default padding
-                          itemCount: _searchResults.length,
-                          separatorBuilder:
-                              (context, index) => Divider(
-                                color: borderColor.withAlpha(
-                                  isDarkMode ? 70 : 100,
-                                ),
-                                height: 1,
-                                indent: 16,
-                                endIndent: 16,
-                              ),
-                          itemBuilder: (context, index) {
-                            final result = _searchResults[index];
-                            return Material(
-                              // For InkWell splash effect
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () => _selectLocation(result),
-                                splashColor: listTileSelectedColor,
-                                highlightColor: listTileSelectedColor.withAlpha(
-                                  80,
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16.0,
-                                    vertical: 14.0,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              result['name'] as String,
-                                              style: AppTextStyles.prayerName(
-                                                brightness,
-                                              ).copyWith(
-                                                color: textColor,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              '${result['latitude'].toStringAsFixed(4)}, ${result['longitude'].toStringAsFixed(4)}',
-                                              style: AppTextStyles.label(
-                                                brightness,
-                                              ).copyWith(
-                                                color: hintColor,
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Icon(
-                                        Icons.arrow_forward_ios,
-                                        size: 18,
-                                        color: iconColor,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    )
-                    : const SizedBox.shrink(), // Show nothing if no results and no messages
+            child: CitySearchResultsList(
+              searchResults: _searchResults,
+              brightness: brightness,
+              contentSurfaceColor: contentSurface,
+              borderColor: borderColor,
+              listTileSelectedColor: listTileSelectedColor,
+              textColor: textColor,
+              hintColor: hintColor,
+              iconColor: iconColor,
+              onSelectLocation: _selectLocation,
+            ),
           ),
         ],
       ),
