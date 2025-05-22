@@ -1,6 +1,6 @@
 # Muslim Deen
 
-A comprehensive Islamic app providing essential tools for Muslims.
+A comprehensive Islamic app providing essential tools for Muslims. 
 
 ## Features
 
