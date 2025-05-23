@@ -178,4 +178,16 @@ class AppTextStyles {
       brightness,
     ), // Use green accent for current prayer time
   );
+
+  static TextStyle locationCity(Brightness brightness) => TextStyle(
+    fontSize: 15,
+    fontWeight: FontWeight.w500,
+    color: AppColors.textPrimary(brightness),
+  );
+
+  static TextStyle locationCountry(Brightness brightness) => TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.normal,
+    color: AppColors.textSecondary(brightness),
+  );
 }

@@ -21,8 +21,11 @@ import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/styles/ui_theme_helper.dart';
 import 'package:muslim_deen/views/settings_view.dart';
+import 'package:muslim_deen/widgets/common_container_styles.dart';
 import 'package:muslim_deen/widgets/custom_app_bar.dart';
+import 'package:muslim_deen/widgets/loading_error_state_builder.dart';
 import 'package:muslim_deen/widgets/prayer_countdown_timer.dart';
 import 'package:muslim_deen/widgets/prayer_list_item.dart';
 
@@ -153,9 +156,8 @@ class _HomeViewState extends ConsumerState<HomeView>
     // This addresses the Geolocator foreground service issue
     _locationService.dispose();
 
-    // Reset prayer service after location service
-    // since prayer calculations depend on location
-    _prayerService.recalculatePrayerTimesIfNeeded(ref.read(settingsProvider));
+    // Note: Removed recalculatePrayerTimesIfNeeded call from dispose
+    // as it's unnecessary during widget cleanup and causes ref access after disposal
 
     // Clean up UI controllers last
     _scrollController.dispose();
@@ -509,6 +511,16 @@ class _HomeViewState extends ConsumerState<HomeView>
                 locationNameToUse =
                     '${position.latitude.toStringAsFixed(3)}, ${position.longitude.toStringAsFixed(3)}';
               }
+              // Removed direct StorageService.saveLocation call
+              // locator<StorageService>().saveLocation(
+              //   position.latitude,
+              //   position.longitude,
+              //   locationName: locationNameToUse,
+              // );
+              _logger.info(
+                "Device location geocoded", // Updated log message
+                data: {'locationName': locationNameToUse},
+              );
             } else {
               locationNameToUse =
                   '${position.latitude.toStringAsFixed(3)}, ${position.longitude.toStringAsFixed(3)}';
@@ -519,10 +531,6 @@ class _HomeViewState extends ConsumerState<HomeView>
             //   position.longitude,
             //   locationName: locationNameToUse,
             // );
-            _logger.info(
-              "Device location geocoded", // Updated log message
-              data: {'locationName': locationNameToUse},
-            );
           } catch (e, s) {
             _logger.warning(
               'Geocoding error, falling back to coordinates',
@@ -686,9 +694,10 @@ class _HomeViewState extends ConsumerState<HomeView>
     BuildContext context,
     adhan.PrayerTimes prayerTimes,
   ) async {
-    if (!mounted) return;
-
+    // Read settings before checking mounted to avoid ref access after disposal
     final appSettings = ref.read(settingsProvider);
+
+    if (!mounted) return;
 
     _logger.info("Scheduling/Rescheduling notifications...");
 
@@ -727,7 +736,7 @@ class _HomeViewState extends ConsumerState<HomeView>
 
     // Ensure prayerTimes is not null before calling getOffsettedPrayerTime
     if (prayerTimes == null) {
-      _logger.warning(
+      _logger.debug(
         "_getPrayerDisplayInfo called with null prayerTimes for $prayerEnum",
       );
       // Return a default or error state
@@ -834,22 +843,6 @@ class _HomeViewState extends ConsumerState<HomeView>
     });
   }
 
-  Widget _buildRetryButton(Brightness brightness) {
-    return ElevatedButton.icon(
-      icon: const Icon(Icons.refresh),
-      onPressed: _triggerUIRefresh,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.accentGreen(brightness),
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        textStyle: AppTextStyles.label(
-          brightness,
-        ).copyWith(fontWeight: FontWeight.w600),
-      ),
-      label: Text("Retry"), // Replaced localizations.retry;
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     // Use watch to rebuild on any settings change
@@ -857,33 +850,11 @@ class _HomeViewState extends ConsumerState<HomeView>
     final locale = Localizations.localeOf(context);
     _initOrUpdateDateFormatters(appSettings, locale); // Update formatters
 
-    // final localizations = AppLocalizations.of(context)!; // Removed
     final brightness = Theme.of(context).brightness;
-    // final bool isDarkMode = brightness == Brightness.dark; // No longer needed for scaffoldBg
+    final colors = UIThemeHelper.getThemeColors(brightness);
 
-    // Define colors similar to TesbihView
-    // final Color scaffoldBg = // Replaced by AppColors.getScaffoldBackground
-    //     isDarkMode
-    //         ? AppColors.surface(brightness)
-    //         : AppColors.background(brightness);
-    final bool isDarkMode =
-        brightness == Brightness.dark; // Still needed for other color logic
-    final Color contentSurface =
-        isDarkMode
-            ? const Color(0xFF2C2C2C)
-            : AppColors.primaryVariant(brightness); // For cards/containers
-    final Color currentPrayerItemBg =
-        isDarkMode
-            ? AppColors.accentGreen(brightness).withAlpha((0.15 * 255).round())
-            : AppColors.primary(brightness).withAlpha((0.1 * 255).round());
-    final Color currentPrayerItemBorder =
-        isDarkMode
-            ? AppColors.accentGreen(brightness).withAlpha((0.7 * 255).round())
-            : AppColors.primary(brightness);
-    final Color currentPrayerItemText =
-        isDarkMode
-            ? AppColors.accentGreen(brightness)
-            : AppColors.primary(brightness);
+    // Prayer-specific colors
+    final prayerColors = _getPrayerItemColors(colors);
 
     return Scaffold(
       backgroundColor: AppColors.getScaffoldBackground(brightness),
@@ -895,67 +866,19 @@ class _HomeViewState extends ConsumerState<HomeView>
             return _buildMainContent(
               isLoading: true,
               prayerTimes: _prayerTimes,
-              displayCity:
-                  _lastKnownCity ??
-                  "Loading...", // Replaced localizations.loading;
+              displayCity: _lastKnownCity ?? "Loading...",
               displayCountry: _lastKnownCountry,
               appSettings: appSettings,
-              // localizations: localizations, // Removed
-              brightness: brightness,
-              isDarkMode: isDarkMode,
-              contentSurface: contentSurface,
-              currentPrayerItemBg: currentPrayerItemBg,
-              currentPrayerItemBorder: currentPrayerItemBorder,
-              currentPrayerItemText: currentPrayerItemText,
+              colors: colors,
+              prayerColors: prayerColors,
             );
           } else if (snapshot.hasError) {
             final String errorMessage = _processLoadError(snapshot.error);
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      color: AppColors.error(brightness),
-                      size: 48,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      errorMessage,
-                      style: AppTextStyles.label(brightness).copyWith(
-                        color: AppColors.error(brightness),
-                        fontSize: 16,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-                    _buildRetryButton(brightness),
-                    if (errorMessage.contains('permission') ||
-                        errorMessage.contains('permanently denied'))
-                      TextButton(
-                        onPressed: Geolocator.openAppSettings,
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.primary(brightness),
-                        ),
-                        child: Text(
-                          "Open App Settings",
-                        ), // Replaced localizations.openAppSettings;
-                      ),
-                    if (errorMessage.contains('services are disabled'))
-                      TextButton(
-                        onPressed: Geolocator.openLocationSettings,
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.primary(brightness),
-                        ),
-                        child: Text(
-                          "Open Location Settings",
-                        ), // Replaced localizations.openLocationSettings;
-                      ),
-                  ],
-                ),
-              ),
+            return LoadingErrorStateBuilder(
+              isLoading: false,
+              errorMessage: errorMessage,
+              onRetry: _triggerUIRefresh,
+              child: Container(), // This won't be shown due to error
             );
           } else if (snapshot.hasData) {
             final snapshotData = snapshot.data!;
@@ -968,41 +891,39 @@ class _HomeViewState extends ConsumerState<HomeView>
               displayCity: loadedCity,
               displayCountry: loadedCountry,
               appSettings: appSettings,
-              // localizations: localizations, // Removed
-              brightness: brightness,
-              isDarkMode: isDarkMode,
-              contentSurface: contentSurface,
-              currentPrayerItemBg: currentPrayerItemBg,
-              currentPrayerItemBorder: currentPrayerItemBorder,
-              currentPrayerItemText: currentPrayerItemText,
+              colors: colors,
+              prayerColors: prayerColors,
             );
           } else {
-            return Center(
-              // Fallback for unexpected state
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    color: AppColors.textSecondary(brightness),
-                    size: 48,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    "An unexpected error occurred.", // Replaced localizations.unexpectedError(localizations.unknown);
-                    style: AppTextStyles.label(
-                      brightness,
-                    ).copyWith(color: AppColors.textSecondary(brightness)),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 20),
-                  _buildRetryButton(brightness),
-                ],
-              ),
+            return LoadingErrorStateBuilder(
+              isLoading: false,
+              errorMessage: "An unexpected error occurred.",
+              onRetry: _triggerUIRefresh,
+              child: Container(), // This won't be shown due to error
             );
           }
         },
       ),
+    );
+  }
+
+  /// Creates prayer-specific colors
+  PrayerItemColors _getPrayerItemColors(UIColors colors) {
+    return PrayerItemColors(
+      currentPrayerBg:
+          colors.isDarkMode
+              ? colors.accentColor.withAlpha((0.15 * 255).round())
+              : AppColors.primary(
+                colors.brightness,
+              ).withAlpha((0.1 * 255).round()),
+      currentPrayerBorder:
+          colors.isDarkMode
+              ? colors.accentColor.withAlpha((0.7 * 255).round())
+              : AppColors.primary(colors.brightness),
+      currentPrayerText:
+          colors.isDarkMode
+              ? colors.accentColor
+              : AppColors.primary(colors.brightness),
     );
   }
 
@@ -1013,13 +934,8 @@ class _HomeViewState extends ConsumerState<HomeView>
     required String? displayCity,
     required String? displayCountry,
     required AppSettings appSettings,
-    required Brightness brightness,
-    required bool isDarkMode,
-    // scaffoldBg parameter removed
-    required Color contentSurface,
-    required Color currentPrayerItemBg,
-    required Color currentPrayerItemBorder,
-    required Color currentPrayerItemText,
+    required UIColors colors,
+    required PrayerItemColors prayerColors,
   }) {
     final now = DateTime.now();
     // Use cached formatters
@@ -1027,7 +943,6 @@ class _HomeViewState extends ConsumerState<HomeView>
     final hijri = HijriCalendar.now();
     final formattedHijri =
         '${hijri.hDay} ${hijri.longMonthName} ${hijri.hYear}';
-    // _timeFormatter is used directly where needed (e.g., passed to _buildPrayerItemWithSwitch)
 
     final List<PrayerNotification> prayerOrder = [
       PrayerNotification.fajr,
@@ -1040,304 +955,290 @@ class _HomeViewState extends ConsumerState<HomeView>
 
     return Column(
       children: [
-        Padding(
-          // Location and Date Info - no separate card, directly on scaffoldBg
-          padding: const EdgeInsets.fromLTRB(
-            16,
-            16,
-            16,
-            8,
-          ), // Increased top padding
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GestureDetector(
-                onDoubleTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder:
-                          (context) => const SettingsView(scrollToDate: true),
-                      settings: const RouteSettings(name: '/settings'),
-                    ),
-                  ).then((_) {
-                    if (mounted) {
-                      _triggerUIRefresh();
-                    }
-                  });
-                },
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      formattedGregorian,
-                      style: AppTextStyles.date(
-                        brightness,
-                      ).copyWith(fontSize: 15),
-                    ),
-                    Text(
-                      formattedHijri,
-                      style: AppTextStyles.dateSecondary(
-                        brightness,
-                      ).copyWith(fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-              const Spacer(),
-              Flexible(
-                child: GestureDetector(
-                  onDoubleTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder:
-                            (context) =>
-                                const SettingsView(scrollToLocation: true),
-                        settings: const RouteSettings(name: '/settings'),
-                      ),
-                    ).then((_) {
-                      if (mounted) {
-                        _triggerUIRefresh(clearLocationCache: true);
-                      }
-                    });
-                  },
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Icon(
-                            Icons.location_on,
-                            color: AppColors.textPrimary(brightness),
-                            size: 15, // Adjusted size
-                          ),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              displayCity ??
-                                  "Loading...", // Replaced localizations.loading;
-                              style: AppTextStyles.date(
-                                brightness,
-                              ).copyWith(fontSize: 15),
-                              textAlign: TextAlign.right,
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (displayCountry != null && displayCountry.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            left: 20.0,
-                          ), // Keep padding for alignment
-                          child: Text(
-                            displayCountry,
-                            style: AppTextStyles.dateSecondary(
-                              brightness,
-                            ).copyWith(fontSize: 13),
-                            textAlign: TextAlign.right,
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+        _buildLocationAndDateSection(
+          formattedGregorian,
+          formattedHijri,
+          displayCity,
+          displayCountry,
+          colors,
         ),
-
-        // Current & Next Prayer Box
-        Container(
-          margin: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 8,
-          ), // Added vertical margin
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: contentSurface, // Use contentSurface from TesbihView
-            borderRadius: BorderRadius.circular(12), // Consistent rounding
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.shadowColor(
-                  brightness,
-                ).withAlpha(isDarkMode ? 30 : 50),
-                spreadRadius: 1,
-                blurRadius: 5,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Current Prayer", // Replaced localizations.currentPrayerTitle;
-                      style: AppTextStyles.label(
-                        brightness,
-                      ).copyWith(color: AppColors.textSecondary(brightness)),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      isLoading ? '...' : _currentPrayerName,
-                      style: AppTextStyles.currentPrayer(
-                        brightness,
-                      ).copyWith(color: AppColors.textPrimary(brightness)),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      "Next Prayer", // Replaced localizations.nextPrayerTitle;
-                      style: AppTextStyles.label(
-                        brightness,
-                      ).copyWith(color: AppColors.textSecondary(brightness)),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      isLoading ? '...' : _nextPrayerName,
-                      style: AppTextStyles.nextPrayer(brightness).copyWith(
-                        color: AppColors.accentGreen(brightness),
-                      ), // Highlight next prayer
-                    ),
-                    Builder(
-                      builder: (context) {
-                        Duration initialCountdownDuration = Duration.zero;
-                        if (!isLoading && _nextPrayerDateTime != null) {
-                          final now = DateTime.now();
-                          if (_nextPrayerDateTime!.isAfter(now)) {
-                            initialCountdownDuration = _nextPrayerDateTime!
-                                .difference(now);
-                          }
-                        }
-                        return PrayerCountdownTimer(
-                          initialDuration:
-                              isLoading
-                                  ? Duration.zero
-                                  : initialCountdownDuration,
-                          textStyle: AppTextStyles.countdownTimer(
-                            brightness,
-                          ).copyWith(color: AppColors.accentGreen(brightness)),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), // Adjusted padding
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              "Prayer Times", // Replaced localizations.prayerTimesTitle;
-              style: AppTextStyles.sectionTitle(
-                brightness,
-              ).copyWith(color: AppColors.textPrimary(brightness)),
-            ),
-          ),
-        ),
-
-        Expanded(
-          child: Stack(
-            children: [
-              Container(
-                margin: const EdgeInsets.fromLTRB(
-                  16,
-                  0,
-                  16,
-                  16,
-                ), // Margin for the list container
-                decoration: BoxDecoration(
-                  color: contentSurface, // Background for the list area
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.borderColor(
-                      brightness,
-                    ).withAlpha(isDarkMode ? 70 : 100),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.shadowColor(
-                        brightness,
-                      ).withAlpha(isDarkMode ? 20 : 40),
-                      spreadRadius: 0,
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  // To ensure border radius is respected by ListView
-                  borderRadius: BorderRadius.circular(11),
-                  child: ListView.separated(
-                    controller: _scrollController,
-                    padding: EdgeInsets.zero, // Remove default padding
-                    itemCount: prayerOrder.length,
-                    separatorBuilder:
-                        (context, index) => Divider(
-                          color: AppColors.borderColor(
-                            brightness,
-                          ).withAlpha(isDarkMode ? 70 : 100),
-                          height: 1,
-                          indent: 16,
-                          endIndent: 16,
-                        ),
-                    itemBuilder: (context, index) {
-                      final prayerEnum = prayerOrder[index];
-                      // Pass appSettings to _getPrayerDisplayInfo
-                      final prayerInfo = _getPrayerDisplayInfo(
-                        prayerEnum,
-                        prayerTimes,
-                        appSettings,
-                      );
-
-                      final bool isCurrent =
-                          !isLoading &&
-                          _currentPrayerEnum == prayerInfo.prayerEnum;
-
-                      return PrayerListItem(
-                        prayerInfo: prayerInfo,
-                        timeFormatter: _timeFormatter,
-                        isCurrent: isCurrent,
-                        brightness: brightness,
-                        contentSurfaceColor: contentSurface,
-                        currentPrayerItemBgColor: currentPrayerItemBg,
-                        currentPrayerItemBorderColor: currentPrayerItemBorder,
-                        currentPrayerItemTextColor: currentPrayerItemText,
-                        onRefresh: _triggerUIRefresh,
-                      );
-                    },
-                  ),
-                ),
-              ),
-              if (isLoading)
-                Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      AppColors.accentGreen(brightness),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+        _buildCurrentNextPrayerSection(isLoading, colors),
+        _buildPrayerTimesSection(
+          isLoading,
+          prayerTimes,
+          prayerOrder,
+          appSettings,
+          colors,
+          prayerColors,
         ),
       ],
     );
+  }
+
+  Widget _buildLocationAndDateSection(
+    String formattedGregorian,
+    String formattedHijri,
+    String? displayCity,
+    String? displayCountry,
+    UIColors colors,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onDoubleTap: () => _navigateToSettings(scrollToDate: true),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  formattedGregorian,
+                  style: AppTextStyles.date(
+                    colors.brightness,
+                  ).copyWith(fontSize: 15),
+                ),
+                Text(
+                  formattedHijri,
+                  style: AppTextStyles.dateSecondary(
+                    colors.brightness,
+                  ).copyWith(fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          Flexible(
+            child: GestureDetector(
+              onDoubleTap: () => _navigateToSettings(scrollToLocation: true),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (displayCity?.isNotEmpty == true)
+                    Text(
+                      displayCity!,
+                      style: AppTextStyles.locationCity(colors.brightness),
+                      textAlign: TextAlign.end,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
+                    ),
+                  if (displayCountry?.isNotEmpty == true)
+                    Text(
+                      displayCountry!,
+                      style: AppTextStyles.locationCountry(colors.brightness),
+                      textAlign: TextAlign.end,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCurrentNextPrayerSection(bool isLoading, UIColors colors) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: CommonContainerStyles.cardDecoration(colors),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Current Prayer",
+                  style: AppTextStyles.label(
+                    colors.brightness,
+                  ).copyWith(color: colors.textColorSecondary),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isLoading ? '...' : _currentPrayerName,
+                  style: AppTextStyles.currentPrayer(
+                    colors.brightness,
+                  ).copyWith(color: colors.textColorPrimary),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  "Next Prayer",
+                  style: AppTextStyles.label(
+                    colors.brightness,
+                  ).copyWith(color: colors.textColorSecondary),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isLoading ? '...' : _nextPrayerName,
+                  style: AppTextStyles.nextPrayer(
+                    colors.brightness,
+                  ).copyWith(color: colors.accentColor),
+                ),
+                Builder(
+                  builder: (context) {
+                    Duration initialCountdownDuration = Duration.zero;
+                    if (!isLoading && _nextPrayerDateTime != null) {
+                      final now = DateTime.now();
+                      if (_nextPrayerDateTime!.isAfter(now)) {
+                        initialCountdownDuration = _nextPrayerDateTime!
+                            .difference(now);
+                      }
+                    }
+                    return PrayerCountdownTimer(
+                      initialDuration:
+                          isLoading ? Duration.zero : initialCountdownDuration,
+                      textStyle: AppTextStyles.countdownTimer(
+                        colors.brightness,
+                      ).copyWith(color: colors.accentColor),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrayerTimesSection(
+    bool isLoading,
+    adhan.PrayerTimes? prayerTimes,
+    List<PrayerNotification> prayerOrder,
+    AppSettings appSettings,
+    UIColors colors,
+    PrayerItemColors prayerColors,
+  ) {
+    return Expanded(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                "Prayer Times",
+                style: AppTextStyles.sectionTitle(
+                  colors.brightness,
+                ).copyWith(color: colors.textColorPrimary),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Stack(
+              children: [
+                Container(
+                  margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  decoration: _buildPrayerListDecoration(colors),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(11),
+                    child: ListView.separated(
+                      controller: _scrollController,
+                      padding: EdgeInsets.zero,
+                      itemCount: prayerOrder.length,
+                      separatorBuilder:
+                          (context, index) => Divider(
+                            color: colors.borderColor.withAlpha(
+                              colors.isDarkMode ? 70 : 100,
+                            ),
+                            height: 1,
+                            indent: 16,
+                            endIndent: 16,
+                          ),
+                      itemBuilder: (context, index) {
+                        final prayerEnum = prayerOrder[index];
+                        final prayerInfo = _getPrayerDisplayInfo(
+                          prayerEnum,
+                          prayerTimes,
+                          appSettings,
+                        );
+
+                        final bool isCurrent =
+                            !isLoading &&
+                            _currentPrayerEnum == prayerInfo.prayerEnum;
+
+                        return PrayerListItem(
+                          prayerInfo: prayerInfo,
+                          timeFormatter: _timeFormatter,
+                          isCurrent: isCurrent,
+                          brightness: colors.brightness,
+                          contentSurfaceColor: colors.contentSurface,
+                          currentPrayerItemBgColor:
+                              prayerColors.currentPrayerBg,
+                          currentPrayerItemBorderColor:
+                              prayerColors.currentPrayerBorder,
+                          currentPrayerItemTextColor:
+                              prayerColors.currentPrayerText,
+                          onRefresh: _triggerUIRefresh,
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                if (isLoading)
+                  Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        colors.accentColor,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  BoxDecoration _buildPrayerListDecoration(UIColors colors) {
+    return BoxDecoration(
+      color: colors.contentSurface,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: colors.borderColor.withAlpha(colors.isDarkMode ? 70 : 100),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: AppColors.shadowColor(
+            colors.brightness,
+          ).withAlpha(colors.isDarkMode ? 20 : 40),
+          spreadRadius: 0,
+          blurRadius: 4,
+          offset: const Offset(0, 1),
+        ),
+      ],
+    );
+  }
+
+  void _navigateToSettings({
+    bool scrollToDate = false,
+    bool scrollToLocation = false,
+  }) {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder:
+            (context) => SettingsView(
+              scrollToDate: scrollToDate,
+              scrollToLocation: scrollToLocation,
+            ),
+        settings: const RouteSettings(name: '/settings'),
+      ),
+    ).then((_) {
+      if (mounted) {
+        _triggerUIRefresh();
+      }
+    });
   }
 }

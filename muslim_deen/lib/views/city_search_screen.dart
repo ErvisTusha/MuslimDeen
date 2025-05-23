@@ -8,10 +8,10 @@ import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/styles/ui_theme_helper.dart';
 import 'package:muslim_deen/widgets/city_search_bar.dart';
 import 'package:muslim_deen/widgets/city_search_results_list.dart';
 import 'package:muslim_deen/widgets/custom_app_bar.dart';
-import 'package:muslim_deen/widgets/message_display.dart';
 
 class CitySearchScreen extends StatefulWidget {
   const CitySearchScreen({super.key});
@@ -339,29 +339,15 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    // final bool isDarkMode = brightness == Brightness.dark; // No longer needed for scaffoldBg
+    final colors = UIThemeHelper.getThemeColors(brightness);
 
-    // Define colors similar to TesbihView
-    // final Color scaffoldBg = // Replaced by AppColors.getScaffoldBackground
-    //     isDarkMode
-    //         ? AppColors.surface(brightness)
-    //         : AppColors.background(brightness);
-    final bool isDarkMode =
-        brightness == Brightness.dark; // Still needed for other color logic
-    final Color contentSurface =
-        isDarkMode
-            ? const Color(0xFF2C2C2C)
-            : AppColors.primaryVariant(brightness); // For cards/containers
     final Color textFieldBg =
-        isDarkMode ? const Color(0xFF3C3C3C) : AppColors.background(brightness);
-    final Color textColor = AppColors.textPrimary(brightness);
-    final Color hintColor = AppColors.textSecondary(brightness);
-    final Color iconColor = AppColors.iconInactive(brightness);
-    final Color borderColor = AppColors.borderColor(brightness);
-    AppColors.error(brightness);
+        colors.isDarkMode
+            ? const Color(0xFF3C3C3C)
+            : AppColors.background(brightness);
     final Color listTileSelectedColor =
-        isDarkMode
-            ? AppColors.accentGreen(brightness).withAlpha(50)
+        colors.isDarkMode
+            ? colors.accentColor.withAlpha(50)
             : AppColors.primary(brightness).withAlpha(30);
 
     return Scaffold(
@@ -375,12 +361,12 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
           CitySearchBar(
             controller: _searchController,
             brightness: brightness,
-            contentSurfaceColor: contentSurface,
+            contentSurfaceColor: colors.contentSurface,
             textFieldBackgroundColor: textFieldBg,
-            textColor: textColor,
-            hintColor: hintColor,
-            iconColor: iconColor,
-            borderColor: borderColor,
+            textColor: colors.textColorPrimary,
+            hintColor: colors.textColorSecondary,
+            iconColor: colors.iconInactive,
+            borderColor: colors.borderColor,
             onClear: () {
               _searchController.clear();
               setState(() {
@@ -396,48 +382,35 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
               padding: const EdgeInsets.all(24.0),
               child: Center(
                 child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    AppColors.accentGreen(brightness),
-                  ),
-                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(colors.accentColor),
                 ),
               ),
             ),
-
           if (_errorMessage != null && !_isLoading)
-            MessageDisplay(
-              message: _errorMessage!,
-              isError: true,
-              icon: Icons.error_outline,
-              // customContainerStyle can be used here if needed to match original exactly
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                _errorMessage!,
+                style: AppTextStyles.label(
+                  brightness,
+                ).copyWith(color: colors.errorColor),
+                textAlign: TextAlign.center,
+              ),
             ),
-
-          if (_searchController.text.isNotEmpty &&
-              _searchResults.isEmpty &&
-              !_isLoading &&
-              _errorMessage == null)
-            MessageDisplay(
-              message:
-                  _searchController.text.length < 3
-                      ? "Type at least 3 characters to search"
-                      : "No locations found for \"${_searchController.text}\"",
-              icon: Icons.search_off_rounded,
-              // customContainerStyle can be used here if needed to match original exactly
+          if (_searchResults.isNotEmpty && !_isLoading)
+            Expanded(
+              child: CitySearchResultsList(
+                searchResults: _searchResults,
+                brightness: brightness,
+                contentSurfaceColor: colors.contentSurface,
+                textColor: colors.textColorPrimary,
+                hintColor: colors.textColorSecondary,
+                iconColor: colors.iconInactive,
+                borderColor: colors.borderColor,
+                listTileSelectedColor: listTileSelectedColor,
+                onSelectLocation: _selectLocation,
+              ),
             ),
-
-          Expanded(
-            child: CitySearchResultsList(
-              searchResults: _searchResults,
-              brightness: brightness,
-              contentSurfaceColor: contentSurface,
-              borderColor: borderColor,
-              listTileSelectedColor: listTileSelectedColor,
-              textColor: textColor,
-              hintColor: hintColor,
-              iconColor: iconColor,
-              onSelectLocation: _selectLocation,
-            ),
-          ),
         ],
       ),
     );

@@ -16,6 +16,7 @@ import 'package:muslim_deen/services/notification_service.dart'
     show NotificationService;
 import 'package:muslim_deen/services/storage_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/styles/ui_theme_helper.dart';
 
 class TesbihView extends ConsumerStatefulWidget {
   const TesbihView({super.key});
@@ -36,6 +37,9 @@ class _TesbihViewState extends ConsumerState<TesbihView>
       GetIt.I<NotificationService>();
   late final StorageService _storageService = GetIt.I<StorageService>();
   final LoggerService _logger = locator<LoggerService>();
+
+  // Cache reminder state to avoid accessing ref after disposal
+  bool _reminderEnabledCache = false;
 
   static final Map<String, String> _dhikrArabic = {
     'Subhanallah': 'سُبْحَانَ اللهِ',
@@ -83,6 +87,10 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _logger.info('TesbihView initialized');
+
+    // Initialize reminder cache
+    _reminderEnabledCache = false;
+
     _loadPreferences();
   }
 
@@ -110,7 +118,8 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     _logger.debug('TesbihView disposed');
     WidgetsBinding.instance.removeObserver(this);
 
-    if (mounted && ref.read(tesbihReminderProvider).reminderEnabled) {
+    // Use cached value instead of ref.read() to avoid "ref after disposal" error
+    if (mounted && _reminderEnabledCache) {
       _notificationService.cancelNotification(9876);
     }
 
@@ -181,6 +190,9 @@ class _TesbihViewState extends ConsumerState<TesbihView>
           ref
               .read(tesbihReminderProvider.notifier)
               .toggleReminder(enabled ?? false);
+
+          // Cache the reminder enabled state
+          _reminderEnabledCache = enabled ?? false;
         });
 
         if (ref.read(tesbihReminderProvider).reminderEnabled && mounted) {
@@ -240,6 +252,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
       _logger.error('Failed to schedule reminder', error: e, stackTrace: s);
       if (mounted) {
         ref.read(tesbihReminderProvider.notifier).toggleReminder(false);
+        _reminderEnabledCache = false;
         await _saveReminderSettings();
 
         _showErrorSnackBar(
@@ -771,30 +784,8 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    final bool isDarkMode = brightness == Brightness.dark;
-
-    final Color tesbihContentSurface =
-        isDarkMode
-            ? const Color(0xFF2C2C2C)
-            : AppColors.primaryVariant(brightness);
-    final Color tesbihCounterCircleBg =
-        isDarkMode ? const Color(0xFF3C3C3C) : AppColors.background(brightness);
-
-    final Color tesbihDhikrArabicText =
-        isDarkMode
-            ? AppColors.textPrimary(brightness)
-            : AppColors.primary(brightness);
-    final Color tesbihCounterProgress =
-        isDarkMode
-            ? AppColors.accentGreen(brightness)
-            : AppColors.primary(brightness);
-    final Color tesbihCounterCountText =
-        isDarkMode
-            ? AppColors.accentGreen(brightness)
-            : AppColors.primary(brightness);
-
-    final Color tesbihToggleCardBg =
-        isDarkMode ? tesbihContentSurface : AppColors.background(brightness);
+    final colors = UIThemeHelper.getThemeColors(brightness);
+    final tesbihColors = _getTesbihColors(colors);
 
     return Scaffold(
       backgroundColor: AppColors.getScaffoldBackground(brightness),
@@ -810,269 +801,250 @@ class _TesbihViewState extends ConsumerState<TesbihView>
           statusBarBrightness: Brightness.dark,
           systemNavigationBarColor: AppColors.getScaffoldBackground(brightness),
           systemNavigationBarIconBrightness:
-              isDarkMode ? Brightness.light : Brightness.dark,
+              colors.isDarkMode ? Brightness.light : Brightness.dark,
         ),
       ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-              color: tesbihContentSurface,
-              child: Column(
-                children: [
-                  Text(
-                    _dhikrArabic[_currentDhikr] ?? '',
-                    style: AppTextStyles.appTitle(brightness).copyWith(
-                      fontSize: 40,
-                      height: 1.4,
-                      color: tesbihDhikrArabicText,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _currentDhikr,
-                    style: AppTextStyles.label(brightness).copyWith(
-                      fontSize: 16,
-                      color: AppColors.textPrimary(
-                        brightness,
-                      ).withAlpha(isDarkMode ? 230 : 204),
-                    ),
-                  ),
-                ],
+            _buildDhikrHeader(colors, tesbihColors),
+            _buildCounterSection(colors, tesbihColors),
+            _buildActionButtons(colors),
+            _buildSettingsSection(colors),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Creates Tesbih-specific colors
+  TesbihColors _getTesbihColors(UIColors colors) {
+    return TesbihColors(
+      contentSurface:
+          colors.isDarkMode
+              ? const Color(0xFF2C2C2C)
+              : AppColors.primaryVariant(colors.brightness),
+      counterCircleBg:
+          colors.isDarkMode
+              ? const Color(0xFF3C3C3C)
+              : AppColors.background(colors.brightness),
+      dhikrArabicText:
+          colors.isDarkMode
+              ? colors.textColorPrimary
+              : AppColors.primary(colors.brightness),
+      counterProgress:
+          colors.isDarkMode
+              ? colors.accentColor
+              : AppColors.primary(colors.brightness),
+      counterCountText:
+          colors.isDarkMode
+              ? colors.accentColor
+              : AppColors.primary(colors.brightness),
+      toggleCardBg:
+          colors.isDarkMode
+              ? const Color(0xFF2C2C2C)
+              : AppColors.background(colors.brightness),
+    );
+  }
+
+  Widget _buildDhikrHeader(UIColors colors, TesbihColors tesbihColors) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      color: tesbihColors.contentSurface,
+      child: Column(
+        children: [
+          Text(
+            _dhikrArabic[_currentDhikr] ?? '',
+            style: AppTextStyles.appTitle(colors.brightness).copyWith(
+              fontSize: 40,
+              height: 1.4,
+              color: tesbihColors.dhikrArabicText,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _currentDhikr,
+            style: AppTextStyles.label(colors.brightness).copyWith(
+              fontSize: 16,
+              color: colors.textColorPrimary.withAlpha(
+                colors.isDarkMode ? 230 : 204,
               ),
             ),
-            GestureDetector(
-              onTap: _incrementCount,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 40),
-                color: tesbihContentSurface,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCounterSection(UIColors colors, TesbihColors tesbihColors) {
+    return GestureDetector(
+      onTap: _incrementCount,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        color: tesbihColors.contentSurface,
+        child: Center(
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 300,
+                height: 300,
+                child: CircularProgressIndicator(
+                  value: _target > 0 ? (_count / _target).clamp(0.0, 1.0) : 0,
+                  strokeWidth: 8,
+                  backgroundColor: colors.borderColor.withAlpha(
+                    colors.isDarkMode ? 80 : 128,
+                  ),
+                  color: tesbihColors.counterProgress,
+                ),
+              ),
+              Container(
+                width: 280,
+                height: 280,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: tesbihColors.counterCircleBg,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.shadowColor(
+                        colors.brightness,
+                      ).withAlpha(colors.isDarkMode ? 60 : 128),
+                      spreadRadius: 1,
+                      blurRadius: 8,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
                 child: Center(
-                  child: Stack(
-                    alignment: Alignment.center,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      SizedBox(
-                        width: 300,
-                        height: 300,
-                        child: CircularProgressIndicator(
-                          value:
-                              _target > 0
-                                  ? (_count / _target).clamp(0.0, 1.0)
-                                  : 0,
-                          strokeWidth: 8,
-                          backgroundColor: AppColors.borderColor(
-                            brightness,
-                          ).withAlpha(isDarkMode ? 80 : 128),
-                          color: tesbihCounterProgress,
+                      Text(
+                        '$_count',
+                        style: AppTextStyles.currentPrayer(
+                          colors.brightness,
+                        ).copyWith(
+                          fontSize: 80,
+                          fontWeight: FontWeight.w600,
+                          color: tesbihColors.counterCountText,
                         ),
                       ),
-                      Container(
-                        width: 280,
-                        height: 280,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: tesbihCounterCircleBg,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.shadowColor(
-                                brightness,
-                              ).withAlpha(isDarkMode ? 60 : 128),
-                              spreadRadius: 1,
-                              blurRadius: 8,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                '$_count',
-                                style: AppTextStyles.currentPrayer(
-                                  brightness,
-                                ).copyWith(
-                                  fontSize: 80,
-                                  fontWeight: FontWeight.w600,
-                                  color: tesbihCounterCountText,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                "Target: $_target",
-                                style: AppTextStyles.label(brightness).copyWith(
-                                  fontSize: 15,
-                                  color:
-                                      isDarkMode
-                                          ? AppColors.textSecondary(
-                                            brightness,
-                                          ).withAlpha(200)
-                                          : AppColors.textSecondary(brightness),
-                                ),
-                              ),
-                            ],
-                          ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Target: $_target",
+                        style: AppTextStyles.label(colors.brightness).copyWith(
+                          fontSize: 15,
+                          color:
+                              colors.isDarkMode
+                                  ? colors.textColorSecondary.withAlpha(200)
+                                  : colors.textColorSecondary,
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(color: tesbihContentSurface),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildActionButton(
-                    Icons.refresh_rounded,
-                    "Reset",
-                    _resetCount,
-                    brightness,
-                  ),
-                  _buildActionButton(
-                    Icons.track_changes_rounded,
-                    "Set Target",
-                    _showTargetDialog,
-                    brightness,
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Expanded(
-                        child: _buildDhikrButton('Subhanallah', brightness),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildDhikrButton('Alhamdulillah', brightness),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Expanded(
-                        child: _buildDhikrButton('Astaghfirullah', brightness),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildDhikrButton('Allahu Akbar', brightness),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: tesbihToggleCardBg,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.borderColor(brightness)),
-              ),
-              child: Column(
-                children: [
-                  _buildToggleOption(
-                    "Vibration",
-                    Icons.vibration_rounded,
-                    _vibrationEnabled,
-                    (value) {
-                      if (!mounted) return;
-                      setState(() => _vibrationEnabled = value);
-                      _savePreferences().catchError((Object e, StackTrace? s) {
-                        _logger.error(
-                          "Error saving vibration preference",
-                          error: e,
-                          stackTrace: s,
-                        );
-                        if (mounted) {
-                          _showErrorSnackBar(
-                            "Failed to save vibration preference. Please try again.",
-                          );
-                        }
-                      });
-                    },
-                    brightness,
-                  ),
-                  Divider(color: AppColors.borderColor(brightness), height: 1),
-                  _buildToggleOption(
-                    "Sound",
-                    Icons.volume_up_rounded,
-                    _soundEnabled,
-                    (value) {
-                      if (!mounted) return;
-
-                      if (value && !_soundEnabled) {
-                        _initializeAudioPlayers();
-                      }
-
-                      setState(() => _soundEnabled = value);
-                      _savePreferences().catchError((Object e, StackTrace? s) {
-                        _logger.error(
-                          "Error saving sound preference",
-                          error: e,
-                          stackTrace: s,
-                        );
-                        if (mounted) {
-                          _showErrorSnackBar(
-                            "Failed to save sound preference. Please try again.",
-                          );
-                        }
-                      });
-                    },
-                    brightness,
-                  ),
-                  Divider(color: AppColors.borderColor(brightness), height: 1),
-                  _buildToggleOption(
-                    "Notifications",
-                    Icons.notifications_active_rounded,
-                    ref.watch(tesbihReminderProvider).reminderEnabled,
-                    (value) async {
-                      if (!value) {
-                        ref
-                            .read(tesbihReminderProvider.notifier)
-                            .toggleReminder(false);
-                      } else {
-                        ref
-                            .read(tesbihReminderProvider.notifier)
-                            .toggleReminder(true);
-                      }
-                    },
-                    brightness,
-                    trailing:
-                        ref.watch(tesbihReminderProvider).reminderEnabled &&
-                                ref
-                                        .watch(tesbihReminderProvider)
-                                        .reminderTime !=
-                                    null
-                            ? Text(
-                              ref
-                                  .watch(tesbihReminderProvider)
-                                  .reminderTime!
-                                  .format(context),
-                              style: AppTextStyles.label(brightness),
-                            )
-                            : null,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildActionButtons(UIColors colors) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(color: _getTesbihColors(colors).contentSurface),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildActionButton(
+            Icons.refresh_rounded,
+            "Reset",
+            _resetCount,
+            colors.brightness,
+          ),
+          _buildActionButton(
+            Icons.track_changes_rounded,
+            "Set Target",
+            _showTargetDialog,
+            colors.brightness,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsSection(UIColors colors) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.menu_book, color: colors.textColorPrimary, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                "Dhikr",
+                style: AppTextStyles.sectionTitle(
+                  colors.brightness,
+                ).copyWith(color: colors.textColorPrimary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildDhikrSelector(colors),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Icon(Icons.settings, color: colors.textColorPrimary, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                "Settings",
+                style: AppTextStyles.sectionTitle(
+                  colors.brightness,
+                ).copyWith(color: colors.textColorPrimary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildToggleGroup(colors),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDhikrSelector(UIColors colors) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            Expanded(
+              child: _buildDhikrButton('Subhanallah', colors.brightness),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildDhikrButton('Alhamdulillah', colors.brightness),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            Expanded(
+              child: _buildDhikrButton('Astaghfirullah', colors.brightness),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildDhikrButton('Allahu Akbar', colors.brightness),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -1135,6 +1107,86 @@ class _TesbihViewState extends ConsumerState<TesbihView>
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildToggleGroup(UIColors colors) {
+    return Column(
+      children: [
+        _buildToggleOption(
+          "Vibration",
+          Icons.vibration_rounded,
+          _vibrationEnabled,
+          (value) {
+            if (!mounted) return;
+            setState(() => _vibrationEnabled = value);
+            _savePreferences().catchError((Object e, StackTrace? s) {
+              _logger.error(
+                "Error saving vibration preference",
+                error: e,
+                stackTrace: s,
+              );
+              if (mounted) {
+                _showErrorSnackBar(
+                  "Failed to save vibration preference. Please try again.",
+                );
+              }
+            });
+          },
+          colors.brightness,
+        ),
+        Divider(color: AppColors.borderColor(colors.brightness), height: 1),
+        _buildToggleOption("Sound", Icons.volume_up_rounded, _soundEnabled, (
+          value,
+        ) {
+          if (!mounted) return;
+
+          if (value && !_soundEnabled) {
+            _initializeAudioPlayers();
+          }
+
+          setState(() => _soundEnabled = value);
+          _savePreferences().catchError((Object e, StackTrace? s) {
+            _logger.error(
+              "Error saving sound preference",
+              error: e,
+              stackTrace: s,
+            );
+            if (mounted) {
+              _showErrorSnackBar(
+                "Failed to save sound preference. Please try again.",
+              );
+            }
+          });
+        }, colors.brightness),
+        Divider(color: AppColors.borderColor(colors.brightness), height: 1),
+        _buildToggleOption(
+          "Notifications",
+          Icons.notifications_active_rounded,
+          ref.watch(tesbihReminderProvider).reminderEnabled,
+          (value) async {
+            if (!value) {
+              ref.read(tesbihReminderProvider.notifier).toggleReminder(false);
+              _reminderEnabledCache = false;
+            } else {
+              ref.read(tesbihReminderProvider.notifier).toggleReminder(true);
+              _reminderEnabledCache = true;
+            }
+          },
+          colors.brightness,
+          trailing:
+              ref.watch(tesbihReminderProvider).reminderEnabled &&
+                      ref.watch(tesbihReminderProvider).reminderTime != null
+                  ? Text(
+                    ref
+                        .watch(tesbihReminderProvider)
+                        .reminderTime!
+                        .format(context),
+                    style: AppTextStyles.label(colors.brightness),
+                  )
+                  : null,
+        ),
+      ],
     );
   }
 

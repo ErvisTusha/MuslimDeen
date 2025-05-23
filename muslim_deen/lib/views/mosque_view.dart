@@ -1,7 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
-
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -10,63 +10,49 @@ import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/map_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/styles/ui_theme_helper.dart';
+import 'package:muslim_deen/widgets/common_container_styles.dart';
 import 'package:muslim_deen/widgets/custom_app_bar.dart';
-import 'package:muslim_deen/widgets/message_display.dart';
+import 'package:muslim_deen/widgets/loading_error_state_builder.dart';
 
 Future<void> _openMosqueInMapsApp(BuildContext context, Mosque mosque) async {
-  if (!context.mounted) return;
+  final String query = Uri.encodeComponent(mosque.name);
+  final String coordinates =
+      '${mosque.location.latitude},${mosque.location.longitude}';
 
-  final logger = locator<LoggerService>();
-  final lat = mosque.location.latitude;
-  final lng = mosque.location.longitude;
-  final query = Uri.encodeComponent(
-    mosque.name.isNotEmpty ? mosque.name : '$lat,$lng',
-  );
+  List<String> urls = [];
 
-  final appleUrl = Uri.parse('maps://?q=$query&ll=$lat,$lng');
-  final googleUrl = Uri.parse(
-    'https://www.google.com/maps/search/?api=1&query=$query',
-  );
-  final genericUrl = Uri.parse('geo:$lat,$lng?q=$query');
+  if (Platform.isAndroid) {
+    urls = [
+      'geo:$coordinates?q=$coordinates($query)',
+      'https://www.google.com/maps/search/?api=1&query=$coordinates',
+    ];
+  } else if (Platform.isIOS) {
+    urls = [
+      'maps:$coordinates?q=$query',
+      'https://maps.apple.com/?q=$query&ll=$coordinates',
+      'https://www.google.com/maps/search/?api=1&query=$coordinates',
+    ];
+  } else {
+    urls = ['https://www.google.com/maps/search/?api=1&query=$coordinates'];
+  }
 
   bool launched = false;
-
-  try {
-    if (Theme.of(context).platform == TargetPlatform.iOS) {
-      if (await canLaunchUrl(appleUrl)) {
-        launched = true;
-        await launchUrl(appleUrl, mode: LaunchMode.externalApplication);
-      }
-    }
-
-    if (!launched && await canLaunchUrl(googleUrl)) {
+  for (final url in urls) {
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url));
       launched = true;
-      await launchUrl(googleUrl, mode: LaunchMode.externalApplication);
+      break;
     }
+  }
 
-    if (!launched && await canLaunchUrl(genericUrl)) {
-      launched = true;
-      await launchUrl(genericUrl, mode: LaunchMode.externalApplication);
-    }
-
-    if (!launched && context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Error opening map")));
-      logger.warning(
-        'Could not launch any map application for mosque: ${mosque.name}',
-      );
-    }
-  } catch (e, s) {
-    logger.error(
-      'Error launching map for mosque: ${mosque.name}',
-      data: {'error': e.toString(), 'stackTrace': s.toString()},
+  if (!launched && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Could not open maps app. Coordinates: $coordinates'),
+        backgroundColor: Colors.orange,
+      ),
     );
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Error opening map")));
-    }
   }
 }
 
@@ -100,7 +86,6 @@ class _MosqueViewState extends State<MosqueView> {
     _locationCheckTimer?.cancel();
     _locationCheckTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
-        // _locationService.checkLocationPermission(); // Removed direct call
         // The locationStatus stream should update based on LocationService's internal checks
       }
     });
@@ -152,10 +137,7 @@ class _MosqueViewState extends State<MosqueView> {
     _logger.info('Loading nearby mosques...');
 
     try {
-      // await _locationService.checkLocationPermission(); // Removed direct call
-      // getLocation() will handle permission checks internally.
       if (_locationService.isLocationBlocked) {
-        // This check can remain as a quick exit
         _logger.warning(
           'Location permission is blocked. User needs to enable it.',
         );
@@ -215,19 +197,7 @@ class _MosqueViewState extends State<MosqueView> {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    // final bool isDarkMode = brightness == Brightness.dark; // No longer needed for scaffoldBg
-
-    // final Color scaffoldBg = // Replaced by AppColors.getScaffoldBackground
-    //     isDarkMode
-    //         ? AppColors.surface(brightness)
-    //         : AppColors.background(brightness);
-    final bool isDarkMode =
-        brightness == Brightness.dark; // Still needed for other color logic
-    final Color contentSurface =
-        isDarkMode ? const Color(0xFF2C2C2C) : AppColors.background(brightness);
-    final Color cardBorderColor = AppColors.borderColor(
-      brightness,
-    ).withAlpha(isDarkMode ? 100 : 150);
+    final colors = UIThemeHelper.getThemeColors(brightness);
 
     return Scaffold(
       backgroundColor: AppColors.getScaffoldBackground(brightness),
@@ -238,148 +208,157 @@ class _MosqueViewState extends State<MosqueView> {
           IconButton(
             icon: Icon(
               Icons.refresh,
-              color:
-                  isDarkMode ? AppColors.textPrimary(brightness) : Colors.white,
+              color: colors.isDarkMode ? colors.textColorPrimary : Colors.white,
             ),
             onPressed: _isLoading ? null : _loadNearbyMosques,
             tooltip: "Refresh",
           ),
         ],
       ),
-      body:
-          _isLoading
-              ? Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    AppColors.accentGreen(brightness),
-                  ),
-                  strokeWidth: 3,
-                ),
-              )
-              : _errorMessage != null
-              ? MessageDisplay(
-                message: _errorMessage ?? "Unknown error",
-                icon: Icons.error_outline_rounded,
-                onRetry: _loadNearbyMosques,
-                isError: true,
-              )
-              : _buildMosqueListView(
-                brightness,
-                isDarkMode, // Pass isDarkMode
-                contentSurface, // Pass contentSurface
-                cardBorderColor,
-              ),
-    );
-  }
-
-  Widget _buildMosqueListView(
-    Brightness brightness,
-    bool isDarkMode, // Add isDarkMode parameter
-    Color contentSurface, // Add contentSurface parameter
-    Color cardBorderColor,
-  ) {
-    if (_nearbyMosques.isEmpty) {
-      return const MessageDisplay(
-        message:
-            "No mosques found nearby. Try adjusting search radius or location.",
-        icon: Icons.search_off_rounded,
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      itemCount: _nearbyMosques.length,
-      itemBuilder:
-          (context, index) => _buildMosqueCard(
-            _nearbyMosques[index],
-            index == 0,
-            brightness,
-            isDarkMode,
-            contentSurface,
-            cardBorderColor,
-          ),
-    );
-  }
-
-  Widget _buildMosqueCard(
-    Mosque mosque,
-    bool isFeatured,
-    Brightness brightness,
-    bool isDarkMode,
-    Color cardBackgroundColor,
-    Color cardBorderColor,
-  ) {
-    final Color textColor = AppColors.textPrimary(brightness);
-    final Color directionsIconColor = AppColors.accentGreen(brightness);
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 0,
-      color: cardBackgroundColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: cardBorderColor, width: 1),
+      body: LoadingErrorStateBuilder(
+        isLoading: _isLoading,
+        errorMessage: _errorMessage,
+        onRetry: _loadNearbyMosques,
+        loadingText: "Finding nearby mosques...",
+        child: _buildMosqueListView(colors),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => _openMosqueInMaps(mosque),
-        splashColor: directionsIconColor.withAlpha((0.1 * 255).round()),
-        highlightColor: directionsIconColor.withAlpha((0.05 * 255).round()),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (isFeatured)
-              Image.asset(
-                'assets/images/mosque_placeholder.jpg',
-                height: 160,
-                fit: BoxFit.cover,
+    );
+  }
+
+  Widget _buildMosqueListView(UIColors colors) {
+    return Column(
+      children: [
+        // Mosque image at the top
+        Container(
+          width: double.infinity,
+          height: 200,
+          decoration: BoxDecoration(
+            image: const DecorationImage(
+              image: AssetImage('assets/images/mosque_placeholder.jpg'),
+              fit: BoxFit.cover,
+            ),
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(20),
+              bottomRight: Radius.circular(20),
+            ),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.transparent, Colors.black.withOpacity(0.3)],
               ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          mosque.name.isNotEmpty
-                              ? mosque.name
-                              : 'Unknown location',
-                          style: AppTextStyles.sectionTitle(
-                            brightness,
-                          ).copyWith(color: textColor, fontSize: 17),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: directionsIconColor.withAlpha(
-                        (isDarkMode ? 0.2 * 255 : 0.15 * 255).round(),
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.directions_rounded,
-                        color: directionsIconColor,
-                      ),
-                      onPressed: () => _openMosqueInMaps(mosque),
-                      tooltip: "Open in Maps",
-                      splashRadius: 20,
-                    ),
-                  ),
-                ],
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
               ),
             ),
-          ],
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  "Nearby Mosques",
+                  style: AppTextStyles.sectionTitle(colors.brightness).copyWith(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
-      ),
+
+        // List of mosques
+        Expanded(
+          child:
+              _nearbyMosques.isEmpty
+                  ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.mosque_rounded,
+                            size: 64,
+                            color: colors.textColorSecondary,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            "No mosques found nearby",
+                            style: AppTextStyles.sectionTitle(
+                              colors.brightness,
+                            ).copyWith(color: colors.textColorPrimary),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Try refreshing or check your location settings",
+                            style: AppTextStyles.label(
+                              colors.brightness,
+                            ).copyWith(color: colors.textColorSecondary),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                  : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _nearbyMosques.length,
+                    itemBuilder: (context, index) {
+                      final mosque = _nearbyMosques[index];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: CommonContainerStyles.cardDecoration(
+                          colors,
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.all(16),
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration:
+                                CommonContainerStyles.iconContainerDecoration(
+                                  colors,
+                                ),
+                            child: Icon(
+                              Icons.mosque_rounded,
+                              color: colors.accentColor,
+                              size: 24,
+                            ),
+                          ),
+                          title: Text(
+                            mosque.name,
+                            style: AppTextStyles.prayerName(
+                              colors.brightness,
+                            ).copyWith(
+                              color: colors.textColorPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          trailing: Container(
+                            decoration: BoxDecoration(
+                              color: colors.accentColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.directions,
+                                color: Colors.white,
+                              ),
+                              onPressed: () => _openMosqueInMaps(mosque),
+                              tooltip: "Get directions",
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+        ),
+      ],
     );
   }
 }

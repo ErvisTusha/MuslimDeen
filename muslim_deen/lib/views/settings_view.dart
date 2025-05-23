@@ -10,6 +10,7 @@ import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/styles/ui_theme_helper.dart';
 import 'package:muslim_deen/views/about_view.dart';
 import 'package:muslim_deen/views/city_search_screen.dart';
 import 'package:muslim_deen/widgets/custom_app_bar.dart';
@@ -401,9 +402,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             key: _dateKey,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SettingsSectionHeader(
-                title: "Date & Time",
-              ),
+              SettingsSectionHeader(title: "Date & Time"),
               SettingsListItem(
                 icon: Icons.calendar_today,
                 title: "Date Format",
@@ -470,44 +469,43 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     final localSettingsNotifier = ref.read(settingsProvider.notifier);
     final bool isBlocked = localSettingsNotifier.areNotificationsBlocked;
     final brightness = Theme.of(context).brightness;
+    final colors = UIThemeHelper.getThemeColors(brightness);
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
         color:
             isBlocked
-                ? AppColors.background(brightness).withAlpha(178)
-                : AppColors.background(brightness),
+                ? colors.contentSurface.withAlpha(178)
+                : colors.contentSurface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderColor(brightness)),
+        border: Border.all(color: colors.borderColor),
       ),
       child: Column(
         children: [
           SwitchListTile(
             title: Text(
               _getPrayerName(prayer),
-              style: AppTextStyles.prayerName(brightness).copyWith(
-                color: isBlocked ? AppColors.iconInactive(brightness) : null,
-              ),
+              style: AppTextStyles.prayerName(
+                brightness,
+              ).copyWith(color: isBlocked ? colors.iconInactive : null),
             ),
             subtitle: Text(
               "Receive notification for ${_getPrayerName(prayer)} prayer",
-              style: AppTextStyles.label(brightness).copyWith(
-                color: isBlocked ? AppColors.iconInactive(brightness) : null,
-              ),
+              style: AppTextStyles.label(
+                brightness,
+              ).copyWith(color: isBlocked ? colors.iconInactive : null),
             ),
             value: value,
             onChanged: isBlocked ? null : onChanged,
-            activeColor: AppColors.primary(brightness),
-            activeTrackColor: AppColors.switchTrackActive(brightness),
+            activeColor: colors.accentColor,
+            inactiveThumbColor: colors.iconInactive,
+            inactiveTrackColor: colors.borderColor,
             secondary: Icon(
               isBlocked
                   ? Icons.notifications_off
                   : Icons.notifications_outlined,
-              color: AppColors.iconInactive(brightness),
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              color: colors.iconInactive,
             ),
           ),
           if (isBlocked)
