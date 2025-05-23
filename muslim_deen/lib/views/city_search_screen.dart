@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'package:geocoding/geocoding.dart';
 
@@ -347,7 +346,8 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
     //     isDarkMode
     //         ? AppColors.surface(brightness)
     //         : AppColors.background(brightness);
-    final bool isDarkMode = brightness == Brightness.dark; // Still needed for other color logic
+    final bool isDarkMode =
+        brightness == Brightness.dark; // Still needed for other color logic
     final Color contentSurface =
         isDarkMode
             ? const Color(0xFF2C2C2C)
@@ -358,7 +358,7 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
     final Color hintColor = AppColors.textSecondary(brightness);
     final Color iconColor = AppColors.iconInactive(brightness);
     final Color borderColor = AppColors.borderColor(brightness);
-    final Color errorColor = AppColors.error(brightness);
+    AppColors.error(brightness);
     final Color listTileSelectedColor =
         isDarkMode
             ? AppColors.accentGreen(brightness).withAlpha(50)
@@ -403,7 +403,7 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
                 ),
               ),
             ),
-          
+
           if (_errorMessage != null && !_isLoading)
             MessageDisplay(
               message: _errorMessage!,
@@ -417,9 +417,10 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
               !_isLoading &&
               _errorMessage == null)
             MessageDisplay(
-              message: _searchController.text.length < 3
-                  ? "Type at least 3 characters to search"
-                  : "No locations found for \"${_searchController.text}\"",
+              message:
+                  _searchController.text.length < 3
+                      ? "Type at least 3 characters to search"
+                      : "No locations found for \"${_searchController.text}\"",
               icon: Icons.search_off_rounded,
               // customContainerStyle can be used here if needed to match original exactly
             ),

@@ -8,6 +8,7 @@ import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/prayer_times_cache.dart'; // Added import
+import 'package:muslim_deen/models/prayer_times_model.dart';
 
 /// Service responsible for calculating and providing prayer times.
 ///
@@ -265,7 +266,7 @@ class PrayerService {
   /// Determines the current prayer based on the current time and cached prayer times.
   /// Returns the standardized prayer name ('fajr', 'dhuhr', etc.) or 'none'.
   /// Throws an exception if times haven't been calculated yet.
-  String _getCurrentPrayer() {
+  String getCurrentPrayer() {
     if (_currentPrayerTimes == null) {
       _logger.warning('Attempted to get current prayer before calculation.');
       return adhan.Prayer.none;
@@ -295,7 +296,7 @@ class PrayerService {
       return null;
     }
     final String nextPrayerName = getNextPrayer();
-    final String currentPrayerName = _getCurrentPrayer();
+    final String currentPrayerName = getCurrentPrayer();
 
     if (nextPrayerName == adhan.Prayer.none) {
       if (currentPrayerName == adhan.Prayer.isha) {

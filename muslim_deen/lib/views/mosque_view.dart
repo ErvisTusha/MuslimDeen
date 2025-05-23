@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -101,7 +100,8 @@ class _MosqueViewState extends State<MosqueView> {
     _locationCheckTimer?.cancel();
     _locationCheckTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
-        _locationService.checkLocationPermission();
+        // _locationService.checkLocationPermission(); // Removed direct call
+        // The locationStatus stream should update based on LocationService's internal checks
       }
     });
   }
@@ -152,8 +152,10 @@ class _MosqueViewState extends State<MosqueView> {
     _logger.info('Loading nearby mosques...');
 
     try {
-      await _locationService.checkLocationPermission();
+      // await _locationService.checkLocationPermission(); // Removed direct call
+      // getLocation() will handle permission checks internally.
       if (_locationService.isLocationBlocked) {
+        // This check can remain as a quick exit
         _logger.warning(
           'Location permission is blocked. User needs to enable it.',
         );
@@ -219,7 +221,8 @@ class _MosqueViewState extends State<MosqueView> {
     //     isDarkMode
     //         ? AppColors.surface(brightness)
     //         : AppColors.background(brightness);
-    final bool isDarkMode = brightness == Brightness.dark; // Still needed for other color logic
+    final bool isDarkMode =
+        brightness == Brightness.dark; // Still needed for other color logic
     final Color contentSurface =
         isDarkMode ? const Color(0xFF2C2C2C) : AppColors.background(brightness);
     final Color cardBorderColor = AppColors.borderColor(
@@ -255,43 +258,30 @@ class _MosqueViewState extends State<MosqueView> {
               )
               : _errorMessage != null
               ? MessageDisplay(
-                  message: _errorMessage ?? "Unknown error",
-                  icon: Icons.error_outline_rounded,
-                  onRetry: _loadNearbyMosques,
-                  isError: true,
-                )
+                message: _errorMessage ?? "Unknown error",
+                icon: Icons.error_outline_rounded,
+                onRetry: _loadNearbyMosques,
+                isError: true,
+              )
               : _buildMosqueListView(
                 brightness,
-                // isDarkMode, // No longer needed by _buildMosqueListView if its content is replaced
-                // contentSurface, // No longer needed by _buildMosqueListView if its content is replaced
-                contentSurface,
+                isDarkMode, // Pass isDarkMode
+                contentSurface, // Pass contentSurface
                 cardBorderColor,
               ),
     );
   }
 
-  Widget _buildErrorView( // Parameters isDarkMode and contentSurface are no longer needed
-    Brightness brightness,
-    // bool isDarkMode,
-    // Color contentSurface, 
-  ) {
-    return MessageDisplay(
-      message: _errorMessage ?? "Unknown error",
-      icon: Icons.error_outline_rounded,
-      onRetry: _loadNearbyMosques,
-      isError: true,
-    );
-  }
-
   Widget _buildMosqueListView(
     Brightness brightness,
-    // bool isDarkMode, // No longer needed by MessageDisplay directly
-    // Color contentSurface, // No longer needed by MessageDisplay directly
-    Color cardBorderColor, // Still needed for mosque cards if list is not empty
+    bool isDarkMode, // Add isDarkMode parameter
+    Color contentSurface, // Add contentSurface parameter
+    Color cardBorderColor,
   ) {
     if (_nearbyMosques.isEmpty) {
       return const MessageDisplay(
-        message: "No mosques found nearby. Try adjusting search radius or location.",
+        message:
+            "No mosques found nearby. Try adjusting search radius or location.",
         icon: Icons.search_off_rounded,
       );
     }

@@ -1,3 +1,5 @@
+import 'dart:convert'; // Added for jsonEncode and jsonDecode
+
 import 'package:adhan_dart/adhan_dart.dart';
 import 'package:muslim_deen/models/prayer_times_model.dart';
 import 'package:muslim_deen/services/cache_service.dart';
@@ -151,3 +153,6 @@ class PrayerTimesCache {
   }
 
 }
+
+
+

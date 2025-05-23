@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/widgets/custom_app_bar.dart'; // Added import
@@ -17,7 +16,8 @@ class AboutScreen extends StatelessWidget {
     //     isDarkMode
     //         ? AppColors.surface(brightness)
     //         : AppColors.background(brightness);
-    final bool isDarkMode = brightness == Brightness.dark; // Still needed for other color logic
+    final bool isDarkMode =
+        brightness == Brightness.dark; // Still needed for other color logic
     final Color contentSurface =
         isDarkMode
             ? const Color(0xFF2C2C2C)
@@ -26,10 +26,7 @@ class AboutScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.getScaffoldBackground(brightness),
-      appBar: CustomAppBar(
-        title: "About",
-        brightness: brightness,
-      ),
+      appBar: CustomAppBar(title: "About", brightness: brightness),
       body: Center(
         child: Container(
           margin: const EdgeInsets.all(16.0),

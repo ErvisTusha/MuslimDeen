@@ -8,6 +8,7 @@ import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
 
+import 'package:muslim_deen/models/custom_exceptions.dart';
 // LocationServiceException class removed
 
 /// A service that handles location-related functionality including device location,
@@ -43,7 +44,6 @@ class LocationService {
   bool? _useManualLocationCached;
   double? _manualLatCached;
   double? _manualLngCached;
-  String? _locationNameCached;
 
   // In-memory cache for device location
   Position? _cachedDevicePosition;
@@ -54,11 +54,6 @@ class LocationService {
       _locationStatusController?.stream ?? Stream.value(false);
   bool get isLocationBlocked => _isLocationPermissionBlocked;
 
-  static const LocationSettings _defaultLocationSettings = LocationSettings(
-    accuracy: LocationAccuracy.high,
-    distanceFilter: 100, // Update only if moved 100 meters
-    timeLimit: Duration(seconds: 10), // Add timeout to prevent hanging
-  );
 
   static const String _manualLatKey = 'manual_latitude';
   static const String _manualLngKey = 'manual_longitude';
@@ -107,7 +102,6 @@ class LocationService {
     _useManualLocationCached = _prefs?.getBool(_useManualLocationKey) ?? false;
     _manualLatCached = _prefs?.getDouble(_manualLatKey);
     _manualLngCached = _prefs?.getDouble(_manualLngKey);
-    _locationNameCached = _prefs?.getString(_locationNameKey);
     _logger.debug("Loaded settings into in-memory cache.");
   }
 
@@ -187,7 +181,7 @@ class LocationService {
     );
     // This would show a dialog explaining how to enable permissions
     // For now, we just log the issue
-    await _setUseManualLocation(true);
+    await setUseManualLocation(true);
   }
 
   Future<bool> _showPermissionExplanationDialog() async {
@@ -341,14 +335,14 @@ class LocationService {
   }
 
   /// Set whether to use manual location or device location
-  Future<void> _setUseManualLocation(bool useManual) async {
+  Future<void> setUseManualLocation(bool useManual) async {
     await _prefs?.setBool(_useManualLocationKey, useManual);
     _useManualLocationCached = useManual; // Update cache
     _logger.debug("Set useManualLocation to $useManual and updated cache.");
   }
 
   /// Check if manual location is being used
-  bool _isUsingManualLocation() {
+  bool isUsingManualLocation() {
     // Prefer cached value, fallback to SharedPreferences if not initialized (should not happen in normal flow)
     return _useManualLocationCached ??
         (_prefs?.getBool(_useManualLocationKey) ?? false);
@@ -368,10 +362,9 @@ class LocationService {
     if (name != null && name.isNotEmpty) {
       // Added check for empty name
       await _prefs?.setString(_locationNameKey, name);
-      _locationNameCached = name; // Update cache
+// Update cache
     } else {
       await _prefs?.remove(_locationNameKey); // Remove if name is null or empty
-      _locationNameCached = null;
     }
     _logger.debug(
       "Set manual location (Lat: $latitude, Lng: $longitude, Name: $name) and updated cache.",
@@ -380,7 +373,7 @@ class LocationService {
 
   /// Get the current location either from device or manual settings
   Future<Position> getLocation() async {
-    if (_isUsingManualLocation()) {
+    if (isUsingManualLocation()) {
       _logger.debug("Fetching manual location via getLocation().");
       return _getManualLocation();
     } else {
@@ -429,7 +422,7 @@ class LocationService {
 
         _cachedDevicePosition = position;
         _lastDevicePositionFetchTime = DateTime.now();
-        await _cacheCurrentLocation(
+        await cacheAsLastKnownPosition(
           position,
         ); // This also saves to persistent _lastKnownPosition
         _logger.info(
@@ -483,7 +476,13 @@ class LocationService {
     );
   }
 
-  // getLocationName method removed
+  /// Get the stored location name, if any.
+  Future<String?> getStoredLocationName() async {
+    // Ensure _prefs is initialized, though it should be by the time this is called.
+    _prefs ??= await SharedPreferences.getInstance();
+    return _prefs?.getString(_locationNameKey);
+  }
+
   // updateLocationName method removed
   // getLocationStream method removed
   // openLocationSettings method removed
@@ -498,7 +497,7 @@ class LocationService {
         if (!_prefs!.containsKey(_useManualLocationKey)) {
           // Set the flag to false to use device location by default
           // This will also update the _useManualLocationCached via setUseManualLocation
-          await _setUseManualLocation(false);
+          await setUseManualLocation(false);
           _logger.info(
             'Default location set to use device location (and updated cache).',
           );
@@ -526,7 +525,7 @@ class LocationService {
       }
 
       // Try to get manual location as fallback if manual mode is active and lat/lng are set
-      if (_isUsingManualLocation()) {
+      if (isUsingManualLocation()) {
         final manualLat = _manualLatCached ?? _prefs?.getDouble(_manualLatKey);
         final manualLng = _manualLngCached ?? _prefs?.getDouble(_manualLngKey);
         if (manualLat != null && manualLng != null) {
@@ -582,7 +581,7 @@ class LocationService {
   /// Cache the current location when it's successfully retrieved
   /// This updates the _lastKnownPosition for persistent fallback.
   /// The short-term _cachedDevicePosition is handled in getLocation().
-  Future<void> _cacheCurrentLocation(Position position) async {
+  Future<void> cacheAsLastKnownPosition(Position position) async {
     try {
       await _saveLastPosition(
         position,

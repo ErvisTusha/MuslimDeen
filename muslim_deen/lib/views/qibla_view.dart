@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geocoding/geocoding.dart';
@@ -10,7 +9,6 @@ import 'package:geolocator/geolocator.dart';
 
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/compass_service.dart';
-import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/widgets/custom_app_bar.dart'; // Added import
@@ -25,7 +23,6 @@ class QiblaView extends StatefulWidget {
 
 class _QiblaViewState extends State<QiblaView>
     with SingleTickerProviderStateMixin {
-  final LocationService _locationService = locator<LocationService>();
   final CompassService _compassService = locator<CompassService>();
   final LoggerService _logger = locator<LoggerService>();
 
@@ -76,9 +73,15 @@ class _QiblaViewState extends State<QiblaView>
       _errorMessage = null;
     });
     try {
-      final hasPermission = await _locationService.hasLocationPermission();
+      final permissionStatus = await Geolocator.checkPermission();
+      final hasPermission =
+          permissionStatus == LocationPermission.whileInUse ||
+          permissionStatus == LocationPermission.always;
       if (!hasPermission) {
-        _logger.error('Location permission not granted for Qibla finder');
+        _logger.error(
+          'Location permission not granted for Qibla finder',
+          data: {'status': permissionStatus.toString()},
+        );
         if (mounted) {
           setState(() {
             _errorMessage =
@@ -186,13 +189,14 @@ class _QiblaViewState extends State<QiblaView>
     //     isDarkMode
     //         ? AppColors.surface(brightness)
     //         : AppColors.background(brightness);
-    final bool isDarkMode = brightness == Brightness.dark; // Still needed for other color logic
+    final bool isDarkMode =
+        brightness == Brightness.dark; // Still needed for other color logic
     final Color contentSurface =
         isDarkMode
             ? const Color(0xFF2C2C2C)
             : AppColors.background(brightness); // For cards/containers
     final Color accentColor = AppColors.accentGreen(brightness);
-    final Color errorColor = AppColors.error(brightness);
+    AppColors.error(brightness);
     final Color textColorPrimary = AppColors.textPrimary(brightness);
     final Color textColorSecondary = AppColors.textSecondary(brightness);
 
@@ -232,7 +236,10 @@ class _QiblaViewState extends State<QiblaView>
                   strokeWidth: 3,
                 )
                 : _errorMessage != null
-                ? _buildErrorView(brightness, accentColor) // Removed isDarkMode, contentSurface, errorColor
+                ? _buildErrorView(
+                  brightness,
+                  accentColor,
+                ) // Removed isDarkMode, contentSurface, errorColor
                 : _buildQiblaView(
                   brightness,
                   isDarkMode,
@@ -256,7 +263,8 @@ class _QiblaViewState extends State<QiblaView>
     // For now, using the simpler _errorMessage or a generic one.
     // If specific messages are crucial, _getProcessedErrorMessage would need to be implemented.
     String displayMessage = _errorMessage ?? "An unknown error occurred.";
-    if (displayMessage == 'Location permission denied. Please enable it in settings.') {
+    if (displayMessage ==
+        'Location permission denied. Please enable it in settings.') {
       // Keep specific important messages if desired
     } else if (displayMessage.contains('permission')) {
       displayMessage = "Location permission error. Please check settings.";
@@ -265,7 +273,6 @@ class _QiblaViewState extends State<QiblaView>
     } else if (displayMessage.contains('Compass sensor error')) {
       displayMessage = "Compass sensor error. Please try again.";
     }
-
 
     return MessageDisplay(
       message: displayMessage,

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-
+// Remove unnecessary import
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -283,10 +282,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
     return Scaffold(
       backgroundColor: AppColors.getScaffoldBackground(brightness),
-      appBar: CustomAppBar(
-        title: "Settings",
-        brightness: brightness,
-      ),
+      appBar: CustomAppBar(title: "Settings", brightness: brightness),
       body: ListView(
         controller: _scrollController,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -370,7 +366,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   'Toggle prayer notification',
                   data: {'prayer': prayer.toString(), 'enabled': value},
                 );
-                settingsNotifier.setPrayerNotification(prayer, value);
+                settingsNotifier.updatePrayerNotification(prayer, value);
               },
             ),
           ),
@@ -380,16 +376,18 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           SettingsListItem(
             icon: Icons.calculate_outlined,
             title: "Calculation Method",
-            subtitle: _getCalculationMethodName(
-              settings.calculationMethod,
-            ),
+            subtitle: _getCalculationMethodName(settings.calculationMethod),
             onTap: () {
               _logger.logInteraction(
                 'SettingsView',
                 'Change calculation method',
                 data: {'current': settings.calculationMethod},
               );
-              _showCalculationMethodPicker(context, settings.calculationMethod, settingsNotifier);
+              _showCalculationMethodPicker(
+                context,
+                settings.calculationMethod,
+                settingsNotifier,
+              );
             },
           ),
 
@@ -430,9 +428,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               SettingsListItem(
                 icon: Icons.calendar_today,
                 title: "Date Format",
-                subtitle: _getDateFormatName(
-                  settings.dateFormatOption,
-                ),
+                subtitle: _getDateFormatName(settings.dateFormatOption),
                 onTap: () {
                   _logger.logInteraction(
                     'SettingsView',
@@ -449,9 +445,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               SettingsListItem(
                 icon: Icons.access_time,
                 title: "Time Format",
-                subtitle: _getTimeFormatName(
-                  settings.timeFormat,
-                ),
+                subtitle: _getTimeFormatName(settings.timeFormat),
                 onTap: () {
                   _logger.logInteraction(
                     'SettingsView',
@@ -478,7 +472,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               _logger.logInteraction('SettingsView', 'Open about screen');
               Navigator.push(
                 context,
-                MaterialPageRoute<void>(builder: (context) => const AboutScreen()),
+                MaterialPageRoute<void>(
+                  builder: (context) => const AboutScreen(),
+                ),
               );
             },
           ),
@@ -545,10 +541,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   Expanded(
                     child: Text(
                       "Notifications are blocked. Enable them in system settings.",
-                      style: AppTextStyles.label(brightness).copyWith(
-                        color: Colors.orange,
-                        fontSize: 12,
-                      ),
+                      style: AppTextStyles.label(
+                        brightness,
+                      ).copyWith(color: Colors.orange, fontSize: 12),
                     ),
                   ),
                 ],
@@ -559,9 +554,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     );
   }
 
-  Widget _buildLocationTile(
-    BuildContext context,
-  ) {
+  Widget _buildLocationTile(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -595,7 +588,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
                 if (isManualLocation) {
                   return FutureBuilder<String?>(
-                    future: _locationService.getLocationName(),
+                    future: _locationService.getStoredLocationName(),
                     builder: (context, nameSnapshot) {
                       return Text(
                         nameSnapshot.data ?? "Unknown Location",
@@ -605,19 +598,13 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   );
                 } else {
                   return _isLoadingLocation
-                      ? Text(
-                        "Loading",
-                        style: AppTextStyles.label(brightness),
-                      )
+                      ? Text("Loading", style: AppTextStyles.label(brightness))
                       : _currentPosition != null
                       ? Text(
                         "${_currentPosition!.latitude.toStringAsFixed(4)}, ${_currentPosition!.longitude.toStringAsFixed(4)}",
                         style: AppTextStyles.label(brightness),
                       )
-                      : Text(
-                        "Not Set",
-                        style: AppTextStyles.label(brightness),
-                      );
+                      : Text("Not Set", style: AppTextStyles.label(brightness));
                 }
               },
             ),
@@ -655,7 +642,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: Icon(Icons.my_location, color: AppColors.primary(brightness)),
+                leading: Icon(
+                  Icons.my_location,
+                  color: AppColors.primary(brightness),
+                ),
                 title: Text(
                   'Current Device Location',
                   style: AppTextStyles.prayerName(brightness),
@@ -675,7 +665,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ),
               Divider(color: AppColors.divider(brightness)),
               ListTile(
-                leading: Icon(Icons.search, color: AppColors.primary(brightness)),
+                leading: Icon(
+                  Icons.search,
+                  color: AppColors.primary(brightness),
+                ),
                 title: Text(
                   "Set Location Manually",
                   style: AppTextStyles.prayerName(brightness),
@@ -706,7 +699,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary(brightness)),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary(brightness),
+              ),
               child: Text("Cancel"),
             ),
           ],
@@ -733,24 +728,35 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           backgroundColor: dialogBackgroundColor,
-          title: Text(dialogTitle, style: AppTextStyles.sectionTitle(brightness).copyWith(color: textColor)),
+          title: Text(
+            dialogTitle,
+            style: AppTextStyles.sectionTitle(
+              brightness,
+            ).copyWith(color: textColor),
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: options.map((option) {
-                return RadioListTile<T>(
-                  title: Text(optionTitleBuilder(option), style: AppTextStyles.label(brightness).copyWith(color: textColor)),
-                  value: option,
-                  groupValue: currentValue,
-                  activeColor: activeColor,
-                  onChanged: (T? value) {
-                    if (value != null) {
-                      onSettingChanged(value);
-                      Navigator.of(dialogContext).pop(); 
-                    }
-                  },
-                );
-              }).toList(),
+              children:
+                  options.map((option) {
+                    return RadioListTile<T>(
+                      title: Text(
+                        optionTitleBuilder(option),
+                        style: AppTextStyles.label(
+                          brightness,
+                        ).copyWith(color: textColor),
+                      ),
+                      value: option,
+                      groupValue: currentValue,
+                      activeColor: activeColor,
+                      onChanged: (T? value) {
+                        if (value != null) {
+                          onSettingChanged(value);
+                          Navigator.of(dialogContext).pop();
+                        }
+                      },
+                    );
+                  }).toList(),
             ),
           ),
         );
@@ -758,13 +764,17 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     );
   }
 
-  void _showThemePicker(BuildContext context, ThemeMode currentThemeMode, SettingsNotifier notifier) {
+  void _showThemePicker(
+    BuildContext context,
+    ThemeMode currentThemeMode,
+    SettingsNotifier notifier,
+  ) {
     _showGenericSelectionDialog<ThemeMode>(
       context: context,
       dialogTitle: "Select Theme",
       currentValue: currentThemeMode,
       options: ThemeMode.values,
-      optionTitleBuilder: (ThemeMode mode) => _getThemeName(mode),
+      optionTitleBuilder: _getThemeName, // Used tearoff
       onSettingChanged: (ThemeMode? value) {
         if (value != null) {
           // Note: The original _showThemePicker used notifier.updateThemeMode(value)
@@ -869,9 +879,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 TextButton(
                   onPressed: () async {
                     if (tempSelectedAzan != null) {
-                      settingsNotifier.updateAzanSoundForStandardPrayers(
-                        tempSelectedAzan!,
-                      );
+                      settingsNotifier.updateAzanSound(tempSelectedAzan!);
                     }
                     final navigator = Navigator.of(dialogContext);
                     await _audioPlayer.stop();
@@ -895,9 +903,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     });
   }
 
-  String _getAzanSoundDisplayName(
-    String fileName,
-  ) {
+  String _getAzanSoundDisplayName(String fileName) {
     // Helper to convert filename to a more readable display name
     // This could be enhanced with actual localized names if available
     if (fileName.isEmpty) return "Not Set"; // Or some default
@@ -930,23 +936,23 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     }
   }
 
-  String _getCalculationMethodName(String method) { // Added this function
+  String _getCalculationMethodName(String method) {
+    // Added this function
     // This is a placeholder. You might want to map keys to display names.
     // For example, if method is 'MuslimWorldLeague', return 'Muslim World League'
     // This depends on how your calculation method strings are stored and how you want to display them.
     return method;
   }
 
-  String _getMadhabName(String madhab) { // Changed Madhab to String
+  String _getMadhabName(String madhab) {
+    // Changed Madhab to String
     // Assuming madhab is stored as a string like 'shafi' or 'hanafi'
     if (madhab.toLowerCase() == 'shafi') return "Shafi";
     if (madhab.toLowerCase() == 'hanafi') return "Hanafi";
     return madhab; // Fallback to the raw string if not recognized
   }
 
-  String _getPrayerName(
-    PrayerNotification prayer,
-  ) {
+  String _getPrayerName(PrayerNotification prayer) {
     switch (prayer) {
       case PrayerNotification.fajr:
         return "Fajr";
@@ -993,7 +999,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       dialogTitle: "Date Format",
       currentValue: currentDateFormatOption,
       options: DateFormatOption.values,
-      optionTitleBuilder: (DateFormatOption option) => _getDateFormatName(option),
+      optionTitleBuilder: _getDateFormatName, // Used tearoff
       onSettingChanged: (DateFormatOption? value) {
         if (value != null) {
           // Similar to _showThemePicker, assuming updateDateFormatOption exists on notifier.
@@ -1014,7 +1020,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       dialogTitle: "Time Format",
       currentValue: currentTimeFormat,
       options: TimeFormat.values,
-      optionTitleBuilder: (TimeFormat format) => _getTimeFormatName(format),
+      optionTitleBuilder: _getTimeFormatName, // Used tearoff
       onSettingChanged: (TimeFormat? value) {
         if (value != null) {
           notifier.updateTimeFormat(value);
@@ -1029,18 +1035,18 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     SettingsNotifier notifier,
   ) {
     final List<String> calculationMethods = [
-      'MuslimWorldLeague', 
-      'Egyptian', 
-      'Karachi', 
-      'UmmAlQura', 
-      'Dubai', 
-      'MoonsightingCommittee', 
-      'NorthAmerica', 
-      'Kuwait', 
-      'Qatar', 
-      'Singapore', 
-      'Tehran', 
-      'Turkey'
+      'MuslimWorldLeague',
+      'Egyptian',
+      'Karachi',
+      'UmmAlQura',
+      'Dubai',
+      'MoonsightingCommittee',
+      'NorthAmerica',
+      'Kuwait',
+      'Qatar',
+      'Singapore',
+      'Tehran',
+      'Turkey',
     ];
 
     _showGenericSelectionDialog<String>(
@@ -1048,7 +1054,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       dialogTitle: "Select Calculation Method",
       currentValue: currentCalculationMethod,
       options: calculationMethods,
-      optionTitleBuilder: (String method) => _getCalculationMethodName(method),
+      optionTitleBuilder: _getCalculationMethodName, // Used tearoff
       onSettingChanged: (String? value) {
         if (value != null) {
           notifier.updateCalculationMethod(value);
@@ -1059,18 +1065,18 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   }
 
   void _showMadhabPicker(
-    BuildContext context, 
-    String currentMadhab, 
+    BuildContext context,
+    String currentMadhab,
     SettingsNotifier notifier,
   ) {
-    final List<String> madhabs = ['shafi', 'hanafi']; 
+    final List<String> madhabs = ['shafi', 'hanafi'];
 
     _showGenericSelectionDialog<String>(
       context: context,
       dialogTitle: "Select Madhab",
       currentValue: currentMadhab,
       options: madhabs,
-      optionTitleBuilder: (String madhab) => _getMadhabName(madhab),
+      optionTitleBuilder: _getMadhabName, // Used tearoff
       onSettingChanged: (String? value) {
         if (value != null) {
           notifier.updateMadhab(value);

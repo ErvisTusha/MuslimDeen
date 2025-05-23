@@ -92,7 +92,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
       _saveDataIfNeeded();
     } else if (state == AppLifecycleState.resumed &&
         ref.read(tesbihReminderProvider).reminderEnabled) {
-      ref.read(settingsProvider.notifier).checkNotificationPermissionStatus();
+      ref.read(settingsProvider.notifier).refreshNotificationPermissionStatus();
       _notificationsBlocked =
           ref.read(settingsProvider.notifier).areNotificationsBlocked;
     }
@@ -109,7 +109,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   void dispose() {
     _logger.debug('TesbihView disposed');
     WidgetsBinding.instance.removeObserver(this);
-    _permissionCheckTimer?.cancel();
+    // _permissionCheckTimer?.cancel(); // Removed as it's no longer defined or used
 
     if (mounted && ref.read(tesbihReminderProvider).reminderEnabled) {
       _notificationService.cancelNotification(9876);
@@ -152,7 +152,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     try {
       await ref
           .read(settingsProvider.notifier)
-          .checkNotificationPermissionStatus();
+          .refreshNotificationPermissionStatus();
       if (mounted) {
         _notificationsBlocked =
             ref.read(settingsProvider.notifier).areNotificationsBlocked;
@@ -820,8 +820,9 @@ class _TesbihViewState extends ConsumerState<TesbihView>
           statusBarIconBrightness:
               Brightness.light, // Keep icons light since AppBar is always dark
           statusBarBrightness: Brightness.dark, // This affects iOS status bar
-          systemNavigationBarColor:
-              tesbihScaffoldBg, // Match scaffold background
+          systemNavigationBarColor: AppColors.getScaffoldBackground(
+            brightness,
+          ), // Match scaffold background
           systemNavigationBarIconBrightness:
               isDarkMode ? Brightness.light : Brightness.dark,
         ),

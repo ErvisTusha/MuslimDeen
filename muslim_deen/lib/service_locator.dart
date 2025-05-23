@@ -18,11 +18,11 @@ final GetIt locator = GetIt.instance;
 Future<void> setupLocator({bool testing = false}) async {
   // First, register all services without initializing them
   _registerServices(testing);
-  
+
   // Then initialize services based on priority
   await _initializeCriticalServices();
   await _initializeHighPriorityServices(testing);
-  
+
   // Normal and low priority services are initialized lazily
   // or in the background after app is visible to user
   _scheduleRemainingServiceInitialization();
@@ -31,12 +31,12 @@ Future<void> setupLocator({bool testing = false}) async {
 /// Registers all services with the locator
 void _registerServices(bool testing) {
   final sharedPrefsInstance = SharedPreferences.getInstance();
-  
+
   // Register logger first so it's available to all other services
   locator.registerLazySingleton<LoggerService>(LoggerService.new);
 
   locator.registerLazySingleton<StorageService>(StorageService.new);
-  
+
   // Register cache service with async shared prefs resolution
   locator.registerLazySingletonAsync<CacheService>(() async {
     final prefs = await sharedPrefsInstance;
@@ -69,15 +69,16 @@ void _registerServices(bool testing) {
   // Its dependencies (CacheService, LoggerService) should be resolvable by GetIt.
   // CacheService is registered async. This means PrayerTimesCache should also be registered async
   // if it directly depends on awaiting CacheService, OR ensure CacheService is ready first.
-  
+
   // Correct approach: If PrayerTimesCache needs an *instance* of an async-registered service (CacheService)
   // in its constructor, then PrayerTimesCache itself should be registered async.
   locator.registerLazySingletonAsync<PrayerTimesCache>(() async {
-    final cacheService = await locator.getAsync<CacheService>(); // Await the async CacheService
+    final cacheService =
+        await locator.getAsync<CacheService>(); // Await the async CacheService
     final loggerService = locator<LoggerService>();
     return PrayerTimesCache(cacheService, loggerService);
   });
-  
+
   // PrayerService now depends on LocationService and PrayerTimesCache
   // Since PrayerTimesCache is now async, PrayerService must also be async registered
   // if it awaits PrayerTimesCache in its factory, or if PrayerTimesCache is passed as Future.
@@ -87,12 +88,12 @@ void _registerServices(bool testing) {
     final prayerTimesCache = await locator.getAsync<PrayerTimesCache>();
     return PrayerService(locationService, prayerTimesCache);
   });
-  
+
   locator.registerLazySingletonAsync<CompassService>(() async {
     final cacheService = await locator.getAsync<CacheService>();
     return CompassService(cacheService: cacheService);
   });
-  
+
   locator.registerLazySingletonAsync<MapService>(() async {
     final cacheService = await locator.getAsync<CacheService>();
     return MapService(cacheService: cacheService);
@@ -112,17 +113,24 @@ Future<void> _initializeCriticalServices() async {
 Future<void> _initializeHighPriorityServices(bool testing) async {
   // Ensure CacheService and MapService are ready before other high-priority services
   // that might depend on them or be accessed by UI components initialized early.
-  await locator.isReady<CacheService>(); 
-  await locator.isReady<PrayerTimesCache>(); // Ensure PrayerTimesCache is ready for services that might need it early
-  await locator.isReady<CompassService>(); // CompassService depends on CacheService
+  await locator.isReady<CacheService>();
+  await locator
+      .isReady<
+        PrayerTimesCache
+      >(); // Ensure PrayerTimesCache is ready for services that might need it early
+  await locator
+      .isReady<CompassService>(); // CompassService depends on CacheService
   await locator.isReady<MapService>(); // MapService depends on CacheService
+  await locator.isReady<PrayerService>(); // Ensure PrayerService is ready
 
   if (!testing) {
     await locator<NotificationService>().init();
   }
   await locator<LocationService>().init();
-  
-  locator<LoggerService>().info('High priority services initialized (including CacheService, CompassService, and MapService)');
+
+  locator<LoggerService>().info(
+    'High priority services initialized (including CacheService, CompassService, and MapService)',
+  );
 }
 
 /// Schedule remaining service initialization
@@ -133,7 +141,10 @@ void _scheduleRemainingServiceInitialization() {
       // CacheService readiness is now ensured in _initializeHighPriorityServices
       locator<LoggerService>().info('Normal priority services initialized');
     } catch (e) {
-      locator<LoggerService>().error('Error initializing background services', error: e);
+      locator<LoggerService>().error(
+        'Error initializing background services',
+        error: e,
+      );
     }
   });
 }

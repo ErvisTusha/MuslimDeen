@@ -20,31 +20,37 @@ class MessageDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    final defaultContainerColor = isError
-        ? AppColors.error(brightness).withOpacity(0.1)
-        : AppColors.surface(brightness); // Or another appropriate default
+    final defaultContainerColor =
+        isError
+            ? AppColors.error(brightness).withValues(alpha: 0.1)
+            : AppColors.surface(brightness); // Or another appropriate default
 
-    final defaultBorderColor = isError 
-        ? AppColors.error(brightness) 
-        : AppColors.borderColor(brightness);
+    final defaultBorderColor =
+        isError
+            ? AppColors.error(brightness)
+            : AppColors.borderColor(brightness);
 
-    final containerStyle = customContainerStyle ??
+    final containerStyle =
+        customContainerStyle ??
         BoxDecoration(
           color: defaultContainerColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: defaultBorderColor),
           boxShadow: [
             BoxShadow(
-              color: AppColors.shadowColor(brightness).withOpacity(0.05),
+              color: AppColors.shadowColor(brightness).withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
         );
 
-    final messageColor = isError 
-        ? AppColors.error(brightness) 
-        : AppTextStyles.label(brightness).color; // Or AppColors.textSecondary
+    final messageColor =
+        isError
+            ? AppColors.error(brightness)
+            : AppTextStyles.label(
+              brightness,
+            ).color; // Or AppColors.textSecondary
 
     return Center(
       child: Container(
@@ -59,22 +65,27 @@ class MessageDisplay extends StatelessWidget {
               Icon(
                 icon,
                 size: 48,
-                color: isError ? AppColors.error(brightness) : AppColors.primary(brightness),
+                color:
+                    isError
+                        ? AppColors.error(brightness)
+                        : AppColors.primary(brightness),
               ),
             if (icon != null) const SizedBox(height: 16),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: AppTextStyles.label(brightness).copyWith(color: messageColor, height: 1.5),
+              style: AppTextStyles.label(
+                brightness,
+              ).copyWith(color: messageColor, height: 1.5),
             ),
             if (onRetry != null) const SizedBox(height: 24),
             if (onRetry != null)
               ElevatedButton(
                 onPressed: onRetry,
                 style: ElevatedButton.styleFrom(
-                    // backgroundColor: isError ? AppColors.error(brightness) : AppColors.primary(brightness),
-                    // foregroundColor: isError ? Colors.white : null, // Or AppColors.textOnPrimary(brightness)
-                    ),
+                  // backgroundColor: isError ? AppColors.error(brightness) : AppColors.primary(brightness),
+                  // foregroundColor: isError ? Colors.white : null, // Or AppColors.textOnPrimary(brightness)
+                ),
                 child: const Text('Retry'),
               ),
           ],

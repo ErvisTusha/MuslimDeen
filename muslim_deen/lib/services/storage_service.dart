@@ -12,10 +12,6 @@ class StorageService {
   static const String _keyLatitude = 'user_latitude';
   static const String _keyLongitude = 'user_longitude';
   static const String _keyLocationName = 'user_location_name';
-  static const String _keyCalcMethod = 'prayer_calc_method';
-  static const String _keyMadhab = 'prayer_madhab';
-  static const String _keyLanguage = 'app_language';
-  static const String _keyUseManualLocation = 'use_manual_location';
 
   SharedPreferences? _prefs;
 

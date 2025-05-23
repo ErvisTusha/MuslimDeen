@@ -21,7 +21,9 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   final PrayerService _prayerService;
   StreamSubscription<NotificationPermissionStatus>? _permissionSubscription;
   Timer? _saveSettingsDebounceTimer;
-  static const Duration _saveSettingsDebounceDuration = Duration(milliseconds: 750); // Increased debounce time
+  static const Duration _saveSettingsDebounceDuration = Duration(
+    milliseconds: 750,
+  ); // Increased debounce time
 
   SettingsNotifier(
     this._storage,
@@ -44,7 +46,9 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     try {
       final String? storedSettings = _storage.getData(_settingsKey) as String?;
       if (storedSettings != null) {
-        state = AppSettings.fromJson(jsonDecode(storedSettings) as Map<String, dynamic>);
+        state = AppSettings.fromJson(
+          jsonDecode(storedSettings) as Map<String, dynamic>,
+        );
       }
     } catch (e) {
       _logger.error('Error loading settings', error: e);
@@ -76,6 +80,14 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     }
   }
 
+  /// Triggers a refresh of the notification permission status from the NotificationService.
+  /// The SettingsNotifier's internal listener will then update the state.
+  Future<void> refreshNotificationPermissionStatus() async {
+    // Calling requestPermission will re-evaluate and update the permission status,
+    // which then updates the stream that this notifier listens to.
+    await _notificationService.requestPermission();
+  }
+
   Future<void> updateTimeFormat(TimeFormat format) async {
     state = state.copyWith(timeFormat: format);
     _debouncedSaveSettings();
@@ -103,6 +115,27 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     _debouncedSaveSettings();
   }
 
+  Future<void> updatePrayerNotification(
+    PrayerNotification prayer,
+    bool isEnabled,
+  ) async {
+    final newNotifications = Map<PrayerNotification, bool>.from(
+      state.notifications,
+    );
+    newNotifications[prayer] = isEnabled;
+    state = state.copyWith(notifications: newNotifications);
+    _debouncedSaveSettings();
+    // No need to call _recalculateAndRescheduleNotifications here as it's handled by HomeView's listener
+    // when notification settings change. HomeView will call _scheduleAllPrayerNotifications.
+  }
+
+  Future<void> updateAzanSound(String soundFileName) async {
+    state = state.copyWith(azanSoundForStandardPrayers: soundFileName);
+    _debouncedSaveSettings();
+    // Reschedule notifications if sound changed, as it's part of the notification content/payload
+    await _recalculateAndRescheduleNotifications();
+  }
+
   // Removed updateCalculationMethod as it's unused
   // Removed updateAzanSoundForStandardPrayers as it's unused
   // Other methods like updateMadhab, updateThemeMode, updateLanguage, updateTimeFormat,
@@ -113,8 +146,8 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
 
   Future<void> _recalculateAndRescheduleNotifications() async {
     try {
-      final adhan.PrayerTimes? prayerTimesToday =
-          await _prayerService.calculatePrayerTimesForToday(state);
+      final adhan.PrayerTimes? prayerTimesToday = await _prayerService
+          .calculatePrayerTimesForToday(state);
 
       if (prayerTimesToday == null) {
         _logger.error(
@@ -124,13 +157,36 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
         return;
       }
 
+      // Cancel all existing prayer notifications before rescheduling
+      await _notificationService.cancelAllNotifications();
+
       final prayersToReschedule = [
-        {'name': "fajr", 'enum': PrayerNotification.fajr, 'displayName': "Fajr"},
-        {'name': "sunrise", 'enum': PrayerNotification.sunrise, 'displayName': "Sunrise"},
-        {'name': "dhuhr", 'enum': PrayerNotification.dhuhr, 'displayName': "Dhuhr"},
+        {
+          'name': "fajr",
+          'enum': PrayerNotification.fajr,
+          'displayName': "Fajr",
+        },
+        {
+          'name': "sunrise",
+          'enum': PrayerNotification.sunrise,
+          'displayName': "Sunrise",
+        },
+        {
+          'name': "dhuhr",
+          'enum': PrayerNotification.dhuhr,
+          'displayName': "Dhuhr",
+        },
         {'name': "asr", 'enum': PrayerNotification.asr, 'displayName': "Asr"},
-        {'name': "maghrib", 'enum': PrayerNotification.maghrib, 'displayName': "Maghrib"},
-        {'name': "isha", 'enum': PrayerNotification.isha, 'displayName': "Isha"},
+        {
+          'name': "maghrib",
+          'enum': PrayerNotification.maghrib,
+          'displayName': "Maghrib",
+        },
+        {
+          'name': "isha",
+          'enum': PrayerNotification.isha,
+          'displayName': "Isha",
+        },
       ];
 
       final timeFormatter = DateFormat('HH:mm');
@@ -140,48 +196,39 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
         final prayerEnum = prayerDetail['enum'] as PrayerNotification;
         final prayerDisplayName = prayerDetail['displayName'] as String;
 
-        DateTime? rawTime;
-        int offsetMinutes = 0;
+        // Use PrayerService.getOffsettedPrayerTime for consistent offset handling
+        final DateTime? finalPrayerTime = _prayerService.getOffsettedPrayerTime(
+          prayerName,
+          prayerTimesToday,
+          state,
+        );
 
-        switch (prayerName) {
-          case 'fajr':
-            rawTime = prayerTimesToday.fajr;
-            offsetMinutes = state.fajrOffset;
-            break;
-          case 'sunrise':
-            rawTime = prayerTimesToday.sunrise;
-            offsetMinutes = state.sunriseOffset;
-            break;
-          case 'dhuhr':
-            rawTime = prayerTimesToday.dhuhr;
-            offsetMinutes = state.dhuhrOffset;
-            break;
-          case 'asr':
-            rawTime = prayerTimesToday.asr;
-            offsetMinutes = state.asrOffset;
-            break;
-          case 'maghrib':
-            rawTime = prayerTimesToday.maghrib;
-            offsetMinutes = state.maghribOffset;
-            break;
-          case 'isha':
-            rawTime = prayerTimesToday.isha;
-            offsetMinutes = state.ishaOffset;
-            break;
-          default:
-            _logger.warning('Unknown prayer name in _recalculateAndRescheduleNotifications: $prayerName');
-            continue;
-        }
-
-        DateTime? finalPrayerTime;
-        if (rawTime != null) {
-          finalPrayerTime = rawTime.add(Duration(minutes: offsetMinutes));
-        }
-
-        if (finalPrayerTime != null && state.notifications[prayerEnum] == true) {
+        if (finalPrayerTime != null &&
+            state.notifications[prayerEnum] == true) {
           final formattedTime = timeFormatter.format(finalPrayerTime);
-          final notificationTitle = "$prayerDisplayName Azan";
-          final notificationBody = "$prayerDisplayName Azan at $formattedTime";
+
+          // Use different notification content based on prayer type
+          String notificationTitle;
+          String notificationBody;
+
+          switch (prayerEnum) {
+            case PrayerNotification.dhuhr:
+            case PrayerNotification.asr:
+            case PrayerNotification.maghrib:
+            case PrayerNotification.isha:
+              // These prayers will use custom Adhan sound
+              notificationTitle = "$prayerDisplayName Adhan";
+              notificationBody =
+                  "Time for $prayerDisplayName prayer - $formattedTime";
+              break;
+            case PrayerNotification.fajr:
+            case PrayerNotification.sunrise:
+              // These prayers will use default system sound
+              notificationTitle = "$prayerDisplayName Prayer";
+              notificationBody =
+                  "Time for $prayerDisplayName prayer - $formattedTime";
+              break;
+          }
 
           _logger.info(
             'Rescheduling notification for $prayerDisplayName',
@@ -190,7 +237,14 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
               'title': notificationTitle,
               'body': notificationBody,
               'time': finalPrayerTime.toIso8601String(),
-              'sound': state.azanSoundForStandardPrayers,
+              'prayerType': prayerEnum.name,
+              'willUseAdhan': [
+                PrayerNotification.dhuhr,
+                PrayerNotification.asr,
+                PrayerNotification.maghrib,
+                PrayerNotification.isha,
+              ].contains(prayerEnum),
+              'selectedAdhan': state.azanSoundForStandardPrayers,
             },
           );
 
@@ -207,13 +261,26 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
             'Skipping reschedule for $prayerDisplayName',
             data: {
               'finalPrayerTimeNull': finalPrayerTime == null,
-              'notificationDisabled': finalPrayerTime != null && state.notifications[prayerEnum] != true,
-              'rawTime': rawTime?.toIso8601String(),
-              'offsetMinutes': offsetMinutes,
+              'notificationDisabled':
+                  finalPrayerTime != null &&
+                  state.notifications[prayerEnum] != true,
+              'prayerType': prayerEnum.name,
             },
           );
         }
       }
+
+      _logger.info(
+        'Completed rescheduling all prayer notifications',
+        data: {
+          'selectedAdhan': state.azanSoundForStandardPrayers,
+          'enabledNotifications':
+              state.notifications.entries
+                  .where((entry) => entry.value)
+                  .map((entry) => entry.key.name)
+                  .toList(),
+        },
+      );
     } catch (e, s) {
       _logger.error(
         'Error in _recalculateAndRescheduleNotifications',

@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'package:adhan_dart/adhan_dart.dart' as adhan;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,7 +20,6 @@ import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
-import 'package:muslim_deen/services/storage_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/views/settings_view.dart';
 import 'package:muslim_deen/widgets/custom_app_bar.dart'; // Added import
@@ -75,9 +73,7 @@ class _HomeViewState extends ConsumerState<HomeView>
     _dataLoadingFuture = _fetchDataAndScheduleNotifications();
 
     // Initial permission check
-    ref
-        .read(settingsProvider.notifier)
-        .checkNotificationPermissionStatus();
+    ref.read(settingsProvider.notifier).refreshNotificationPermissionStatus();
 
     // Listen to settings changes using Riverpod with listenManual
     _settingsListenerSubscription = ref.listenManual<AppSettings>(
@@ -159,7 +155,7 @@ class _HomeViewState extends ConsumerState<HomeView>
 
     // Reset prayer service after location service
     // since prayer calculations depend on location
-    _prayerService.reset();
+    _prayerService.recalculatePrayerTimesIfNeeded(ref.read(settingsProvider));
 
     // Clean up UI controllers last
     _scrollController.dispose();
@@ -175,7 +171,9 @@ class _HomeViewState extends ConsumerState<HomeView>
     if (state == AppLifecycleState.resumed) {
       _logger.info("App resumed, checking notification permissions.");
       if (mounted) {
-        ref.read(settingsProvider.notifier).checkNotificationPermissionStatus();
+        ref
+            .read(settingsProvider.notifier)
+            .refreshNotificationPermissionStatus();
       }
     }
   }
@@ -306,12 +304,16 @@ class _HomeViewState extends ConsumerState<HomeView>
       );
 
       // AppSettings needed for _getPrayerDisplayInfo for offsets
-      final appSettings = ref.read(settingsProvider); 
+      final appSettings = ref.read(settingsProvider);
 
       String currentPrayerDisplayName = '---';
       if (newCurrentPrayerEnum != null && _prayerTimes != null) {
         currentPrayerDisplayName =
-            _getPrayerDisplayInfo(newCurrentPrayerEnum, _prayerTimes!, appSettings).name;
+            _getPrayerDisplayInfo(
+              newCurrentPrayerEnum,
+              _prayerTimes!,
+              appSettings,
+            ).name;
       } else if (newCurrentPrayerEnum != null) {
         currentPrayerDisplayName =
             newCurrentPrayerEnum.toString().split('.').last;
@@ -323,7 +325,11 @@ class _HomeViewState extends ConsumerState<HomeView>
       String nextPrayerDisplayName = '---';
       if (newNextPrayerEnum != null && _prayerTimes != null) {
         nextPrayerDisplayName =
-            _getPrayerDisplayInfo(newNextPrayerEnum, _prayerTimes!, appSettings).name;
+            _getPrayerDisplayInfo(
+              newNextPrayerEnum,
+              _prayerTimes!,
+              appSettings,
+            ).name;
       } else if (newNextPrayerEnum != null) {
         nextPrayerDisplayName = newNextPrayerEnum.toString().split('.').last;
         _logger.warning(
@@ -456,7 +462,7 @@ class _HomeViewState extends ConsumerState<HomeView>
 
       if (isUsingManualLocation) {
         position = await _locationService.getLocation();
-        locationNameToUse = await _locationService.getLocationName();
+        locationNameToUse = await _locationService.getStoredLocationName();
         _logger.info(
           "Using manually set location",
           data: {'locationName': locationNameToUse},
@@ -464,7 +470,7 @@ class _HomeViewState extends ConsumerState<HomeView>
       } else {
         try {
           position = await _locationService.getLocation();
-          await _locationService.cacheCurrentLocation(position);
+          await _locationService.cacheAsLastKnownPosition(position);
           _logger.info(
             "Fetched current device location",
             data: {
@@ -507,14 +513,14 @@ class _HomeViewState extends ConsumerState<HomeView>
               locationNameToUse =
                   '${position.latitude.toStringAsFixed(3)}, ${position.longitude.toStringAsFixed(3)}';
             }
-
-            locator<StorageService>().saveLocation(
-              position.latitude,
-              position.longitude,
-              locationName: locationNameToUse,
-            );
+            // Removed direct StorageService.saveLocation call
+            // locator<StorageService>().saveLocation(
+            //   position.latitude,
+            //   position.longitude,
+            //   locationName: locationNameToUse,
+            // );
             _logger.info(
-              "Updated location in storage",
+              "Device location geocoded", // Updated log message
               data: {'locationName': locationNameToUse},
             );
           } catch (e, s) {
@@ -524,40 +530,22 @@ class _HomeViewState extends ConsumerState<HomeView>
             );
             locationNameToUse =
                 '${position.latitude.toStringAsFixed(3)}, ${position.longitude.toStringAsFixed(3)}';
-            locator<StorageService>().saveLocation(
-              position.latitude,
-              position.longitude,
-              locationName: locationNameToUse,
-            );
+            // Removed direct StorageService.saveLocation call
+            // locator<StorageService>().saveLocation(
+            //   position.latitude,
+            //   position.longitude,
+            //   locationName: locationNameToUse,
+            // );
           }
         } catch (e, s) {
-          _logger.warning(
-            "Error getting current location, falling back to saved location",
+          _logger.error(
+            "Failed to get device location even after LocationService fallbacks.",
             data: {'error': e.toString(), 'stackTrace': s.toString()},
           );
-          final double? savedLat = locator<StorageService>().getLatitude();
-          final double? savedLng = locator<StorageService>().getLongitude();
-          final String? savedName = locator<StorageService>().getLocationName();
-
-          if (savedLat != null && savedLng != null) {
-            position = Position(
-              latitude: savedLat,
-              longitude: savedLng,
-              timestamp: DateTime.now(),
-              accuracy: 0,
-              altitude: 0,
-              altitudeAccuracy: 0,
-              heading: 0,
-              headingAccuracy: 0,
-              speed: 0,
-              speedAccuracy: 0,
-            );
-            locationNameToUse = savedName;
-          } else {
-            throw Exception(
-              'Could not determine location. Both current and saved locations failed.',
-            );
-          }
+          // Re-throw the exception or a new one to indicate failure to the FutureBuilder
+          throw Exception(
+            'Could not determine device location. Please check permissions and network. Error: ${e.toString()}',
+          );
         }
       }
 
@@ -707,7 +695,11 @@ class _HomeViewState extends ConsumerState<HomeView>
     await _notificationService.cancelAllNotifications();
 
     for (var prayerEnum in PrayerNotification.values) {
-      final prayerInfo = _getPrayerDisplayInfo(prayerEnum, prayerTimes);
+      final prayerInfo = _getPrayerDisplayInfo(
+        prayerEnum,
+        prayerTimes,
+        appSettings,
+      );
       final bool isEnabled = appSettings.notifications[prayerEnum] ?? false;
 
       if (prayerInfo.time != null && isEnabled) {
@@ -735,15 +727,18 @@ class _HomeViewState extends ConsumerState<HomeView>
 
     // Ensure prayerTimes is not null before calling getOffsettedPrayerTime
     if (prayerTimes == null) {
-      _logger.warning("_getPrayerDisplayInfo called with null prayerTimes for $prayerEnum");
+      _logger.warning(
+        "_getPrayerDisplayInfo called with null prayerTimes for $prayerEnum",
+      );
       // Return a default or error state
       String prayerNameStr = prayerEnum.toString().split('.').last;
-      prayerNameStr = prayerNameStr[0].toUpperCase() + prayerNameStr.substring(1);
+      prayerNameStr =
+          prayerNameStr[0].toUpperCase() + prayerNameStr.substring(1);
       return PrayerDisplayInfoData(
-        name: prayerNameStr, 
-        time: null, 
-        prayerEnum: prayerEnum, 
-        iconData: Icons.error_outline // Default error icon
+        name: prayerNameStr,
+        time: null,
+        prayerEnum: prayerEnum,
+        iconData: Icons.error_outline, // Default error icon
       );
     }
 
@@ -751,32 +746,56 @@ class _HomeViewState extends ConsumerState<HomeView>
       case PrayerNotification.fajr:
         name = "Fajr";
         icon = Icons.wb_sunny_outlined; // Dawn/Sunrise icon
-        time = _prayerService.getOffsettedPrayerTime("fajr", prayerTimes, appSettings);
+        time = _prayerService.getOffsettedPrayerTime(
+          "fajr",
+          prayerTimes,
+          appSettings,
+        );
         break;
       case PrayerNotification.sunrise:
         name = "Sunrise";
         icon = Icons.wb_twilight_outlined; // Sunrise icon
-        time = _prayerService.getOffsettedPrayerTime("sunrise", prayerTimes, appSettings);
+        time = _prayerService.getOffsettedPrayerTime(
+          "sunrise",
+          prayerTimes,
+          appSettings,
+        );
         break;
       case PrayerNotification.dhuhr:
         name = "Dhuhr";
         icon = Icons.wb_sunny; // Midday sun
-        time = _prayerService.getOffsettedPrayerTime("dhuhr", prayerTimes, appSettings);
+        time = _prayerService.getOffsettedPrayerTime(
+          "dhuhr",
+          prayerTimes,
+          appSettings,
+        );
         break;
       case PrayerNotification.asr:
         name = "Asr";
         icon = Icons.wb_twilight; // Afternoon/twilight
-        time = _prayerService.getOffsettedPrayerTime("asr", prayerTimes, appSettings);
+        time = _prayerService.getOffsettedPrayerTime(
+          "asr",
+          prayerTimes,
+          appSettings,
+        );
         break;
       case PrayerNotification.maghrib:
         name = "Maghrib";
         icon = Icons.brightness_4_outlined; // Sunset icon
-        time = _prayerService.getOffsettedPrayerTime("maghrib", prayerTimes, appSettings);
+        time = _prayerService.getOffsettedPrayerTime(
+          "maghrib",
+          prayerTimes,
+          appSettings,
+        );
         break;
       case PrayerNotification.isha:
         name = "Isha";
         icon = Icons.nights_stay; // Moon/night icon
-        time = _prayerService.getOffsettedPrayerTime("isha", prayerTimes, appSettings);
+        time = _prayerService.getOffsettedPrayerTime(
+          "isha",
+          prayerTimes,
+          appSettings,
+        );
         break;
     }
     return PrayerDisplayInfoData(
@@ -847,7 +866,8 @@ class _HomeViewState extends ConsumerState<HomeView>
     //     isDarkMode
     //         ? AppColors.surface(brightness)
     //         : AppColors.background(brightness);
-    final bool isDarkMode = brightness == Brightness.dark; // Still needed for other color logic
+    final bool isDarkMode =
+        brightness == Brightness.dark; // Still needed for other color logic
     final Color contentSurface =
         isDarkMode
             ? const Color(0xFF2C2C2C)
@@ -867,10 +887,7 @@ class _HomeViewState extends ConsumerState<HomeView>
 
     return Scaffold(
       backgroundColor: AppColors.getScaffoldBackground(brightness),
-      appBar: CustomAppBar(
-        title: "Prayer Times",
-        brightness: brightness,
-      ),
+      appBar: CustomAppBar(title: "Prayer Times", brightness: brightness),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _dataLoadingFuture,
         builder: (context, snapshot) {
@@ -886,7 +903,6 @@ class _HomeViewState extends ConsumerState<HomeView>
               // localizations: localizations, // Removed
               brightness: brightness,
               isDarkMode: isDarkMode,
-              // scaffoldBg: scaffoldBg, // Removed
               contentSurface: contentSurface,
               currentPrayerItemBg: currentPrayerItemBg,
               currentPrayerItemBorder: currentPrayerItemBorder,
@@ -919,7 +935,7 @@ class _HomeViewState extends ConsumerState<HomeView>
                     if (errorMessage.contains('permission') ||
                         errorMessage.contains('permanently denied'))
                       TextButton(
-                        onPressed: _locationService.openAppSettings,
+                        onPressed: Geolocator.openAppSettings,
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.primary(brightness),
                         ),
@@ -929,7 +945,7 @@ class _HomeViewState extends ConsumerState<HomeView>
                       ),
                     if (errorMessage.contains('services are disabled'))
                       TextButton(
-                        onPressed: _locationService.openLocationSettings,
+                        onPressed: Geolocator.openLocationSettings,
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.primary(brightness),
                         ),
@@ -955,7 +971,6 @@ class _HomeViewState extends ConsumerState<HomeView>
               // localizations: localizations, // Removed
               brightness: brightness,
               isDarkMode: isDarkMode,
-              scaffoldBg: scaffoldBg,
               contentSurface: contentSurface,
               currentPrayerItemBg: currentPrayerItemBg,
               currentPrayerItemBorder: currentPrayerItemBorder,
@@ -1000,6 +1015,7 @@ class _HomeViewState extends ConsumerState<HomeView>
     required AppSettings appSettings,
     required Brightness brightness,
     required bool isDarkMode,
+    // scaffoldBg parameter removed
     required Color contentSurface,
     required Color currentPrayerItemBg,
     required Color currentPrayerItemBorder,
@@ -1288,11 +1304,12 @@ class _HomeViewState extends ConsumerState<HomeView>
                       final prayerInfo = _getPrayerDisplayInfo(
                         prayerEnum,
                         prayerTimes,
-                        appSettings, 
+                        appSettings,
                       );
 
                       final bool isCurrent =
-                          !isLoading && _currentPrayerEnum == prayerInfo.prayerEnum;
+                          !isLoading &&
+                          _currentPrayerEnum == prayerInfo.prayerEnum;
 
                       return PrayerListItem(
                         prayerInfo: prayerInfo,

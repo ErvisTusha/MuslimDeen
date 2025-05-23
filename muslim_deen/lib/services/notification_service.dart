@@ -60,7 +60,7 @@ class NotificationService {
   NotificationPermissionStatus _permissionStatus =
       NotificationPermissionStatus.notDetermined;
   bool _hasExactAlarmPermission = false;
-  bool _disposed = false;
+  final bool _disposed = false;
 
   final _permissionStatusController =
       StreamController<NotificationPermissionStatus>.broadcast();
@@ -412,53 +412,58 @@ class NotificationService {
       }
     }
 
-    // Determine the sound based on the prayer type (id)
+    // Enhanced sound selection logic for prayer notifications
     String? soundName;
     bool useCustomSound = false;
 
-    // Assuming PrayerNotification enum values correspond to IDs:
-    // Fajr = 0, Sunrise = 1, Dhuhr = 2, Asr = 3, Maghrib = 4, Isha = 5
-    // Tespi notifications might have different IDs, adjust as needed.
-    // For this example, we'll use a simple mapping.
-    // A more robust solution would be to pass the PrayerNotification enum directly
-    // or have a clear mapping from id to PrayerNotification type.
-
+    // Map notification ID to PrayerNotification enum
     PrayerNotification? prayerType;
-    // Ensure PrayerNotification.values is accessible and id is within bounds.
-    // This check assumes PrayerNotification enum is defined and imported.
     if (id >= 0 && id < PrayerNotification.values.length) {
       prayerType = PrayerNotification.values[id];
     }
 
-    if (prayerType == PrayerNotification.dhuhr ||
-        prayerType == PrayerNotification.asr ||
-        prayerType == PrayerNotification.maghrib ||
-        prayerType == PrayerNotification.isha) {
-      // Use selected Azan for Dhuhr, Asr, Maghrib, Isha
-      // For now, using a default Azan from AppSettings or a hardcoded one
-      soundName =
-          appSettings?.azanSoundForStandardPrayers ?? 'makkah_adhan.mp3';
-      useCustomSound = true;
-    } else if (prayerType == PrayerNotification.fajr ||
-        prayerType == PrayerNotification.sunrise) {
-      // Use default system sound for Fajr and Sunrise
-      soundName = null; // Indicates default system sound
-      useCustomSound = false;
+    // Apply sound selection rules based on prayer type
+    if (prayerType != null) {
+      switch (prayerType) {
+        case PrayerNotification.dhuhr:
+        case PrayerNotification.asr:
+        case PrayerNotification.maghrib:
+        case PrayerNotification.isha:
+          // Use selected Adhan for main prayers
+          soundName =
+              appSettings?.azanSoundForStandardPrayers ?? 'makkah_adhan.mp3';
+          useCustomSound = true;
+          _logger.info(
+            'Using custom Adhan sound for ${prayerType.name}',
+            data: {'soundName': soundName},
+          );
+          break;
+        case PrayerNotification.fajr:
+        case PrayerNotification.sunrise:
+          // Use default system sound for Fajr and Sunrise
+          soundName = null;
+          useCustomSound = false;
+          _logger.info('Using default system sound for ${prayerType.name}');
+          break;
+      }
     } else {
-      // For other notifications like 'Tespi', use default system sound
-      // This assumes 'Tespi' notifications will have IDs outside the PrayerNotification enum range
-      // or a specific logic to identify them.
+      // For non-prayer notifications (like Tesbih reminders), use default system sound
       soundName = null;
       useCustomSound = false;
+      _logger.info(
+        'Using default system sound for non-prayer notification',
+        data: {'id': id},
+      );
     }
 
     _logger.info(
-      'Notification sound determined',
+      'Notification sound configuration',
       data: {
         'id': id,
-        'prayerType': prayerType?.toString(),
-        'soundName': soundName,
+        'prayerType': prayerType?.name ?? 'unknown',
+        'soundName': soundName ?? 'default_system',
         'useCustomSound': useCustomSound,
+        'selectedAdhan': appSettings?.azanSoundForStandardPrayers,
       },
     );
 
@@ -479,6 +484,7 @@ class NotificationService {
         jsonEncode({
           'prayerTime': scheduledTime.toIso8601String(),
           'title': localizedTitle,
+          'prayerType': prayerType?.name,
         });
 
     try {
@@ -496,13 +502,15 @@ class NotificationService {
       );
 
       _logger.info(
-        'Scheduled prayer notification',
+        'Scheduled prayer notification successfully',
         data: {
           'id': id,
           'title': localizedTitle,
+          'prayerType': prayerType?.name ?? 'unknown',
           'time': scheduledTime.toIso8601String(),
           'exact': useExact,
-          'sound': soundName ?? 'default',
+          'sound': soundName ?? 'default_system',
+          'useCustomSound': useCustomSound,
         },
       );
     } catch (e, s) {
@@ -510,7 +518,11 @@ class NotificationService {
         'Error scheduling notification',
         error: e,
         stackTrace: s,
-        data: {'id': id, 'title': localizedTitle},
+        data: {
+          'id': id,
+          'title': localizedTitle,
+          'prayerType': prayerType?.name ?? 'unknown',
+        },
       );
     }
   }
@@ -563,31 +575,6 @@ class NotificationService {
               ? soundName
               : null, // Use null for default system sound
       categoryIdentifier: 'prayerTime',
-    );
-  }
-
-  NotificationDetails _createNotificationDetails(NotificationChannel channel) {
-    final androidDetails = AndroidNotificationDetails(
-      channel.id,
-      channel.name,
-      channelDescription: channel.description,
-      importance: channel.importance,
-      priority: channel.priority,
-      playSound: true,
-      enableLights: true,
-      enableVibration: true,
-    );
-
-    const darwinDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-
-    return NotificationDetails(
-      android: androidDetails,
-      iOS: darwinDetails,
-      macOS: darwinDetails,
     );
   }
 

@@ -260,9 +260,10 @@ class _NavigationObserver extends NavigatorObserver {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _logger.logNavigation(
-      previousRoute?.settings.name ?? 'unknown',
-      route.settings.name ?? 'unknown',
-      data: {'arguments': route.settings.arguments},
+      'didPush',
+      routeName: route.settings.name ?? 'unknown',
+      params: route.settings.arguments as Map<String, dynamic>?,
+      details: 'from ${previousRoute?.settings.name ?? 'unknown'}',
     );
     super.didPush(route, previousRoute);
   }
@@ -270,9 +271,10 @@ class _NavigationObserver extends NavigatorObserver {
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _logger.logNavigation(
-      route.settings.name ?? 'unknown',
-      previousRoute?.settings.name ?? 'unknown',
-      data: {'arguments': previousRoute?.settings.arguments},
+      'didPop',
+      routeName: previousRoute?.settings.name ?? 'unknown',
+      params: previousRoute?.settings.arguments as Map<String, dynamic>?,
+      details: 'popped ${route.settings.name ?? 'unknown'}',
     );
     super.didPop(route, previousRoute);
   }
@@ -315,9 +317,10 @@ class _MainScreenState extends State<MainScreen> {
     final String to = _tabNames[index] ?? 'Unknown';
 
     _logger.logNavigation(
-      from,
-      to,
-      data: {'fromIndex': _selectedIndex, 'toIndex': index},
+      'BottomNavTap',
+      routeName: to,
+      details: 'from $from',
+      params: {'fromIndex': _selectedIndex, 'toIndex': index},
     );
 
     setState(() {
