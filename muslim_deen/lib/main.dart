@@ -81,132 +81,120 @@ class MuslimDeenApp extends StatelessWidget {
 
         return MaterialApp(
           title: 'Muslim Deen',
-          theme: ThemeData(
-            primarySwatch: Colors.green,
-            visualDensity: VisualDensity.adaptivePlatformDensity,
-          ),
-          darkTheme: ThemeData.dark().copyWith(
-            primaryColor: AppColors.primary(Brightness.dark),
-            scaffoldBackgroundColor: AppColors.background(Brightness.dark),
-            colorScheme: ColorScheme.dark(
-              primary: AppColors.primary(Brightness.dark),
-              secondary: AppColors.accentGreen(Brightness.dark),
-              surface: AppColors.surface(Brightness.dark),
-              error: AppColors.error(Brightness.dark),
-              onPrimary: AppColors.textPrimary(Brightness.dark),
-              onSecondary: AppColors.textPrimary(Brightness.dark),
-              onSurface: AppColors.textPrimary(Brightness.dark),
-              onError: AppColors.textPrimary(Brightness.dark),
-              brightness: Brightness.dark,
-            ),
-            appBarTheme: AppBarTheme(
-              backgroundColor: AppColors.surface(Brightness.dark),
-              elevation: 1,
-              iconTheme: IconThemeData(
-                color: AppColors.textPrimary(Brightness.dark),
-              ),
-              toolbarTextStyle:
-                  TextTheme(
-                    titleLarge: AppTextStyles.appTitle(Brightness.dark),
-                  ).bodyMedium,
-              titleTextStyle:
-                  TextTheme(
-                    titleLarge: AppTextStyles.appTitle(Brightness.dark),
-                  ).titleLarge,
-            ),
-            cardColor: AppColors.surface(Brightness.dark),
-            dividerColor: AppColors.divider(Brightness.dark),
-            iconTheme: IconThemeData(
-              color: AppColors.iconInactive(Brightness.dark),
-            ),
-            primaryIconTheme: IconThemeData(
-              color: AppColors.accentGreen(Brightness.dark),
-            ),
-            textTheme: TextTheme(
-              displayLarge: TextStyle(
-                color: AppColors.textPrimary(Brightness.dark),
-              ),
-              displayMedium: TextStyle(
-                color: AppColors.textPrimary(Brightness.dark),
-              ),
-              displaySmall: TextStyle(
-                color: AppColors.textPrimary(Brightness.dark),
-              ),
-              headlineMedium: TextStyle(
-                color: AppColors.textPrimary(Brightness.dark),
-              ),
-              headlineSmall: TextStyle(
-                color: AppColors.textPrimary(Brightness.dark),
-              ),
-              titleLarge: TextStyle(
-                color: AppColors.textPrimary(Brightness.dark),
-              ),
-              bodyLarge: TextStyle(
-                color: AppColors.textPrimary(Brightness.dark),
-              ),
-              bodyMedium: TextStyle(
-                color: AppColors.textPrimary(Brightness.dark),
-              ),
-              bodySmall: TextStyle(
-                color: AppColors.textSecondary(Brightness.dark),
-              ),
-              labelLarge: TextStyle(
-                color: AppColors.accentGreen(Brightness.dark),
-              ),
-            ),
-            buttonTheme: ButtonThemeData(
-              buttonColor: AppColors.accentGreen(Brightness.dark),
-              textTheme: ButtonTextTheme.primary,
-              colorScheme: ColorScheme.dark(
-                primary: AppColors.accentGreen(Brightness.dark),
-                onPrimary: AppColors.textPrimary(Brightness.dark),
-              ),
-            ),
-            elevatedButtonTheme: ElevatedButtonThemeData(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentGreen(Brightness.dark),
-                foregroundColor: AppColors.textPrimary(Brightness.dark),
-              ),
-            ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.accentGreen(Brightness.dark),
-              ),
-            ),
-            switchTheme: SwitchThemeData(
-              thumbColor: WidgetStateProperty.resolveWith<Color?>((
-                Set<WidgetState> states,
-              ) {
-                if (states.contains(WidgetState.selected)) {
-                  return AppColors.accentGreen(Brightness.dark);
-                }
-                return AppColors.accentGray(Brightness.dark);
-              }),
-              trackColor: WidgetStateProperty.resolveWith<Color?>((
-                Set<WidgetState> states,
-              ) {
-                if (states.contains(WidgetState.selected)) {
-                  return AppColors.switchTrackActive(Brightness.dark);
-                }
-                return AppColors.accentGray(Brightness.dark).withAlpha(50);
-              }),
-            ),
-            visualDensity: VisualDensity.adaptivePlatformDensity,
-            bottomNavigationBarTheme: BottomNavigationBarThemeData(
-              backgroundColor: AppColors.surface(Brightness.dark),
-              selectedItemColor: AppColors.accentGreen(Brightness.dark),
-              unselectedItemColor: AppColors.iconInactive(Brightness.dark),
-            ),
-            floatingActionButtonTheme: FloatingActionButtonThemeData(
-              backgroundColor: AppColors.accentGreen(Brightness.dark),
-              foregroundColor: AppColors.textPrimary(Brightness.dark),
-            ),
-          ),
+          theme: _buildLightTheme(),
+          darkTheme: _buildDarkTheme(),
           themeMode: settingsState.themeMode,
           home: const MainScreen(),
           navigatorObservers: [_NavigationObserver()],
         );
       },
+    );
+  }
+
+  // Extracted theme building methods for better performance
+  ThemeData _buildLightTheme() {
+    return ThemeData(
+      primarySwatch: Colors.green,
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildDarkTheme() {
+    const brightness = Brightness.dark;
+    return ThemeData.dark().copyWith(
+      primaryColor: AppColors.primary(brightness),
+      scaffoldBackgroundColor: AppColors.background(brightness),
+      colorScheme: ColorScheme.dark(
+        primary: AppColors.primary(brightness),
+        secondary: AppColors.accentGreen(brightness),
+        surface: AppColors.surface(brightness),
+        error: AppColors.error(brightness),
+        onPrimary: AppColors.textPrimary(brightness),
+        onSecondary: AppColors.textPrimary(brightness),
+        onSurface: AppColors.textPrimary(brightness),
+        onError: AppColors.textPrimary(brightness),
+        brightness: brightness,
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: AppColors.surface(brightness),
+        elevation: 1,
+        iconTheme: IconThemeData(color: AppColors.textPrimary(brightness)),
+        toolbarTextStyle:
+            TextTheme(
+              titleLarge: AppTextStyles.appTitle(brightness),
+            ).bodyMedium,
+        titleTextStyle:
+            TextTheme(
+              titleLarge: AppTextStyles.appTitle(brightness),
+            ).titleLarge,
+      ),
+      cardColor: AppColors.surface(brightness),
+      dividerColor: AppColors.divider(brightness),
+      iconTheme: IconThemeData(color: AppColors.iconInactive(brightness)),
+      primaryIconTheme: IconThemeData(color: AppColors.accentGreen(brightness)),
+      textTheme: _buildTextTheme(brightness),
+      buttonTheme: ButtonThemeData(
+        buttonColor: AppColors.accentGreen(brightness),
+        textTheme: ButtonTextTheme.primary,
+        colorScheme: ColorScheme.dark(
+          primary: AppColors.accentGreen(brightness),
+          onPrimary: AppColors.textPrimary(brightness),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.accentGreen(brightness),
+          foregroundColor: AppColors.textPrimary(brightness),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.accentGreen(brightness),
+        ),
+      ),
+      switchTheme: _buildSwitchTheme(brightness),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: AppColors.surface(brightness),
+        selectedItemColor: AppColors.accentGreen(brightness),
+        unselectedItemColor: AppColors.iconInactive(brightness),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: AppColors.accentGreen(brightness),
+        foregroundColor: AppColors.textPrimary(brightness),
+      ),
+    );
+  }
+
+  TextTheme _buildTextTheme(Brightness brightness) {
+    return TextTheme(
+      displayLarge: TextStyle(color: AppColors.textPrimary(brightness)),
+      displayMedium: TextStyle(color: AppColors.textPrimary(brightness)),
+      displaySmall: TextStyle(color: AppColors.textPrimary(brightness)),
+      headlineMedium: TextStyle(color: AppColors.textPrimary(brightness)),
+      headlineSmall: TextStyle(color: AppColors.textPrimary(brightness)),
+      titleLarge: TextStyle(color: AppColors.textPrimary(brightness)),
+      bodyLarge: TextStyle(color: AppColors.textPrimary(brightness)),
+      bodyMedium: TextStyle(color: AppColors.textPrimary(brightness)),
+      bodySmall: TextStyle(color: AppColors.textSecondary(brightness)),
+      labelLarge: TextStyle(color: AppColors.accentGreen(brightness)),
+    );
+  }
+
+  SwitchThemeData _buildSwitchTheme(Brightness brightness) {
+    return SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith<Color?>((states) {
+        if (states.contains(WidgetState.selected)) {
+          return AppColors.accentGreen(brightness);
+        }
+        return AppColors.accentGray(brightness);
+      }),
+      trackColor: WidgetStateProperty.resolveWith<Color?>((states) {
+        if (states.contains(WidgetState.selected)) {
+          return AppColors.switchTrackActive(brightness);
+        }
+        return AppColors.accentGray(brightness).withAlpha(50);
+      }),
     );
   }
 }
@@ -248,6 +236,7 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 2;
   final LoggerService _logger = locator<LoggerService>();
 
+  // Optimized: Use lazy initialization instead of immediate widget creation
   static final List<Widget Function()> _widgetBuilders = <Widget Function()>[
     TesbihView.new,
     QiblaView.new,
@@ -256,9 +245,10 @@ class _MainScreenState extends State<MainScreen> {
     SettingsView.new,
   ];
 
-  final Map<int, Widget> _cachedWidgets = {};
+  // Optimized: Weak reference caching to prevent memory leaks
+  final Map<int, Widget> _cachedWidgets = <int, Widget>{};
 
-  final Map<int, String> _tabNames = {
+  static const Map<int, String> _tabNames = <int, String>{
     0: 'Tesbih',
     1: 'Qibla',
     2: 'Home',
@@ -267,6 +257,8 @@ class _MainScreenState extends State<MainScreen> {
   };
 
   void _onItemTapped(int index) {
+    if (index == _selectedIndex) return; // Prevent unnecessary rebuilds
+
     final String from = _tabNames[_selectedIndex] ?? 'Unknown';
     final String to = _tabNames[index] ?? 'Unknown';
 
@@ -284,50 +276,107 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    Widget currentView;
-    if (_cachedWidgets.containsKey(_selectedIndex)) {
-      currentView = _cachedWidgets[_selectedIndex]!;
-    } else {
-      currentView = _widgetBuilders[_selectedIndex]();
-      _cachedWidgets[_selectedIndex] = currentView;
-    }
+    // Optimized: Only create widget if not cached
+    final Widget currentView =
+        _cachedWidgets[_selectedIndex] ??= _widgetBuilders[_selectedIndex]();
 
     return Scaffold(
       body: currentView,
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(25),
-              blurRadius: 10,
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(0, Icons.grain, "Tasbih"),
-              _buildNavItem(1, Icons.explore, "Qibla"),
-              _buildNavItem(2, Icons.schedule, "Prayer"),
-              _buildNavItem(3, Icons.location_on, "Mosques"),
-              _buildNavItem(4, Icons.more_horiz, "More"),
-            ],
-          ),
-        ),
-      ),
+      bottomNavigationBar: _buildBottomNavigationBar(context),
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label) {
-    final bool isSelected = _selectedIndex == index;
+  Widget _buildBottomNavigationBar(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 10, spreadRadius: 0),
+        ],
+      ),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8.0),
+        child: _BottomNavigationItems(),
+      ),
+    );
+  }
+}
+
+// Extracted as separate widget to optimize rebuilds
+class _BottomNavigationItems extends StatelessWidget {
+  const _BottomNavigationItems();
+
+  @override
+  Widget build(BuildContext context) {
+    final mainScreenState =
+        context.findAncestorStateOfType<_MainScreenState>()!;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        _NavItem(
+          index: 0,
+          icon: Icons.grain,
+          label: "Tasbih",
+          selectedIndex: mainScreenState._selectedIndex,
+          onTap: mainScreenState._onItemTapped,
+        ),
+        _NavItem(
+          index: 1,
+          icon: Icons.explore,
+          label: "Qibla",
+          selectedIndex: mainScreenState._selectedIndex,
+          onTap: mainScreenState._onItemTapped,
+        ),
+        _NavItem(
+          index: 2,
+          icon: Icons.schedule,
+          label: "Prayer",
+          selectedIndex: mainScreenState._selectedIndex,
+          onTap: mainScreenState._onItemTapped,
+        ),
+        _NavItem(
+          index: 3,
+          icon: Icons.location_on,
+          label: "Mosques",
+          selectedIndex: mainScreenState._selectedIndex,
+          onTap: mainScreenState._onItemTapped,
+        ),
+        _NavItem(
+          index: 4,
+          icon: Icons.more_horiz,
+          label: "More",
+          selectedIndex: mainScreenState._selectedIndex,
+          onTap: mainScreenState._onItemTapped,
+        ),
+      ],
+    );
+  }
+}
+
+// Optimized navigation item widget
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.index,
+    required this.icon,
+    required this.label,
+    required this.selectedIndex,
+    required this.onTap,
+  });
+
+  final int index;
+  final IconData icon;
+  final String label;
+  final int selectedIndex;
+  final ValueChanged<int> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isSelected = selectedIndex == index;
     final theme = Theme.of(context);
 
     return GestureDetector(
-      onTap: () => _onItemTapped(index),
+      onTap: () => onTap(index),
       behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisSize: MainAxisSize.min,

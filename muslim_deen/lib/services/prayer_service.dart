@@ -27,6 +27,14 @@ class PrayerService {
   String? _lastCalculationMethodString;
   AppSettings? _lastAppSettingsUsed;
 
+  // Performance optimization: Cache calculation parameters
+  final Map<String, adhan.CalculationParameters> _paramCache = {};
+
+  // Performance optimization: Cache position for short periods
+  Position? _cachedPosition;
+  DateTime? _positionCacheTime;
+  static const Duration _positionCacheDuration = Duration(minutes: 5);
+
   PrayerService(this._locationService, this._prayerTimesCache);
 
   Future<void> init() async {
@@ -36,13 +44,20 @@ class PrayerService {
     _logger.info('PrayerService initialized');
   }
 
-  /// Creates CalculationParameters based on the provided settings.
+  /// Creates CalculationParameters based on the provided settings with caching.
   /// Falls back to defaults if settings are null or invalid.
   adhan.CalculationParameters _getCalculationParams(AppSettings? settings) {
-    adhan.CalculationParameters params;
     final calculationMethod =
         settings?.calculationMethod ?? 'MuslimWorldLeague';
     final madhab = settings?.madhab ?? 'hanafi';
+    final cacheKey = '$calculationMethod-$madhab';
+
+    // Return cached parameters if available
+    if (_paramCache.containsKey(cacheKey)) {
+      return _paramCache[cacheKey]!;
+    }
+
+    adhan.CalculationParameters params;
 
     switch (calculationMethod) {
       case 'MuslimWorldLeague':
@@ -112,6 +127,10 @@ class PrayerService {
             ? adhan.Madhab.hanafi
             : adhan.Madhab.shafi;
     params.highLatitudeRule = adhan.HighLatitudeRule.twilightAngle;
+
+    // Cache the parameters for future use
+    _paramCache[cacheKey] = params;
+
     return params;
   }
 
@@ -169,10 +188,24 @@ class PrayerService {
     return newAdhanPrayerTimes;
   }
 
-  /// Helper method to get the effective position, handling errors and fallback.
+  /// Helper method to get the effective position with caching, handling errors and fallback.
   Future<Position> _getEffectivePosition(String operationContext) async {
+    // Check if cached position is still valid
+    if (_cachedPosition != null &&
+        _positionCacheTime != null &&
+        DateTime.now().difference(_positionCacheTime!) <
+            _positionCacheDuration) {
+      return _cachedPosition!;
+    }
+
     try {
-      return await _locationService.getLocation();
+      final position = await _locationService.getLocation();
+
+      // Cache the position
+      _cachedPosition = position;
+      _positionCacheTime = DateTime.now();
+
+      return position;
     } catch (e) {
       _logger.error(
         'Error getting location for $operationContext, using fallback.',
@@ -198,56 +231,80 @@ class PrayerService {
       position.latitude,
       position.longitude,
     );
-    final currentParams = _getCalculationParams(effectiveSettings);
-    final DateTime dateForCalculation =
-        date.toUtc(); // Ensure consistent date for cache key and adhan calc
 
-    // Attempt to get from cache
-    final PrayerTimesModel? cachedModel = await _prayerTimesCache
-        .getCachedPrayerTimes(dateForCalculation, coordinates);
-
-    if (cachedModel != null) {
-      _logger.info(
-        'Using cached prayer times for ${dateForCalculation.toIso8601String()} at $coordinates.',
-      );
-      // Reconstruct adhan.PrayerTimes from cachedModel to use its methods like currentPrayer(), nextPrayer()
-      // This will internally recalculate based on the parameters, but the key is we avoided
-      // potentially more expensive operations if the data was from an API.
-      // The parameters used for reconstruction should ideally match those used when caching.
-      // Our current cache key doesn't include calculation parameters, so this is a simplification.
-      // We use current settings' params.
-      _currentPrayerTimes = adhan.PrayerTimes(
-        coordinates: coordinates,
-        date: dateForCalculation,
-        calculationParameters:
-            currentParams, // Using current params for rehydration
-      );
-      // Note: The individual times (fajr, dhuhr etc.) in _currentPrayerTimes will be those
-      // calculated by adhan.PrayerTimes constructor, not directly from cachedModel.fajr etc.
-      // To truly use cached times, _currentPrayerTimes would need to be a PrayerTimesModel
-      // or adhan.PrayerTimes would need a factory to be created from specific times.
-
-      _lastCalculationDate = dateForCalculation;
-      _lastAppSettingsUsed =
-          effectiveSettings; // Reflect current settings used for this instance
-      _lastParamsUsed = currentParams;
-      _lastCalculationMethodString = effectiveSettings.calculationMethod;
-      _lastCalculationTime =
-          DateTime.now(); // Reflect time of retrieval/rehydration
-
+    // Performance optimization: Check if we can reuse current calculation
+    if (_canReuseCurrentCalculation(date, effectiveSettings, coordinates)) {
+      _logger.debug('Reusing current prayer time calculation');
       return _currentPrayerTimes!;
     }
 
-    // Cache miss, calculate and persist
-    _logger.info(
-      'Cache miss for ${dateForCalculation.toIso8601String()} at $coordinates. Calculating fresh.',
+    // Check cache first
+    final cachedTimes = await _prayerTimesCache.getCachedPrayerTimes(
+      date,
+      coordinates,
     );
-    return _calculateAndPersistPrayerTimes(
+
+    if (cachedTimes != null) {
+      // Use cached prayer times - reconstruct adhan.PrayerTimes
+      final currentParams = _getCalculationParams(effectiveSettings);
+      final adhanPrayerTimes = adhan.PrayerTimes(
+        coordinates: coordinates,
+        date: date.toUtc(),
+        calculationParameters: currentParams,
+      );
+
+      // Update service state from cache
+      _currentPrayerTimes = adhanPrayerTimes;
+      _lastCalculationTime = DateTime.now();
+      _lastParamsUsed = currentParams;
+      _lastCalculationDate = date.toUtc();
+      _lastCalculationMethodString = effectiveSettings.calculationMethod;
+      _lastAppSettingsUsed = effectiveSettings;
+
+      _logger.debug('Prayer times loaded from cache and service state updated');
+      return adhanPrayerTimes;
+    }
+
+    // Calculate new prayer times
+    final currentParams = _getCalculationParams(effectiveSettings);
+    return await _calculateAndPersistPrayerTimes(
       date,
       position,
       effectiveSettings,
       currentParams,
     );
+  }
+
+  /// Check if current calculation can be reused to avoid redundant computations
+  bool _canReuseCurrentCalculation(
+    DateTime date,
+    AppSettings settings,
+    adhan.Coordinates coordinates,
+  ) {
+    if (_currentPrayerTimes == null || _lastCalculationDate == null) {
+      return false;
+    }
+
+    final dateUtc = date.toUtc();
+    final isSameDate =
+        _lastCalculationDate!.year == dateUtc.year &&
+        _lastCalculationDate!.month == dateUtc.month &&
+        _lastCalculationDate!.day == dateUtc.day;
+
+    final isSameSettings =
+        _lastCalculationMethodString == settings.calculationMethod &&
+        _lastParamsUsed?.madhab.toString() == settings.madhab;
+
+    const positionTolerance = 0.001; // About 100m
+    final isSameLocation =
+        (_currentPrayerTimes!.coordinates.latitude - coordinates.latitude)
+                .abs() <
+            positionTolerance &&
+        (_currentPrayerTimes!.coordinates.longitude - coordinates.longitude)
+                .abs() <
+            positionTolerance;
+
+    return isSameDate && isSameSettings && isSameLocation;
   }
 
   /// Gets user location based on their preference (manual or device)
