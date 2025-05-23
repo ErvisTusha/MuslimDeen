@@ -20,14 +20,10 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await setupLocator();
 
-  // Run non-critical async operations in parallel after locator setup
   final List<Future<void>> startupFutures = [
     _requestPermissions(),
     Future<void>(() async => tz.initializeTimeZones()),
   ];
-  // LocationService.startPermissionFlow() is called during LocationService.init(),
-  // which is called by PrayerService.init(), which is called by HomeView.
-  // So, location permissions are handled later in the lifecycle.
 
   try {
     await Future.wait(startupFutures);
@@ -38,7 +34,6 @@ Future<void> main() async {
       error: e,
       stackTrace: s,
     );
-    // Decide if the app can continue or if this is a fatal error
   }
 
   FlutterError.onError = (details) {
@@ -63,7 +58,6 @@ Future<void> _requestPermissions() async {
     'Location permission request is now handled by LocationService.startPermissionFlow()',
   );
 
-  // Request notification permission
   var notificationStatus = await Permission.notification.status;
   logger.info('Initial notification permission status: $notificationStatus');
   if (!notificationStatus.isGranted) {
@@ -92,41 +86,21 @@ class MuslimDeenApp extends StatelessWidget {
             visualDensity: VisualDensity.adaptivePlatformDensity,
           ),
           darkTheme: ThemeData.dark().copyWith(
-            primaryColor: AppColors.primary(
-              Brightness.dark,
-            ),
-            scaffoldBackgroundColor: AppColors.background(
-              Brightness.dark,
-            ),
+            primaryColor: AppColors.primary(Brightness.dark),
+            scaffoldBackgroundColor: AppColors.background(Brightness.dark),
             colorScheme: ColorScheme.dark(
-              primary: AppColors.primary(
-                Brightness.dark,
-              ),
-              secondary: AppColors.accentGreen(
-                Brightness.dark,
-              ),
-              surface: AppColors.surface(
-                Brightness.dark,
-              ),
+              primary: AppColors.primary(Brightness.dark),
+              secondary: AppColors.accentGreen(Brightness.dark),
+              surface: AppColors.surface(Brightness.dark),
               error: AppColors.error(Brightness.dark),
-              onPrimary: AppColors.textPrimary(
-                Brightness.dark,
-              ),
-              onSecondary: AppColors.textPrimary(
-                Brightness.dark,
-              ),
-              onSurface: AppColors.textPrimary(
-                Brightness.dark,
-              ),
-              onError: AppColors.textPrimary(
-                Brightness.dark,
-              ),
+              onPrimary: AppColors.textPrimary(Brightness.dark),
+              onSecondary: AppColors.textPrimary(Brightness.dark),
+              onSurface: AppColors.textPrimary(Brightness.dark),
+              onError: AppColors.textPrimary(Brightness.dark),
               brightness: Brightness.dark,
             ),
             appBarTheme: AppBarTheme(
-              backgroundColor: AppColors.surface(
-                Brightness.dark,
-              ),
+              backgroundColor: AppColors.surface(Brightness.dark),
               elevation: 1,
               iconTheme: IconThemeData(
                 color: AppColors.textPrimary(Brightness.dark),
@@ -181,17 +155,11 @@ class MuslimDeenApp extends StatelessWidget {
               ),
             ),
             buttonTheme: ButtonThemeData(
-              buttonColor: AppColors.accentGreen(
-                Brightness.dark,
-              ),
-              textTheme:
-                  ButtonTextTheme
-                      .primary,
+              buttonColor: AppColors.accentGreen(Brightness.dark),
+              textTheme: ButtonTextTheme.primary,
               colorScheme: ColorScheme.dark(
                 primary: AppColors.accentGreen(Brightness.dark),
-                onPrimary: AppColors.textPrimary(
-                  Brightness.dark,
-                ),
+                onPrimary: AppColors.textPrimary(Brightness.dark),
               ),
             ),
             elevatedButtonTheme: ElevatedButtonThemeData(
@@ -218,42 +186,31 @@ class MuslimDeenApp extends StatelessWidget {
                 Set<WidgetState> states,
               ) {
                 if (states.contains(WidgetState.selected)) {
-                  return AppColors.switchTrackActive(
-                    Brightness.dark,
-                  );
+                  return AppColors.switchTrackActive(Brightness.dark);
                 }
-                return AppColors.accentGray(
-                  Brightness.dark,
-                ).withAlpha(50);
+                return AppColors.accentGray(Brightness.dark).withAlpha(50);
               }),
             ),
             visualDensity: VisualDensity.adaptivePlatformDensity,
             bottomNavigationBarTheme: BottomNavigationBarThemeData(
               backgroundColor: AppColors.surface(Brightness.dark),
-              selectedItemColor: AppColors.accentGreen(
-                Brightness.dark,
-              ),
+              selectedItemColor: AppColors.accentGreen(Brightness.dark),
               unselectedItemColor: AppColors.iconInactive(Brightness.dark),
             ),
             floatingActionButtonTheme: FloatingActionButtonThemeData(
-              backgroundColor: AppColors.accentGreen(
-                Brightness.dark,
-              ),
+              backgroundColor: AppColors.accentGreen(Brightness.dark),
               foregroundColor: AppColors.textPrimary(Brightness.dark),
             ),
           ),
           themeMode: settingsState.themeMode,
           home: const MainScreen(),
-          navigatorObservers: [
-            _NavigationObserver(),
-          ],
+          navigatorObservers: [_NavigationObserver()],
         );
       },
     );
   }
 }
 
-// Navigation observer to track route changes
 class _NavigationObserver extends NavigatorObserver {
   final LoggerService _logger = locator<LoggerService>();
 
@@ -291,7 +248,6 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 2;
   final LoggerService _logger = locator<LoggerService>();
 
-  // Lazy load views using builder functions
   static final List<Widget Function()> _widgetBuilders = <Widget Function()>[
     TesbihView.new,
     QiblaView.new,
@@ -300,10 +256,8 @@ class _MainScreenState extends State<MainScreen> {
     SettingsView.new,
   ];
 
-  // Cache for instantiated views to keep their state
   final Map<int, Widget> _cachedWidgets = {};
 
-  // Map of tab indexes to their names for better logging
   final Map<int, String> _tabNames = {
     0: 'Tesbih',
     1: 'Qibla',

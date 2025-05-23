@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -11,8 +10,8 @@ import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/compass_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
-import 'package:muslim_deen/widgets/custom_app_bar.dart'; // Added import
-import 'package:muslim_deen/widgets/message_display.dart'; // Added import
+import 'package:muslim_deen/widgets/custom_app_bar.dart';
+import 'package:muslim_deen/widgets/message_display.dart';
 
 class QiblaView extends StatefulWidget {
   const QiblaView({super.key});
@@ -236,10 +235,7 @@ class _QiblaViewState extends State<QiblaView>
                   strokeWidth: 3,
                 )
                 : _errorMessage != null
-                ? _buildErrorView(
-                  brightness,
-                  accentColor,
-                ) // Removed isDarkMode, contentSurface, errorColor
+                ? _buildErrorView(brightness, accentColor)
                 : _buildQiblaView(
                   brightness,
                   isDarkMode,
@@ -252,20 +248,10 @@ class _QiblaViewState extends State<QiblaView>
     );
   }
 
-  Widget _buildErrorView(
-    Brightness brightness,
-    // bool isDarkMode, // Removed
-    // Color contentSurface, // Removed
-    // Color errorColor, // Removed as MessageDisplay handles its error color
-    Color accentColor, // Still needed for button if not error state
-  ) {
-    // The original _buildErrorView had complex message processing.
-    // For now, using the simpler _errorMessage or a generic one.
-    // If specific messages are crucial, _getProcessedErrorMessage would need to be implemented.
+  Widget _buildErrorView(Brightness brightness, Color accentColor) {
     String displayMessage = _errorMessage ?? "An unknown error occurred.";
     if (displayMessage ==
         'Location permission denied. Please enable it in settings.') {
-      // Keep specific important messages if desired
     } else if (displayMessage.contains('permission')) {
       displayMessage = "Location permission error. Please check settings.";
     } else if (displayMessage.contains('service is disabled')) {
@@ -279,9 +265,6 @@ class _QiblaViewState extends State<QiblaView>
       icon: Icons.error_outline_rounded,
       onRetry: _initQiblaFinder,
       isError: true,
-      // The retry button color will be AppColors.error if isError is true,
-      // or AppColors.accentGreen if isError is false (which is not the case here).
-      // The accentColor param for _buildErrorView might not be needed if we always use error styling.
     );
   }
 

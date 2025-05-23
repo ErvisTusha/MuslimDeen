@@ -24,54 +24,87 @@ class LoggerService {
   }
 
   late final Logger _logger;
-void debug(dynamic message, {dynamic error, StackTrace? stackTrace, dynamic data}) {
-  if (data != null) {
-    _logger.d('$message | data: $data', error: error, stackTrace: stackTrace);
-  } else {
-    _logger.d(message, error: error, stackTrace: stackTrace);
-  }
-}
 
-void info(dynamic message, {dynamic error, StackTrace? stackTrace, dynamic data}) {
-  if (data != null) {
-    _logger.i('$message | data: $data', error: error, stackTrace: stackTrace);
-  } else {
-    _logger.i(message, error: error, stackTrace: stackTrace);
+  void debug(
+    dynamic message, {
+    dynamic error,
+    StackTrace? stackTrace,
+    dynamic data,
+  }) {
+    if (data != null) {
+      _logger.d('$message | data: $data', error: error, stackTrace: stackTrace);
+    } else {
+      _logger.d(message, error: error, stackTrace: stackTrace);
+    }
   }
-}
 
-void warning(dynamic message, {dynamic error, StackTrace? stackTrace, dynamic data}) {
-  if (data != null) {
-    _logger.w('$message | data: $data', error: error, stackTrace: stackTrace);
-  } else {
-    _logger.w(message, error: error, stackTrace: stackTrace);
+  void info(
+    dynamic message, {
+    dynamic error,
+    StackTrace? stackTrace,
+    dynamic data,
+  }) {
+    if (data != null) {
+      _logger.i('$message | data: $data', error: error, stackTrace: stackTrace);
+    } else {
+      _logger.i(message, error: error, stackTrace: stackTrace);
+    }
   }
-}
 
-void error(dynamic message, {dynamic error, StackTrace? stackTrace, dynamic data}) {
-  if (data != null) {
-    _logger.e('$message | data: $data', error: error, stackTrace: stackTrace);
-  } else {
-    _logger.e(message, error: error, stackTrace: stackTrace);
+  void warning(
+    dynamic message, {
+    dynamic error,
+    StackTrace? stackTrace,
+    dynamic data,
+  }) {
+    if (data != null) {
+      _logger.w('$message | data: $data', error: error, stackTrace: stackTrace);
+    } else {
+      _logger.w(message, error: error, stackTrace: stackTrace);
+    }
   }
-}
 
-// Custom log methods
-void logNavigation(String event, {String? routeName, Map<String, dynamic>? params, String? details}) {
-  String logMessage = 'Navigation: $event';
-  if (routeName != null) {
-    logMessage += ' | Route: $routeName';
+  void error(
+    dynamic message, {
+    dynamic error,
+    StackTrace? stackTrace,
+    dynamic data,
+  }) {
+    if (data != null) {
+      _logger.e('$message | data: $data', error: error, stackTrace: stackTrace);
+    } else {
+      _logger.e(message, error: error, stackTrace: stackTrace);
+    }
   }
-  if (params != null) {
-    logMessage += ' | Params: $params';
-  }
-  if (details != null) {
-    logMessage += ' | Details: $details';
-  }
-  _logger.i(logMessage);
-}
 
-void logInteraction(String widgetName, String interactionType, {String? details, dynamic data}) {
-    _logger.i('Interaction: $widgetName - $interactionType${details != null ? ' ($details)' : ''}');
+  // Custom log methods
+  void logNavigation(
+    String event, {
+    String? routeName,
+    Map<String, dynamic>? params,
+    String? details,
+  }) {
+    String logMessage = 'Navigation: $event';
+    if (routeName != null) {
+      logMessage += ' | Route: $routeName';
+    }
+    if (params != null) {
+      logMessage += ' | Params: $params';
+    }
+    if (details != null) {
+      logMessage += ' | Details: $details';
+    }
+    _logger.i(logMessage);
+  }
+
+  void logInteraction(
+    String widgetName,
+    String interactionType, {
+    String? details,
+    dynamic data,
+  }) {
+    _logger.i(
+      'Interaction: $widgetName - $interactionType${details != null ? ' ($details)' : ''}',
+    );
   }
 }

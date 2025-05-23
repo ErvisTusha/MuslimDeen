@@ -10,8 +10,8 @@ import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/widgets/city_search_bar.dart';
 import 'package:muslim_deen/widgets/city_search_results_list.dart';
-import 'package:muslim_deen/widgets/custom_app_bar.dart'; // Added import
-import 'package:muslim_deen/widgets/message_display.dart'; // Added import
+import 'package:muslim_deen/widgets/custom_app_bar.dart';
+import 'package:muslim_deen/widgets/message_display.dart';
 
 class CitySearchScreen extends StatefulWidget {
   const CitySearchScreen({super.key});

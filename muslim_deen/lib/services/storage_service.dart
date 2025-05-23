@@ -5,8 +5,6 @@ import 'package:muslim_deen/services/logger_service.dart';
 
 /// Service to handle local storage operations using SharedPreferences.
 class StorageService {
-  // Removed Singleton pattern - instance managed by get_it
-
   StorageService();
 
   static const String _keyLatitude = 'user_latitude';

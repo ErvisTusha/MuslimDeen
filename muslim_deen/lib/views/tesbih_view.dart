@@ -109,7 +109,6 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   void dispose() {
     _logger.debug('TesbihView disposed');
     WidgetsBinding.instance.removeObserver(this);
-    // _permissionCheckTimer?.cancel(); // Removed as it's no longer defined or used
 
     if (mounted && ref.read(tesbihReminderProvider).reminderEnabled) {
       _notificationService.cancelNotification(9876);
@@ -225,13 +224,12 @@ class _TesbihViewState extends ConsumerState<TesbihView>
         'Scheduling Tesbih reminder for ${scheduledDateTime.toIso8601String()}, enabled: ${ref.read(tesbihReminderProvider).reminderEnabled}',
       );
 
-      // Remove notification title - only use body text
       final notificationBody =
           "🤲 Time for your dhikr. Remember Allah with a peaceful heart.";
 
       await _notificationService.schedulePrayerNotification(
         id: 9876,
-        localizedTitle: "", // Empty string for no title
+        localizedTitle: "",
         localizedBody: notificationBody,
         prayerTime: scheduledDateTime,
         isEnabled: ref.read(tesbihReminderProvider).reminderEnabled,
@@ -773,14 +771,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    final bool isDarkMode = brightness == Brightness.dark; // Still needed for other color logic
-
-    // Define colors for TesbihView in dark mode to make it lighter
-    // final Color tesbihScaffoldBg = // Replaced by AppColors.getScaffoldBackground
-    //     isDarkMode
-    //         ? AppColors.surface(brightness)
-    //         : AppColors.background(brightness);
-    // AppBar uses AppColors.primary(brightness) which is 0xFF1A1A1A in dark mode, this is fine.
+    final bool isDarkMode = brightness == Brightness.dark;
 
     final Color tesbihContentSurface =
         isDarkMode
@@ -809,20 +800,15 @@ class _TesbihViewState extends ConsumerState<TesbihView>
       backgroundColor: AppColors.getScaffoldBackground(brightness),
       appBar: AppBar(
         title: Text("Tasbih", style: AppTextStyles.appTitle(brightness)),
-        backgroundColor: AppColors.primary(
-          brightness,
-        ), // Stays 0xFF1A1A1A in dark mode
+        backgroundColor: AppColors.primary(brightness),
         elevation: 2,
         shadowColor: AppColors.shadowColor(brightness),
         centerTitle: true,
         systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent, // Make status bar transparent
-          statusBarIconBrightness:
-              Brightness.light, // Keep icons light since AppBar is always dark
-          statusBarBrightness: Brightness.dark, // This affects iOS status bar
-          systemNavigationBarColor: AppColors.getScaffoldBackground(
-            brightness,
-          ), // Match scaffold background
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarColor: AppColors.getScaffoldBackground(brightness),
           systemNavigationBarIconBrightness:
               isDarkMode ? Brightness.light : Brightness.dark,
         ),
@@ -833,7 +819,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
           children: [
             Container(
               padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-              color: tesbihContentSurface, // Applied tesbihContentSurface
+              color: tesbihContentSurface,
               child: Column(
                 children: [
                   Text(
@@ -841,8 +827,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                     style: AppTextStyles.appTitle(brightness).copyWith(
                       fontSize: 40,
                       height: 1.4,
-                      color:
-                          tesbihDhikrArabicText, // Applied tesbihDhikrArabicText
+                      color: tesbihDhikrArabicText,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -851,9 +836,9 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                     _currentDhikr,
                     style: AppTextStyles.label(brightness).copyWith(
                       fontSize: 16,
-                      color: AppColors.textPrimary(brightness).withAlpha(
-                        isDarkMode ? 230 : 204,
-                      ), // Slightly more opaque for better readability on new bg
+                      color: AppColors.textPrimary(
+                        brightness,
+                      ).withAlpha(isDarkMode ? 230 : 204),
                     ),
                   ),
                 ],
@@ -863,7 +848,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
               onTap: _incrementCount,
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 40),
-                color: tesbihContentSurface, // Applied tesbihContentSurface
+                color: tesbihContentSurface,
                 child: Center(
                   child: Stack(
                     alignment: Alignment.center,
@@ -880,8 +865,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                           backgroundColor: AppColors.borderColor(
                             brightness,
                           ).withAlpha(isDarkMode ? 80 : 128),
-                          color:
-                              tesbihCounterProgress, // Applied tesbihCounterProgress
+                          color: tesbihCounterProgress,
                         ),
                       ),
                       Container(
@@ -889,8 +873,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                         height: 280,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color:
-                              tesbihCounterCircleBg, // Applied tesbihCounterCircleBg
+                          color: tesbihCounterCircleBg,
                           boxShadow: [
                             BoxShadow(
                               color: AppColors.shadowColor(
@@ -913,8 +896,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                                 ).copyWith(
                                   fontSize: 80,
                                   fontWeight: FontWeight.w600,
-                                  color:
-                                      tesbihCounterCountText, // Applied tesbihCounterCountText
+                                  color: tesbihCounterCountText,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -941,9 +923,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
             ),
             Container(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                color: tesbihContentSurface,
-              ), // Applied tesbihContentSurface
+              decoration: BoxDecoration(color: tesbihContentSurface),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -998,7 +978,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: tesbihToggleCardBg, // Applied tesbihToggleCardBg
+                color: tesbihToggleCardBg,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: AppColors.borderColor(brightness)),
               ),
@@ -1060,15 +1040,11 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                     Icons.notifications_active_rounded,
                     ref.watch(tesbihReminderProvider).reminderEnabled,
                     (value) async {
-                      // This onChanged handler is simplified since most logic is in the Switch
                       if (!value) {
-                        // Only handle disabling notifications here
                         ref
                             .read(tesbihReminderProvider.notifier)
                             .toggleReminder(false);
                       } else {
-                        // Enabling is handled by the Switch directly
-                        // The time picker will be shown in the Switch's onChanged
                         ref
                             .read(tesbihReminderProvider.notifier)
                             .toggleReminder(true);
@@ -1183,16 +1159,9 @@ class _TesbihViewState extends ConsumerState<TesbihView>
               ? null
               : () {
                 if (isNotificationToggle) {
-                  // Special handling for notification toggle is within the Switch's onChanged
-                  // Directly calling onChanged here might bypass permission checks/dialogs
-                  // So, we let the Switch handle its own tap for notifications.
-                  // For other toggles, we can proceed.
                   if (value) {
-                    // If current value is true, new value will be false
                     onChanged(!value);
                   } else {
-                    // If current value is false, new value will be true
-                    // For non-notification toggles, just call onChanged
                     onChanged(!value);
                   }
                 } else {
@@ -1221,37 +1190,21 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                       ? null
                       : (newValue) async {
                         if (isNotificationToggle) {
-                          // Notifications toggle needs special handling
                           if (newValue) {
-                            // Check permissions first when enabling notifications
                             await _checkAndUpdateNotificationStatus();
                             if (_notificationsBlocked == true) {
                               _showErrorSnackBar(
                                 "Notifications are blocked. Enable them in system settings.",
                               );
-                              // Do not call onChanged(newValue) here as we don't want to change the state
-                              // if notifications are blocked. The switch should reflect the actual state.
-                              // We might need to refresh the provider state if it was optimistically updated.
-                              // For now, we assume the UI will reflect the actual provider state.
                               return;
                             }
-                            // Always show time picker when enabling notifications
-                            // The onChanged callback will be triggered by the dialog if time is set.
-                            // For now, we call onChanged(true) to update the provider,
-                            // and then show the dialog.
-                            onChanged(newValue); // Update provider state
-                            _showReminderSettingsDialog(); // Then show dialog
+                            onChanged(newValue);
+                            _showReminderSettingsDialog();
                           } else {
-                            // Disabling notifications
                             onChanged(newValue);
                           }
                         } else {
-                          // For other toggles (vibration, sound)
-                          onChanged(
-                            newValue,
-                          ); // This will call setState and _savePreferences
-                          // from the TesbihView's _buildToggleOption call.
-                          // Error handling for _savePreferences is added there.
+                          onChanged(newValue);
                         }
                       },
               activeColor: AppColors.primary(brightness),
@@ -1330,7 +1283,6 @@ class _TargetDialogState extends State<_TargetDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // Use widget.brightness here as it's passed to _TargetDialog
     final brightness = widget.brightness;
     final bool isDarkMode = brightness == Brightness.dark;
 

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-// Remove unnecessary import
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -13,11 +12,10 @@ import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/views/about_view.dart';
 import 'package:muslim_deen/views/city_search_screen.dart';
-import 'package:muslim_deen/widgets/custom_app_bar.dart'; // Added import
+import 'package:muslim_deen/widgets/custom_app_bar.dart';
 import 'package:muslim_deen/widgets/settings_ui_elements.dart';
 
 class SettingsView extends ConsumerStatefulWidget {
-  // Add constructor parameters to indicate where to scroll initially
   final bool scrollToNotifications;
   final bool scrollToLocation;
   final bool scrollToDate;
@@ -55,13 +53,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     _logger.info('SettingsView initialized');
     _loadCurrentLocation();
 
-    // Schedule scroll to appropriate section after build if requested
+    /// Schedule scroll to appropriate section after build if requested
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
-      // Use Future.delayed with Duration.zero to ensure scrolling happens
-      // after the current build cycle and layout phase is fully complete,
-      // giving more time for GlobalKey contexts to be established.
       Future.delayed(Duration.zero, () {
         if (!mounted) return;
 
@@ -71,7 +66,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         } else if (widget.scrollToLocation) {
           _logger.debug('Delayed auto-scroll to location section');
           _scrollToLocationSection();
-          // The _showLocationOptionsDialog is called within _scrollToLocationSection
         } else if (widget.scrollToDate) {
           _logger.debug('Delayed auto-scroll to date section');
           _scrollToDateSection();
@@ -83,7 +77,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   @override
   void dispose() {
     _logger.debug('SettingsView disposed');
-    // Dispose the scroll controller
     _scrollController.dispose();
     _audioPlayer.dispose();
     super.dispose();
@@ -98,7 +91,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     });
 
     try {
-      // Force a fresh location request by using Geolocator directly when in automatic mode
       if (!_locationService.isUsingManualLocation()) {
         try {
           final position = await Geolocator.getCurrentPosition(
@@ -127,15 +119,12 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             error: e.toString(),
             stackTrace: s,
           );
-          // Fall through to use LocationService as backup
         }
       }
 
-      // Use LocationService as fallback or when in manual mode
       final position = await _locationService.getLocation();
       if (!mounted) return;
 
-      // Log location information
       _logger.info(
         'Using cached/manual location',
         data: {
@@ -163,7 +152,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     }
   }
 
-  // Method to scroll to date (appearance) section
   void _scrollToDateSection() {
     _logger.debug('Attempting to scroll to Date & Time section');
     if (!mounted) {
@@ -178,7 +166,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           _dateKey.currentContext!,
           duration: const Duration(milliseconds: 500),
           curve: Curves.easeInOut,
-          alignment: 0.0, // Align to the top of the viewport
+          alignment: 0.0,
         );
         _logger.debug(
           'Successfully initiated scroll to Date & Time section using ensureVisible.',
@@ -199,13 +187,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         },
       );
     }
-    // Show date format dialog after scrolling if requested
     if (widget.scrollToDate && mounted) {
-      // This if statement was missing its closing brace
       Future.delayed(const Duration(milliseconds: 600), () {
         if (mounted) {
           final settingsNotifierInstance = ref.read(settingsProvider.notifier);
-          // Get the current settings to pass the dateFormatOption
           final currentSettings = ref.read(settingsProvider);
           _showDateFormatDialog(
             context,
@@ -214,10 +199,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           );
         }
       });
-    } // <-- Added missing closing brace for the if statement on line 197
+    }
   }
 
-  // Method to scroll to notifications section
   void _scrollToNotificationsSection() {
     if (!mounted) {
       _logger.warning(
@@ -236,7 +220,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     }
   }
 
-  // Method to scroll to location section
   void _scrollToLocationSection() {
     if (!mounted) {
       _logger.warning(
@@ -244,7 +227,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       );
       return;
     }
-    // Try to scroll the location section into view
     if (_locationKey.currentContext != null && _scrollController.hasClients) {
       Scrollable.ensureVisible(
         _locationKey.currentContext!,
@@ -253,7 +235,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         alignment: 0.0,
       );
     }
-    // Fallback: scroll to bottom to ensure location section is visible
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
@@ -262,7 +243,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       );
     }
 
-    // Add a small delay before showing the location options dialog
     if (widget.scrollToLocation) {
       Future.delayed(const Duration(milliseconds: 600), () {
         if (mounted) {
@@ -418,12 +398,11 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
           // Date & Time and Units section grouped for scrolling
           Column(
-            key: _dateKey, // Moved GlobalKey here
+            key: _dateKey,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SettingsSectionHeader(
                 title: "Date & Time",
-                // sectionKey: _dateKey, // Removed GlobalKey from here
               ),
               SettingsListItem(
                 icon: Icons.calendar_today,
@@ -774,20 +753,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       dialogTitle: "Select Theme",
       currentValue: currentThemeMode,
       options: ThemeMode.values,
-      optionTitleBuilder: _getThemeName, // Used tearoff
+      optionTitleBuilder: _getThemeName,
       onSettingChanged: (ThemeMode? value) {
         if (value != null) {
-          // Note: The original _showThemePicker used notifier.updateThemeMode(value)
-          // The SettingsNotifier.updateThemeMode was removed in subtask 19 as unused.
-          // For this refactoring to apply cleanly without breaking,
-          // I will call the equivalent state update directly if the method is gone,
-          // or call the method if it was re-added/kept.
-          // Assuming updateThemeMode might have been removed, this would be:
-          // ref.read(settingsProvider.notifier).state = ref.read(settingsProvider.notifier).state.copyWith(themeMode: value);
-          // However, to keep the diff minimal and focused on using the generic dialog,
-          // I will retain the call to `notifier.updateThemeMode(value)` as if it exists.
-          // This is because the task is to refactor the dialogs, not to fix potentially missing methods in SettingsNotifier
-          // that were removed in prior subtasks. If `updateThemeMode` is truly gone, this would be a compile error later.
           notifier.updateThemeMode(value);
         }
       },
@@ -812,9 +780,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     showDialog<void>(
       context: context,
       builder: (dialogContext) {
-        // Changed context to dialogContext for clarity
         return StatefulBuilder(
-          // Used StatefulBuilder to manage dialog state
           builder: (BuildContext context, StateSetter setStateDialog) {
             return AlertDialog(
               backgroundColor: AppColors.background(brightness),
@@ -835,12 +801,11 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                         style: AppTextStyles.prayerName(brightness),
                       ),
                       value: soundFile,
-                      groupValue: tempSelectedAzan, // Use temporary selection
+                      groupValue: tempSelectedAzan,
                       activeColor: AppColors.primary(brightness),
                       onChanged: (value) async {
                         if (value != null) {
                           setStateDialog(() {
-                            // Update dialog state
                             tempSelectedAzan = value;
                           });
                           await _audioPlayer.stop();
@@ -898,17 +863,14 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         );
       },
     ).then((_) async {
-      // Ensure audio stops if dialog is dismissed by tapping outside
       await _audioPlayer.stop();
     });
   }
 
   String _getAzanSoundDisplayName(String fileName) {
-    // Helper to convert filename to a more readable display name
-    // This could be enhanced with actual localized names if available
-    if (fileName.isEmpty) return "Not Set"; // Or some default
+    if (fileName.isEmpty) return "Not Set";
     String name = fileName.replaceAll('_adhan.mp3', '').replaceAll('_', ' ');
-    name = name.replaceAll('azaan ', ''); // for azaan_turkish
+    name = name.replaceAll('azaan ', '');
     name = name[0].toUpperCase() + name.substring(1);
     if (name.toLowerCase().contains('makkah')) {
       return "Makkah Adhan";
@@ -922,7 +884,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     if (name.toLowerCase().contains('turkish')) {
       return "Turkish Adhan";
     }
-    return name; // Fallback to a processed name
+    return name;
   }
 
   String _getThemeName(ThemeMode themeMode) {
@@ -937,19 +899,13 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   }
 
   String _getCalculationMethodName(String method) {
-    // Added this function
-    // This is a placeholder. You might want to map keys to display names.
-    // For example, if method is 'MuslimWorldLeague', return 'Muslim World League'
-    // This depends on how your calculation method strings are stored and how you want to display them.
     return method;
   }
 
   String _getMadhabName(String madhab) {
-    // Changed Madhab to String
-    // Assuming madhab is stored as a string like 'shafi' or 'hanafi'
     if (madhab.toLowerCase() == 'shafi') return "Shafi";
     if (madhab.toLowerCase() == 'hanafi') return "Hanafi";
-    return madhab; // Fallback to the raw string if not recognized
+    return madhab;
   }
 
   String _getPrayerName(PrayerNotification prayer) {
@@ -999,11 +955,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       dialogTitle: "Date Format",
       currentValue: currentDateFormatOption,
       options: DateFormatOption.values,
-      optionTitleBuilder: _getDateFormatName, // Used tearoff
+      optionTitleBuilder: _getDateFormatName,
       onSettingChanged: (DateFormatOption? value) {
         if (value != null) {
-          // Similar to _showThemePicker, assuming updateDateFormatOption exists on notifier.
-          // If it was removed, this would be a compile error later.
           notifier.updateDateFormatOption(value);
         }
       },
@@ -1020,7 +974,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       dialogTitle: "Time Format",
       currentValue: currentTimeFormat,
       options: TimeFormat.values,
-      optionTitleBuilder: _getTimeFormatName, // Used tearoff
+      optionTitleBuilder: _getTimeFormatName,
       onSettingChanged: (TimeFormat? value) {
         if (value != null) {
           notifier.updateTimeFormat(value);
@@ -1054,7 +1008,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       dialogTitle: "Select Calculation Method",
       currentValue: currentCalculationMethod,
       options: calculationMethods,
-      optionTitleBuilder: _getCalculationMethodName, // Used tearoff
+      optionTitleBuilder: _getCalculationMethodName,
       onSettingChanged: (String? value) {
         if (value != null) {
           notifier.updateCalculationMethod(value);
@@ -1076,7 +1030,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       dialogTitle: "Select Madhab",
       currentValue: currentMadhab,
       options: madhabs,
-      optionTitleBuilder: _getMadhabName, // Used tearoff
+      optionTitleBuilder: _getMadhabName,
       onSettingChanged: (String? value) {
         if (value != null) {
           notifier.updateMadhab(value);
@@ -1087,10 +1041,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   }
 
   Future<void> _recalculatePrayerTimes({
-    String? newMethod, // Changed PrayerCalculationMethod to String
-    String? newMadhab, // Changed Madhab to String
+    String? newMethod,
+    String? newMadhab,
   }) async {
-    // Your logic to recalculate prayer times based on newMethod and newMadhab
     _logger.info(
       'RecalculatePrayerTimes called (placeholder)',
       data: {'newMethod': newMethod, 'newMadhab': newMadhab},
