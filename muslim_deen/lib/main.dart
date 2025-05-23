@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -232,9 +232,11 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   int _selectedIndex = 2;
   final LoggerService _logger = locator<LoggerService>();
+  late AnimationController _animationController;
+  late Animation<double> _animation;
 
   // Optimized: Use lazy initialization instead of immediate widget creation
   static final List<Widget Function()> _widgetBuilders = <Widget Function()>[
@@ -256,6 +258,59 @@ class _MainScreenState extends State<MainScreen> {
     4: 'Settings',
   };
 
+  static const List<_NavItemData> _navItems = [
+    _NavItemData(
+      icon: Icons.grain,
+      activeIcon: Icons.grain,
+      label: "Tasbih",
+      tooltip: "Open Tasbih counter",
+    ),
+    _NavItemData(
+      icon: Icons.explore_outlined,
+      activeIcon: Icons.explore,
+      label: "Qibla",
+      tooltip: "Find Qibla direction",
+    ),
+    _NavItemData(
+      icon: Icons.schedule_outlined,
+      activeIcon: Icons.schedule,
+      label: "Prayer",
+      tooltip: "Prayer times",
+    ),
+    _NavItemData(
+      icon: Icons.location_on_outlined,
+      activeIcon: Icons.location_on,
+      label: "Mosques",
+      tooltip: "Find nearby mosques",
+    ),
+    _NavItemData(
+      icon: Icons.more_horiz_outlined,
+      activeIcon: Icons.more_horiz,
+      label: "More",
+      tooltip: "Settings and more",
+    ),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    _animation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return; // Prevent unnecessary rebuilds
 
@@ -272,6 +327,11 @@ class _MainScreenState extends State<MainScreen> {
     setState(() {
       _selectedIndex = index;
     });
+
+    // Add subtle haptic feedback
+    HapticFeedback.lightImpact();
+    _animationController.reset();
+    _animationController.forward();
   }
 
   @override
@@ -287,130 +347,151 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildBottomNavigationBar(BuildContext context) {
+    final theme = Theme.of(context);
+    final brightness = theme.brightness;
+
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 10, spreadRadius: 0),
+        color: AppColors.surface(brightness),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowColor(brightness),
+            blurRadius: 12,
+            spreadRadius: 0,
+            offset: const Offset(0, -2),
+          ),
         ],
+        border: Border(
+          top: BorderSide(color: AppColors.divider(brightness), width: 0.5),
+        ),
       ),
-      child: const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8.0),
-        child: _BottomNavigationItems(),
+      child: SafeArea(
+        child: Container(
+          height: 72,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(_navItems.length, (index) {
+              return Expanded(
+                child: _NavItem(
+                  index: index,
+                  data: _navItems[index],
+                  selectedIndex: _selectedIndex,
+                  onTap: _onItemTapped,
+                  animation: _animation,
+                ),
+              );
+            }),
+          ),
+        ),
       ),
     );
   }
 }
 
-// Extracted as separate widget to optimize rebuilds
-class _BottomNavigationItems extends StatelessWidget {
-  const _BottomNavigationItems();
+class _NavItemData {
+  const _NavItemData({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.tooltip,
+  });
 
-  @override
-  Widget build(BuildContext context) {
-    final mainScreenState =
-        context.findAncestorStateOfType<_MainScreenState>()!;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        _NavItem(
-          index: 0,
-          icon: Icons.grain,
-          label: "Tasbih",
-          selectedIndex: mainScreenState._selectedIndex,
-          onTap: mainScreenState._onItemTapped,
-        ),
-        _NavItem(
-          index: 1,
-          icon: Icons.explore,
-          label: "Qibla",
-          selectedIndex: mainScreenState._selectedIndex,
-          onTap: mainScreenState._onItemTapped,
-        ),
-        _NavItem(
-          index: 2,
-          icon: Icons.schedule,
-          label: "Prayer",
-          selectedIndex: mainScreenState._selectedIndex,
-          onTap: mainScreenState._onItemTapped,
-        ),
-        _NavItem(
-          index: 3,
-          icon: Icons.location_on,
-          label: "Mosques",
-          selectedIndex: mainScreenState._selectedIndex,
-          onTap: mainScreenState._onItemTapped,
-        ),
-        _NavItem(
-          index: 4,
-          icon: Icons.more_horiz,
-          label: "More",
-          selectedIndex: mainScreenState._selectedIndex,
-          onTap: mainScreenState._onItemTapped,
-        ),
-      ],
-    );
-  }
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final String tooltip;
 }
 
-// Optimized navigation item widget
+// Optimized navigation item widget with better animations and accessibility
 class _NavItem extends StatelessWidget {
   const _NavItem({
     required this.index,
-    required this.icon,
-    required this.label,
+    required this.data,
     required this.selectedIndex,
     required this.onTap,
+    required this.animation,
   });
 
   final int index;
-  final IconData icon;
-  final String label;
+  final _NavItemData data;
   final int selectedIndex;
   final ValueChanged<int> onTap;
+  final Animation<double> animation;
 
   @override
   Widget build(BuildContext context) {
     final bool isSelected = selectedIndex == index;
     final theme = Theme.of(context);
+    final brightness = theme.brightness;
 
-    return GestureDetector(
-      onTap: () => onTap(index),
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color:
-                  isSelected
-                      ? theme.colorScheme.primaryContainer
-                      : Colors.transparent,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              color:
-                  isSelected
-                      ? theme.colorScheme.primary
-                      : theme.unselectedWidgetColor,
-            ),
+    return Semantics(
+      label: data.tooltip,
+      button: true,
+      selected: isSelected,
+      child: InkWell(
+        onTap: () => onTap(index),
+        borderRadius: BorderRadius.circular(12),
+        splashColor: AppColors.accentGreen(brightness).withValues(alpha: 0.1),
+        highlightColor: AppColors.accentGreen(
+          brightness,
+        ).withValues(alpha: 0.05),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color:
+                      isSelected
+                          ? AppColors.accentGreen(
+                            brightness,
+                          ).withValues(alpha: 0.15)
+                          : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  transitionBuilder: (child, animation) {
+                    return ScaleTransition(scale: animation, child: child);
+                  },
+                  child: Icon(
+                    isSelected ? data.activeIcon : data.icon,
+                    key: ValueKey('$index-$isSelected'),
+                    color:
+                        isSelected
+                            ? AppColors.accentGreen(brightness)
+                            : AppColors.iconInactive(brightness),
+                    size: 22,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 2),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                style: TextStyle(
+                  color:
+                      isSelected
+                          ? AppColors.accentGreen(brightness)
+                          : AppColors.iconInactive(brightness),
+                  fontSize: 9,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  letterSpacing: 0.1,
+                ),
+                child: Text(
+                  data.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color:
-                  isSelected
-                      ? theme.colorScheme.primary
-                      : theme.unselectedWidgetColor,
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

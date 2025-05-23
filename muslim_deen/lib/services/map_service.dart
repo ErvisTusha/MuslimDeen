@@ -201,13 +201,4 @@ class MapService {
       return [];
     }
   }
-
-  /* TODO: Implement mosque detail fetching logic if needed in the future.
-  // This might involve another Overpass API query using the mosque's ID (node/way/relation ID)
-  // or querying a different API if available.
-  Future<Map<String, dynamic>?> getMosqueDetails(String id) async {
-    _logger.warning('getMosqueDetails is not yet implemented.', data: {'id': id});
-    return null;
-  }
-  */
 }
