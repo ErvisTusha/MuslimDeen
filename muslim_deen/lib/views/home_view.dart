@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'package:adhan_dart/adhan_dart.dart' as adhan;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,7 +23,7 @@ import 'package:muslim_deen/services/prayer_service.dart';
 import 'package:muslim_deen/services/storage_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/views/settings_view.dart';
-import 'package:muslim_deen/widgets/custom_app_bar.dart'; // Added import
+import 'package:muslim_deen/widgets/custom_app_bar.dart';
 import 'package:muslim_deen/widgets/prayer_countdown_timer.dart';
 import 'package:muslim_deen/widgets/prayer_list_item.dart';
 
@@ -838,15 +837,10 @@ class _HomeViewState extends ConsumerState<HomeView>
     final locale = Localizations.localeOf(context);
     _initOrUpdateDateFormatters(appSettings, locale); // Update formatters
 
-    // final localizations = AppLocalizations.of(context)!; // Removed
+    // final localizations = AppLocalizations.of(context)!; 
     final brightness = Theme.of(context).brightness;
-    // final bool isDarkMode = brightness == Brightness.dark; // No longer needed for scaffoldBg
 
     // Define colors similar to TesbihView
-    // final Color scaffoldBg = // Replaced by AppColors.getScaffoldBackground
-    //     isDarkMode
-    //         ? AppColors.surface(brightness)
-    //         : AppColors.background(brightness);
     final bool isDarkMode = brightness == Brightness.dark; // Still needed for other color logic
     final Color contentSurface =
         isDarkMode
@@ -952,10 +946,8 @@ class _HomeViewState extends ConsumerState<HomeView>
               displayCity: loadedCity,
               displayCountry: loadedCountry,
               appSettings: appSettings,
-              // localizations: localizations, // Removed
               brightness: brightness,
               isDarkMode: isDarkMode,
-              scaffoldBg: scaffoldBg,
               contentSurface: contentSurface,
               currentPrayerItemBg: currentPrayerItemBg,
               currentPrayerItemBorder: currentPrayerItemBorder,

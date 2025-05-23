@@ -7,7 +7,7 @@ import 'package:muslim_deen/models/app_settings.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
-import 'package:muslim_deen/services/prayer_times_cache.dart'; // Added import
+import 'package:muslim_deen/services/prayer_times_cache.dart';
 
 /// Service responsible for calculating and providing prayer times.
 ///
@@ -16,7 +16,7 @@ import 'package:muslim_deen/services/prayer_times_cache.dart'; // Added import
 /// about the current and next prayer.
 class PrayerService {
   final LocationService _locationService;
-  final PrayerTimesCache _prayerTimesCache; // Added field
+  final PrayerTimesCache _prayerTimesCache;
   adhan.PrayerTimes? _currentPrayerTimes;
   DateTime? _lastCalculationTime;
   adhan.CalculationParameters? _lastParamsUsed;
@@ -26,7 +26,7 @@ class PrayerService {
   String? _lastCalculationMethodString;
   AppSettings? _lastAppSettingsUsed;
 
-  PrayerService(this._locationService, this._prayerTimesCache); // Updated constructor
+  PrayerService(this._locationService, this._prayerTimesCache);
 
   Future<void> init() async {
     if (_isInitialized) return;
@@ -230,18 +230,7 @@ class PrayerService {
     // This method now correctly calls the updated calculatePrayerTimesForDate
     return calculatePrayerTimesForDate(DateTime.now(), settings);
     // The logging and state update for _currentPrayerTimes will be handled within calculatePrayerTimesForDate
-    // or _calculateAndPersistPrayerTimes. We can add a specific log here if needed.
-    // _logger.info(
-    //   'Successfully calculated and updated prayer times for today via main pathway.',
-    //   data: {
-    //     'lat': _currentPrayerTimes?.coordinates.latitude, // Assuming _currentPrayerTimes is updated
-    //     'lon': _currentPrayerTimes?.coordinates.longitude,
-    //     'method': settings?.calculationMethod ?? AppSettings.defaults.calculationMethod,
-    //     'madhab': settings?.madhab ?? AppSettings.defaults.madhab,
-    //     'fajr': _currentPrayerTimes!.fajr?.toIso8601String(),
-    //   },
-    // );
-    // return _currentPrayerTimes!; // This will be returned by calculatePrayerTimesForDate
+    // or _calculateAndPersistPrayerTimes.
   }
 
   /// Provides a fallback position (Mecca) when location services fail or are unavailable.
@@ -414,7 +403,6 @@ class PrayerService {
     }
   }
 
-  // Within the PrayerService class
   DateTime? getOffsettedPrayerTime(String prayerName, adhan.PrayerTimes rawPrayerTimes, AppSettings settings) {
     DateTime? rawTime;
     int offsetMinutes = 0;

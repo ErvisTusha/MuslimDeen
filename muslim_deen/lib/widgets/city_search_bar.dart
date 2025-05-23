@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 
-class CitySearchBar extends StatelessWidget {
+class CitySearchBar extends StatefulWidget {
   final TextEditingController controller;
   final Brightness brightness;
   final Color contentSurfaceColor;
@@ -28,34 +28,55 @@ class CitySearchBar extends StatelessWidget {
   });
 
   @override
+  State<CitySearchBar> createState() => _CitySearchBarState();
+}
+
+class _CitySearchBarState extends State<CitySearchBar> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_handleControllerChange);
+  }
+
+  void _handleControllerChange() {
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_handleControllerChange);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final bool isDarkMode = brightness == Brightness.dark;
+    final bool isDarkMode = widget.brightness == Brightness.dark;
 
     return Container(
-      color: contentSurfaceColor,
+      color: widget.contentSurfaceColor,
       padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 12.0),
       child: TextField(
-        controller: controller,
+        controller: widget.controller,
         decoration: InputDecoration(
           hintText: "Search for a city",
-          hintStyle: AppTextStyles.label(brightness).copyWith(color: hintColor),
-          prefixIcon: Icon(Icons.search, color: iconColor),
+          hintStyle: AppTextStyles.label(widget.brightness).copyWith(color: widget.hintColor),
+          prefixIcon: Icon(Icons.search, color: widget.iconColor),
           filled: true,
-          fillColor: textFieldBackgroundColor,
+          fillColor: widget.textFieldBackgroundColor,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10.0),
-            borderSide: BorderSide(color: borderColor),
+            borderSide: BorderSide(color: widget.borderColor),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10.0),
             borderSide: BorderSide(
-              color: borderColor.withAlpha(isDarkMode ? 150 : 200),
+              color: widget.borderColor.withAlpha(isDarkMode ? 150 : 200),
             ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10.0),
             borderSide: BorderSide(
-              color: AppColors.primary(brightness),
+              color: AppColors.primary(widget.brightness),
               width: 1.5,
             ),
           ),
@@ -63,16 +84,16 @@ class CitySearchBar extends StatelessWidget {
             vertical: 14.0,
             horizontal: 16.0,
           ),
-          suffixIcon: controller.text.isNotEmpty
+          suffixIcon: widget.controller.text.isNotEmpty
               ? IconButton(
-                  icon: Icon(Icons.clear, color: iconColor),
-                  onPressed: onClear,
+                  icon: Icon(Icons.clear, color: widget.iconColor),
+                  onPressed: widget.onClear,
                 )
               : null,
         ),
-        style: AppTextStyles.prayerTime(brightness).copyWith(color: textColor),
+        style: AppTextStyles.prayerTime(widget.brightness).copyWith(color: widget.textColor),
         autofocus: true,
-        onChanged: onChanged,
+        onChanged: widget.onChanged,
       ),
     );
   }

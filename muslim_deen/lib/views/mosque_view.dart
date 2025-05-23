@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -11,8 +10,8 @@ import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/map_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
-import 'package:muslim_deen/widgets/custom_app_bar.dart'; // Added import
-import 'package:muslim_deen/widgets/message_display.dart'; // Added import
+import 'package:muslim_deen/widgets/custom_app_bar.dart';
+import 'package:muslim_deen/widgets/message_display.dart';
 
 Future<void> _openMosqueInMapsApp(BuildContext context, Mosque mosque) async {
   if (!context.mounted) return;
@@ -213,12 +212,6 @@ class _MosqueViewState extends State<MosqueView> {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    // final bool isDarkMode = brightness == Brightness.dark; // No longer needed for scaffoldBg
-
-    // final Color scaffoldBg = // Replaced by AppColors.getScaffoldBackground
-    //     isDarkMode
-    //         ? AppColors.surface(brightness)
-    //         : AppColors.background(brightness);
     final bool isDarkMode = brightness == Brightness.dark; // Still needed for other color logic
     final Color contentSurface =
         isDarkMode ? const Color(0xFF2C2C2C) : AppColors.background(brightness);
@@ -254,27 +247,16 @@ class _MosqueViewState extends State<MosqueView> {
                 ),
               )
               : _errorMessage != null
-              ? MessageDisplay(
-                  message: _errorMessage ?? "Unknown error",
-                  icon: Icons.error_outline_rounded,
-                  onRetry: _loadNearbyMosques,
-                  isError: true,
-                )
+              ? _buildErrorView(brightness)
               : _buildMosqueListView(
                 brightness,
-                // isDarkMode, // No longer needed by _buildMosqueListView if its content is replaced
-                // contentSurface, // No longer needed by _buildMosqueListView if its content is replaced
-                contentSurface,
+                contentSurface, // Pass contentSurface from build method
                 cardBorderColor,
               ),
     );
   }
 
-  Widget _buildErrorView( // Parameters isDarkMode and contentSurface are no longer needed
-    Brightness brightness,
-    // bool isDarkMode,
-    // Color contentSurface, 
-  ) {
+  Widget _buildErrorView(Brightness brightness) {
     return MessageDisplay(
       message: _errorMessage ?? "Unknown error",
       icon: Icons.error_outline_rounded,
@@ -285,9 +267,8 @@ class _MosqueViewState extends State<MosqueView> {
 
   Widget _buildMosqueListView(
     Brightness brightness,
-    // bool isDarkMode, // No longer needed by MessageDisplay directly
-    // Color contentSurface, // No longer needed by MessageDisplay directly
-    Color cardBorderColor, // Still needed for mosque cards if list is not empty
+    Color contentSurface, // Added contentSurface parameter
+    Color cardBorderColor,
   ) {
     if (_nearbyMosques.isEmpty) {
       return const MessageDisplay(
@@ -300,14 +281,17 @@ class _MosqueViewState extends State<MosqueView> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       itemCount: _nearbyMosques.length,
       itemBuilder:
-          (context, index) => _buildMosqueCard(
-            _nearbyMosques[index],
-            index == 0,
-            brightness,
-            isDarkMode,
-            contentSurface,
-            cardBorderColor,
-          ),
+          (context, index) {
+            final bool isDarkMode = brightness == Brightness.dark; // Determine isDarkMode here
+            return _buildMosqueCard(
+              _nearbyMosques[index],
+              index == 0,
+              brightness,
+              isDarkMode,
+              contentSurface, // Pass contentSurface from build method
+              cardBorderColor,
+            );
+          },
     );
   }
 

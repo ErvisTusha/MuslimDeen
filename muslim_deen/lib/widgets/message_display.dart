@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:muslim_deen/styles/app_styles.dart'; // For AppColors, AppTextStyles
+import 'package:muslim_deen/styles/app_styles.dart';
 
 class MessageDisplay extends StatelessWidget {
   final String message;
@@ -71,10 +71,7 @@ class MessageDisplay extends StatelessWidget {
             if (onRetry != null)
               ElevatedButton(
                 onPressed: onRetry,
-                style: ElevatedButton.styleFrom(
-                    // backgroundColor: isError ? AppColors.error(brightness) : AppColors.primary(brightness),
-                    // foregroundColor: isError ? Colors.white : null, // Or AppColors.textOnPrimary(brightness)
-                    ),
+                style: ElevatedButton.styleFrom(),
                 child: const Text('Retry'),
               ),
           ],

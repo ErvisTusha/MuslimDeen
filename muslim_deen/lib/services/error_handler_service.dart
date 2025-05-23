@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 
@@ -49,9 +47,6 @@ class AppError {
 /// Error handler service to centralize error handling
 class ErrorHandlerService {
   final LoggerService _logger = locator<LoggerService>();
-  // final _errorController = StreamController<AppError>.broadcast(); // Field removed
-
-  // errorStream getter removed
 
   void reportError(AppError error, {String? context}) {
     _logger.error(
@@ -60,8 +55,6 @@ class ErrorHandlerService {
       stackTrace: error.stackTrace,
       data: {'code': error.code, 'details': error.details},
     );
-
-    // _errorController.add(error); // Line removed
 
     // Consider adding reporting to external services like Firebase Crashlytics or Sentry here.
   }
@@ -80,10 +73,4 @@ class ErrorHandlerService {
       return Result.failure(appError);
     }
   }
-
-  // guardSync method removed
-  // dispose method removed
 }
-
-// errorHandlerProvider (defined in this file) removed
-// appErrorsProvider removed

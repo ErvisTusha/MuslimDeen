@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'package:geocoding/geocoding.dart';
 
@@ -11,8 +10,8 @@ import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/widgets/city_search_bar.dart';
 import 'package:muslim_deen/widgets/city_search_results_list.dart';
-import 'package:muslim_deen/widgets/custom_app_bar.dart'; // Added import
-import 'package:muslim_deen/widgets/message_display.dart'; // Added import
+import 'package:muslim_deen/widgets/custom_app_bar.dart';
+import 'package:muslim_deen/widgets/message_display.dart';
 
 class CitySearchScreen extends StatefulWidget {
   const CitySearchScreen({super.key});
@@ -340,20 +339,11 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    // final bool isDarkMode = brightness == Brightness.dark; // No longer needed for scaffoldBg
 
     // Define colors similar to TesbihView
-    // final Color scaffoldBg = // Replaced by AppColors.getScaffoldBackground
-    //     isDarkMode
-    //         ? AppColors.surface(brightness)
-    //         : AppColors.background(brightness);
     final bool isDarkMode = brightness == Brightness.dark; // Still needed for other color logic
-    final Color contentSurface =
-        isDarkMode
-            ? const Color(0xFF2C2C2C)
-            : AppColors.primaryVariant(brightness); // For cards/containers
-    final Color textFieldBg =
-        isDarkMode ? const Color(0xFF3C3C3C) : AppColors.background(brightness);
+    final Color contentSurface = AppColors.contentSurface(brightness); // For cards/containers
+    final Color textFieldBg = AppColors.textFieldBackground(brightness);
     final Color textColor = AppColors.textPrimary(brightness);
     final Color hintColor = AppColors.textSecondary(brightness);
     final Color iconColor = AppColors.iconInactive(brightness);
@@ -389,7 +379,7 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
                 _isLoading = false;
               });
             },
-            onChanged: (value) => setState(() {}), // To rebuild suffix icon
+            onChanged: (_) {}, // To rebuild suffix icon
           ),
           if (_isLoading)
             Padding(

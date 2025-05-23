@@ -776,10 +776,6 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     final bool isDarkMode = brightness == Brightness.dark; // Still needed for other color logic
 
     // Define colors for TesbihView in dark mode to make it lighter
-    // final Color tesbihScaffoldBg = // Replaced by AppColors.getScaffoldBackground
-    //     isDarkMode
-    //         ? AppColors.surface(brightness)
-    //         : AppColors.background(brightness);
     // AppBar uses AppColors.primary(brightness) which is 0xFF1A1A1A in dark mode, this is fine.
 
     final Color tesbihContentSurface =
@@ -1274,6 +1270,12 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     );
   }
 }
+
+// Removed _getCalculationMethodName, _getMadhabName, _getPrayerName, 
+// _getDateFormatName, _getTimeFormatName, _showDateFormatDialog, 
+// _showTimeFormatDialog, _showCalculationMethodPicker, _showMadhabPicker,
+// and _recalculatePrayerTimes as they are not used in TesbihView
+// and seem to be leftovers from SettingsView.
 
 class _TargetDialog extends StatefulWidget {
   final int initialTarget;

@@ -15,6 +15,31 @@ class CacheService {
 
   CacheService(this._prefs);
 
+  Future<void> setCache<T>(String key, T data, {int? expirationMinutes}) async {
+    try {
+      final int actualExpirationMinutes = expirationMinutes ?? _defaultExpirationMinutes;
+      final int timestamp = DateTime.now().add(Duration(minutes: actualExpirationMinutes)).millisecondsSinceEpoch;
+      final String jsonData = jsonEncode(data);
+
+      await _prefs.setString('${key}_data', jsonData);
+      await _prefs.setInt('${key}_expiration', timestamp);
+
+      _logger.info(
+        'Cache set for key: $key, expires in $actualExpirationMinutes minutes.',
+        data: {
+          'key': key,
+          'expirationTimestamp': DateTime.fromMillisecondsSinceEpoch(timestamp).toIso8601String(),
+        },
+      );
+    } catch (e, s) {
+      _logger.error(
+        'Error setting cache for key: $key',
+        data: {'error': e.toString(), 'stackTrace': s.toString()},
+      );
+      // Optionally rethrow or handle as per application's error handling strategy
+    }
+  }
+
   T? getCache<T>(String key) {
     try {
       if (!_prefs.containsKey('${key}_data') ||

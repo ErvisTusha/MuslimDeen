@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,7 +13,7 @@ import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/views/about_view.dart';
 import 'package:muslim_deen/views/city_search_screen.dart';
-import 'package:muslim_deen/widgets/custom_app_bar.dart'; // Added import
+import 'package:muslim_deen/widgets/custom_app_bar.dart';
 import 'package:muslim_deen/widgets/settings_ui_elements.dart';
 
 class SettingsView extends ConsumerStatefulWidget {
@@ -202,7 +201,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     }
     // Show date format dialog after scrolling if requested
     if (widget.scrollToDate && mounted) {
-      // This if statement was missing its closing brace
       Future.delayed(const Duration(milliseconds: 600), () {
         if (mounted) {
           final settingsNotifierInstance = ref.read(settingsProvider.notifier);
@@ -215,7 +213,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           );
         }
       });
-    } // <-- Added missing closing brace for the if statement on line 197
+    }
   }
 
   // Method to scroll to notifications section
@@ -277,7 +275,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final settingsNotifier = ref.read(settingsProvider.notifier);
-    // final appLocalizations = AppLocalizations.of(context)!;
 
     final brightness = Theme.of(context).brightness;
 

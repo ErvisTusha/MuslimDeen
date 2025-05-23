@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geocoding/geocoding.dart';
@@ -13,8 +12,8 @@ import 'package:muslim_deen/services/compass_service.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
-import 'package:muslim_deen/widgets/custom_app_bar.dart'; // Added import
-import 'package:muslim_deen/widgets/message_display.dart'; // Added import
+import 'package:muslim_deen/widgets/custom_app_bar.dart';
+import 'package:muslim_deen/widgets/message_display.dart';
 
 class QiblaView extends StatefulWidget {
   const QiblaView({super.key});
@@ -179,13 +178,8 @@ class _QiblaViewState extends State<QiblaView>
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    // final bool isDarkMode = brightness == Brightness.dark; // No longer needed for scaffoldBg
 
     // Define colors similar to TesbihView
-    // final Color scaffoldBg = // Replaced by AppColors.getScaffoldBackground
-    //     isDarkMode
-    //         ? AppColors.surface(brightness)
-    //         : AppColors.background(brightness);
     final bool isDarkMode = brightness == Brightness.dark; // Still needed for other color logic
     final Color contentSurface =
         isDarkMode
@@ -232,7 +226,7 @@ class _QiblaViewState extends State<QiblaView>
                   strokeWidth: 3,
                 )
                 : _errorMessage != null
-                ? _buildErrorView(brightness, accentColor) // Removed isDarkMode, contentSurface, errorColor
+                ? _buildErrorView(brightness, accentColor)
                 : _buildQiblaView(
                   brightness,
                   isDarkMode,
@@ -247,10 +241,7 @@ class _QiblaViewState extends State<QiblaView>
 
   Widget _buildErrorView(
     Brightness brightness,
-    // bool isDarkMode, // Removed
-    // Color contentSurface, // Removed
-    // Color errorColor, // Removed as MessageDisplay handles its error color
-    Color accentColor, // Still needed for button if not error state
+    Color accentColor,
   ) {
     // The original _buildErrorView had complex message processing.
     // For now, using the simpler _errorMessage or a generic one.
@@ -600,7 +591,7 @@ class _QiblaViewState extends State<QiblaView>
                 const SizedBox(height: 2),
                 Text(
                   _currentCity ??
-                      "N/A", // Use qiblaNotAvailable if city is null
+                      "N/A", // Display N/A if city is null
                   textAlign: TextAlign.center,
                   style: AppTextStyles.prayerTime(brightness).copyWith(
                     color: textColorPrimary,

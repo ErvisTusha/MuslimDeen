@@ -34,7 +34,7 @@ class PrayerTimesModel {
     required this.hijriMonth,
     required this.hijriYear,
     required this.hijriMonthName,
-    this.cachedAt, // Initialize new field
+    this.cachedAt,
   });
 
   /// Create a PrayerTimesModel from adhan package's PrayerTimes
@@ -60,7 +60,6 @@ class PrayerTimesModel {
     );
   }
 
-  // toJson method
   Map<String, dynamic> toJson() {
     return {
       'fajr': fajr?.toIso8601String(),
@@ -78,7 +77,6 @@ class PrayerTimesModel {
     };
   }
 
-  // fromJson factory
   factory PrayerTimesModel.fromJson(Map<String, dynamic> json) {
     DateTime? safeParseDateTime(String? dateString) {
       return dateString == null ? null : DateTime.tryParse(dateString);

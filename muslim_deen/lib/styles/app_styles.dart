@@ -27,6 +27,8 @@ class AppColors {
   static const Color _surfaceDark = Color(
     0xFF1A1A1A,
   ); // Very dark gray for elevated surfaces (cards, dialogs)
+  static const Color _contentSurfaceDark = Color(0xFF2C2C2C); // New
+  static const Color _textFieldBackgroundDark = Color(0xFF3C3C3C); // New
   static const Color _textPrimaryDark = Colors.white; // White for primary text
   static final Color _textSecondaryDark =
       Colors.grey.shade400; // #BDBDBD (Light grey for secondary text)
@@ -61,6 +63,10 @@ class AppColors {
       brightness == Brightness.light ? _backgroundLight : _backgroundDark;
   static Color surface(Brightness brightness) =>
       brightness == Brightness.light ? _backgroundLight : _surfaceDark;
+  static Color contentSurface(Brightness brightness) => // New
+      brightness == Brightness.light ? _primaryLightVariant : _contentSurfaceDark;
+  static Color textFieldBackground(Brightness brightness) => // New
+      brightness == Brightness.light ? _backgroundLight : _textFieldBackgroundDark;
   static Color textPrimary(Brightness brightness) =>
       brightness == Brightness.light ? _textPrimaryLight : _textPrimaryDark;
   static Color textSecondary(Brightness brightness) =>

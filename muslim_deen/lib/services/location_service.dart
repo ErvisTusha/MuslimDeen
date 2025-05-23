@@ -8,8 +8,6 @@ import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
 
-// LocationServiceException class removed
-
 /// A service that handles location-related functionality including device location,
 /// manual location settings, and location streaming.
 enum PermissionRequestState {
@@ -27,7 +25,6 @@ class LocationService {
   final _permissionStateController =
       StreamController<PermissionRequestState>.broadcast();
 
-  // permissionState getter removed
   SharedPreferences? _prefs;
   StreamSubscription<Position>? _locationSubscription;
   Position? _lastKnownPosition; // For persistent storage fallback
@@ -64,7 +61,6 @@ class LocationService {
   static const String _manualLngKey = 'manual_longitude';
   static const String _locationNameKey = 'location_name';
   static const String _useManualLocationKey = 'use_manual_location';
-  // static const String _lastKnownPositionKey = 'last_known_position'; // Replaced by direct use in methods
 
   LocationService();
 
@@ -288,8 +284,6 @@ class LocationService {
     }
   }
 
-  // isLocationPermissionGranted method removed
-
   Future<bool> _hasLocationPermission() async {
     final permission = await Geolocator.checkPermission();
     return permission == LocationPermission.whileInUse ||
@@ -482,12 +476,6 @@ class LocationService {
       headingAccuracy: 0,
     );
   }
-
-  // getLocationName method removed
-  // updateLocationName method removed
-  // getLocationStream method removed
-  // openLocationSettings method removed
-  // openAppSettings method removed
 
   /// Sets device location as default if no location preference exists
   Future<void> _setDefaultToDeviceLocation() async {

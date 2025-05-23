@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:muslim_deen/styles/app_styles.dart'; // Corrected path
+import 'package:muslim_deen/styles/app_styles.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -16,9 +16,6 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Determine if dark mode is active, to ensure correct status bar icon brightness
-    // final bool isDarkMode = brightness == Brightness.dark; // This was simplified
-
     return AppBar(
       title: Text(
         title,
