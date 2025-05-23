@@ -1,28 +1,29 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 
-import 'providers/providers.dart';
-import 'service_locator.dart';
-import 'services/error_handler_service.dart';
-import 'services/logger_service.dart';
-import 'styles/app_styles.dart'; // Import AppColors
-import 'views/home_view.dart';
-import 'views/mosque_view.dart';
-import 'views/qibla_view.dart';
-import 'views/settings_view.dart';
-import 'views/tesbih_view.dart';
-import 'widgets/error_boundary.dart';
+import 'package:muslim_deen/providers/providers.dart';
+import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/error_handler_service.dart';
+import 'package:muslim_deen/services/logger_service.dart';
+import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/views/home_view.dart';
+import 'package:muslim_deen/views/mosque_view.dart';
+import 'package:muslim_deen/views/qibla_view.dart';
+import 'package:muslim_deen/views/settings_view.dart';
+import 'package:muslim_deen/views/tesbih_view.dart';
+import 'package:muslim_deen/widgets/error_boundary.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await setupLocator(); // Initialize service locator first
+  await setupLocator();
 
   // Run non-critical async operations in parallel after locator setup
   final List<Future<void>> startupFutures = [
-    _requestPermissions(), // Handles notification permission directly, location is deferred
-    Future<void>(() async => tz.initializeTimeZones()), // Wrap in a Future
+    _requestPermissions(),
+    Future<void>(() async => tz.initializeTimeZones()),
   ];
   // LocationService.startPermissionFlow() is called during LocationService.init(),
   // which is called by PrayerService.init(), which is called by HomeView.
@@ -40,9 +41,8 @@ Future<void> main() async {
     // Decide if the app can continue or if this is a fatal error
   }
 
-  // Set up error handling for Flutter framework errors
   FlutterError.onError = (details) {
-    final errorHandler = locator<ErrorHandlerService>(); // Use locator
+    final errorHandler = locator<ErrorHandlerService>();
     errorHandler.reportError(
       AppError(
         message: 'Flutter framework error',
@@ -59,13 +59,6 @@ Future<void> main() async {
 Future<void> _requestPermissions() async {
   final LoggerService logger = locator<LoggerService>();
 
-  // Request location permission
-  // var locationStatus = await Permission.location.status;
-  // logger.info('Initial location permission status: $locationStatus');
-  // if (!locationStatus.isGranted) {
-  //   locationStatus = await Permission.location.request();
-  //   logger.info('Location permission status after request: $locationStatus');
-  // }
   logger.info(
     'Location permission request is now handled by LocationService.startPermissionFlow()',
   );
@@ -86,7 +79,6 @@ class MuslimDeenApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Log app start
     locator<LoggerService>().info('Application started');
 
     return Consumer(
@@ -102,39 +94,39 @@ class MuslimDeenApp extends StatelessWidget {
           darkTheme: ThemeData.dark().copyWith(
             primaryColor: AppColors.primary(
               Brightness.dark,
-            ), // Now very dark gray / black
+            ),
             scaffoldBackgroundColor: AppColors.background(
               Brightness.dark,
-            ), // Now black
+            ),
             colorScheme: ColorScheme.dark(
               primary: AppColors.primary(
                 Brightness.dark,
-              ), // Main interactive elements (very dark gray)
+              ),
               secondary: AppColors.accentGreen(
                 Brightness.dark,
-              ), // Accent color (green)
+              ),
               surface: AppColors.surface(
                 Brightness.dark,
-              ), // Cards, dialogs (very dark gray)
+              ),
               error: AppColors.error(Brightness.dark),
               onPrimary: AppColors.textPrimary(
                 Brightness.dark,
-              ), // Text on primary (white)
+              ),
               onSecondary: AppColors.textPrimary(
                 Brightness.dark,
-              ), // Text on accent (white or black depending on accent's brightness)
+              ),
               onSurface: AppColors.textPrimary(
                 Brightness.dark,
-              ), // Text on surface (white)
+              ),
               onError: AppColors.textPrimary(
                 Brightness.dark,
-              ), // Text on error (white)
-              brightness: Brightness.dark, // Explicitly set brightness
+              ),
+              brightness: Brightness.dark,
             ),
             appBarTheme: AppBarTheme(
               backgroundColor: AppColors.surface(
                 Brightness.dark,
-              ), // AppBar uses surface color
+              ),
               elevation: 1,
               iconTheme: IconThemeData(
                 color: AppColors.textPrimary(Brightness.dark),
@@ -152,10 +144,10 @@ class MuslimDeenApp extends StatelessWidget {
             dividerColor: AppColors.divider(Brightness.dark),
             iconTheme: IconThemeData(
               color: AppColors.iconInactive(Brightness.dark),
-            ), // Default icon color
+            ),
             primaryIconTheme: IconThemeData(
               color: AppColors.accentGreen(Brightness.dark),
-            ), // Icons that should be green
+            ),
             textTheme: TextTheme(
               displayLarge: TextStyle(
                 color: AppColors.textPrimary(Brightness.dark),
@@ -186,20 +178,20 @@ class MuslimDeenApp extends StatelessWidget {
               ),
               labelLarge: TextStyle(
                 color: AppColors.accentGreen(Brightness.dark),
-              ), // Buttons use accent green
+              ),
             ),
             buttonTheme: ButtonThemeData(
               buttonColor: AppColors.accentGreen(
                 Brightness.dark,
-              ), // Buttons use accent green
+              ),
               textTheme:
                   ButtonTextTheme
-                      .primary, // Ensures text on button is contrasting
+                      .primary,
               colorScheme: ColorScheme.dark(
                 primary: AppColors.accentGreen(Brightness.dark),
                 onPrimary: AppColors.textPrimary(
                   Brightness.dark,
-                ), // Text on green buttons
+                ),
               ),
             ),
             elevatedButtonTheme: ElevatedButtonThemeData(
@@ -220,7 +212,7 @@ class MuslimDeenApp extends StatelessWidget {
                 if (states.contains(WidgetState.selected)) {
                   return AppColors.accentGreen(Brightness.dark);
                 }
-                return AppColors.accentGray(Brightness.dark); // Off state
+                return AppColors.accentGray(Brightness.dark);
               }),
               trackColor: WidgetStateProperty.resolveWith<Color?>((
                 Set<WidgetState> states,
@@ -228,11 +220,11 @@ class MuslimDeenApp extends StatelessWidget {
                 if (states.contains(WidgetState.selected)) {
                   return AppColors.switchTrackActive(
                     Brightness.dark,
-                  ); // Uses accentGreen with alpha
+                  );
                 }
                 return AppColors.accentGray(
                   Brightness.dark,
-                ).withAlpha(50); // Off state track
+                ).withAlpha(50);
               }),
             ),
             visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -240,20 +232,19 @@ class MuslimDeenApp extends StatelessWidget {
               backgroundColor: AppColors.surface(Brightness.dark),
               selectedItemColor: AppColors.accentGreen(
                 Brightness.dark,
-              ), // Selected item is green
+              ),
               unselectedItemColor: AppColors.iconInactive(Brightness.dark),
             ),
             floatingActionButtonTheme: FloatingActionButtonThemeData(
               backgroundColor: AppColors.accentGreen(
                 Brightness.dark,
-              ), // FAB is green
+              ),
               foregroundColor: AppColors.textPrimary(Brightness.dark),
             ),
           ),
           themeMode: settingsState.themeMode,
           home: const MainScreen(),
           navigatorObservers: [
-            // Add navigation observer for route logging
             _NavigationObserver(),
           ],
         );
@@ -323,7 +314,6 @@ class _MainScreenState extends State<MainScreen> {
     final String from = _tabNames[_selectedIndex] ?? 'Unknown';
     final String to = _tabNames[index] ?? 'Unknown';
 
-    // Log navigation between tabs
     _logger.logNavigation(
       from,
       to,
@@ -346,7 +336,7 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     return Scaffold(
-      body: currentView, // Use the instantiated or cached view
+      body: currentView,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
@@ -391,7 +381,7 @@ class _MainScreenState extends State<MainScreen> {
               color:
                   isSelected
                       ? theme.colorScheme.primaryContainer
-                      : Colors.transparent, // Use theme color
+                      : Colors.transparent,
               shape: BoxShape.circle,
             ),
             child: Icon(

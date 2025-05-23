@@ -1,11 +1,8 @@
-// Standard library imports
-
-// Third-party package imports
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Added for SystemUiOverlayStyle
+import 'package:flutter/services.dart';
 
-// Local application imports
-import '../styles/app_styles.dart';
+import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/widgets/custom_app_bar.dart'; // Added import
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -13,13 +10,14 @@ class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    final bool isDarkMode = brightness == Brightness.dark;
+    // final bool isDarkMode = brightness == Brightness.dark; // No longer needed for scaffoldBg
 
     // Define colors similar to TesbihView
-    final Color scaffoldBg =
-        isDarkMode
-            ? AppColors.surface(brightness)
-            : AppColors.background(brightness);
+    // final Color scaffoldBg = // Replaced by AppColors.getScaffoldBackground
+    //     isDarkMode
+    //         ? AppColors.surface(brightness)
+    //         : AppColors.background(brightness);
+    final bool isDarkMode = brightness == Brightness.dark; // Still needed for other color logic
     final Color contentSurface =
         isDarkMode
             ? const Color(0xFF2C2C2C)
@@ -27,21 +25,10 @@ class AboutScreen extends StatelessWidget {
     final Color textColor = AppColors.textPrimary(brightness);
 
     return Scaffold(
-      backgroundColor: scaffoldBg,
-      appBar: AppBar(
-        title: Text(
-          "About", // Replaced localizations.aboutTitle
-          style: AppTextStyles.appTitle(brightness),
-        ),
-        backgroundColor: AppColors.primary(brightness),
-        elevation: 2.0,
-        shadowColor: AppColors.shadowColor(brightness),
-        centerTitle: true,
-        systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: AppColors.primary(brightness),
-          statusBarIconBrightness:
-              isDarkMode ? Brightness.light : Brightness.light,
-        ),
+      backgroundColor: AppColors.getScaffoldBackground(brightness),
+      appBar: CustomAppBar(
+        title: "About",
+        brightness: brightness,
       ),
       body: Center(
         child: Container(

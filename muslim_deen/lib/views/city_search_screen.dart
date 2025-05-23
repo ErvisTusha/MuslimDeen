@@ -1,20 +1,18 @@
-// Standard library imports
 import 'dart:async';
 
-// Flutter imports
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Added for SystemUiOverlayStyle
+import 'package:flutter/services.dart';
 
-// Third-party package imports
 import 'package:geocoding/geocoding.dart';
 
-// Local application imports
-import '../service_locator.dart';
-import '../services/location_service.dart';
-import '../services/logger_service.dart';
-import '../styles/app_styles.dart';
-import '../widgets/city_search_bar.dart';
-import '../widgets/city_search_results_list.dart';
+import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/location_service.dart';
+import 'package:muslim_deen/services/logger_service.dart';
+import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/widgets/city_search_bar.dart';
+import 'package:muslim_deen/widgets/city_search_results_list.dart';
+import 'package:muslim_deen/widgets/custom_app_bar.dart'; // Added import
+import 'package:muslim_deen/widgets/message_display.dart'; // Added import
 
 class CitySearchScreen extends StatefulWidget {
   const CitySearchScreen({super.key});
@@ -89,7 +87,6 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
       _isLoading = true;
       _errorMessage = null;
       _searchResults.clear();
-      // _searchAttempts++; // Moved to _onSearchChanged or manage per query
     });
     _searchAttempts++; // Increment for the current query attempt
 
@@ -343,13 +340,14 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    final bool isDarkMode = brightness == Brightness.dark;
+    // final bool isDarkMode = brightness == Brightness.dark; // No longer needed for scaffoldBg
 
     // Define colors similar to TesbihView
-    final Color scaffoldBg =
-        isDarkMode
-            ? AppColors.surface(brightness)
-            : AppColors.background(brightness);
+    // final Color scaffoldBg = // Replaced by AppColors.getScaffoldBackground
+    //     isDarkMode
+    //         ? AppColors.surface(brightness)
+    //         : AppColors.background(brightness);
+    final bool isDarkMode = brightness == Brightness.dark; // Still needed for other color logic
     final Color contentSurface =
         isDarkMode
             ? const Color(0xFF2C2C2C)
@@ -367,21 +365,10 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
             : AppColors.primary(brightness).withAlpha(30);
 
     return Scaffold(
-      backgroundColor: scaffoldBg,
-      appBar: AppBar(
-        title: Text(
-          "Set Location Manually",
-          style: AppTextStyles.appTitle(brightness),
-        ),
-        backgroundColor: AppColors.primary(brightness),
-        elevation: 2.0,
-        shadowColor: AppColors.shadowColor(brightness),
-        centerTitle: true,
-        systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: AppColors.primary(brightness),
-          statusBarIconBrightness:
-              isDarkMode ? Brightness.light : Brightness.light,
-        ),
+      backgroundColor: AppColors.getScaffoldBackground(brightness),
+      appBar: CustomAppBar(
+        title: "Set Location Manually",
+        brightness: brightness,
       ),
       body: Column(
         children: [
@@ -416,65 +403,25 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
                 ),
               ),
             ),
-
+          
           if (_errorMessage != null && !_isLoading)
-            Container(
-              width: double.infinity,
-              // color: contentSurface, // Removed: Already in BoxDecoration
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20.0,
-                vertical: 16.0,
-              ),
-              margin: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 8.0,
-              ),
-              decoration: BoxDecoration(
-                color: contentSurface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: errorColor.withAlpha(100)),
-              ),
-              child: Text(
-                _errorMessage!,
-                style: AppTextStyles.label(
-                  brightness,
-                ).copyWith(color: errorColor, fontSize: 15),
-                textAlign: TextAlign.center,
-              ),
+            MessageDisplay(
+              message: _errorMessage!,
+              isError: true,
+              icon: Icons.error_outline,
+              // customContainerStyle can be used here if needed to match original exactly
             ),
 
           if (_searchController.text.isNotEmpty &&
               _searchResults.isEmpty &&
               !_isLoading &&
               _errorMessage == null)
-            Container(
-              width: double.infinity,
-              // color: contentSurface, // Removed: Already in BoxDecoration
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20.0,
-                vertical: 16.0,
-              ),
-              margin: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 8.0,
-              ),
-              decoration: BoxDecoration(
-                color: contentSurface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: borderColor.withAlpha(isDarkMode ? 100 : 150),
-                ),
-              ),
-              child: Text(
-                _searchController.text.length <
-                        3 // Adjusted for better UX
-                    ? "Type at least 3 characters to search"
-                    : "No locations found for \"${_searchController.text}\"",
-                style: AppTextStyles.label(
-                  brightness,
-                ).copyWith(color: hintColor, fontSize: 15),
-                textAlign: TextAlign.center,
-              ),
+            MessageDisplay(
+              message: _searchController.text.length < 3
+                  ? "Type at least 3 characters to search"
+                  : "No locations found for \"${_searchController.text}\"",
+              icon: Icons.search_off_rounded,
+              // customContainerStyle can be used here if needed to match original exactly
             ),
 
           Expanded(

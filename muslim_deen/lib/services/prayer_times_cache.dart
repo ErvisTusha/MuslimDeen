@@ -31,29 +31,39 @@ class PrayerTimesCache {
   ) async {
     try {
       final cacheKey = _generateCacheKey(prayerTimes.date, coordinates);
-
-      // Convert to JSON for storage - This is handled by CacheService now
-      final Map<String, dynamic> prayerTimesJson = {
-        'fajr': prayerTimes.fajr?.toIso8601String(),
-        'sunrise': prayerTimes.sunrise?.toIso8601String(),
-        'dhuhr': prayerTimes.dhuhr?.toIso8601String(),
-        'asr': prayerTimes.asr?.toIso8601String(),
-        'maghrib': prayerTimes.maghrib?.toIso8601String(),
-        'isha': prayerTimes.isha?.toIso8601String(),
-        'date': prayerTimes.date.toIso8601String(),
-        'hijriDay': prayerTimes.hijriDay,
-        'hijriMonth': prayerTimes.hijriMonth,
-        'hijriYear': prayerTimes.hijriYear,
-        'hijriMonthName': prayerTimes.hijriMonthName,
-        'cachedAt': DateTime.now().toIso8601String(),
-      };
       // Use CacheService's setCache method with appropriate expiration
-      await _cacheService.setCache(
-        cacheKey,
-        prayerTimesJson,
-        expirationMinutes: _cacheDurationDays * 24 * 60,
-      );
-      _logger.debug('Cached prayer times for ${prayerTimes.date}');
+      // Note: CacheService.setCache was removed in Subtask 15.
+      // For this refactoring, I will use CacheService.saveData directly,
+      // assuming CacheService is responsible for handling JSON encoding if needed,
+      // or that PrayerTimesModel.toJson() returns a Map<String, dynamic> suitable for it.
+      // The CacheService.saveData currently handles different types including String (for JSON).
+      // The setCache method previously handled jsonEncode and timestamping.
+      // We will replicate that logic here or assume saveData can handle a Map.
+      // For now, let's assume saveData will store the JSON string correctly.
+      // And CacheService.getCache (now getData) will retrieve it.
+      // CacheService.setCache used expirationMinutes, CacheService.saveData does not directly.
+      // This implies CacheService itself needs to handle expiration based on a new parameter,
+      // or we use a different key structure with expiration, or rely on PrayerTimesCache's own logic.
+      // For now, will use the existing CacheService.saveData and getCache (getData) structure.
+      // The CacheService.setCache implementation was:
+      //   final String jsonData = jsonEncode(data);
+      //   final int timestamp = DateTime.now().add(Duration(minutes: expirationMinutes)).millisecondsSinceEpoch;
+      //   await _prefs.setString('${key}_data', jsonData);
+      //   await _prefs.setInt('${key}_expiration', timestamp);
+      // We need to replicate this logic if CacheService.saveData doesn't do it.
+      // Given CacheService.saveData just saves the value and CacheService.getData just gets it,
+      // PrayerTimesCache MUST handle the JSON conversion and expiration logic itself if CacheService doesn't.
+      // The CacheService setCache/getCache methods that handled this were removed.
+      // I will re-implement the core logic here.
+
+      final Map<String, dynamic> prayerTimesJson = prayerTimes.toJson();
+      // Manually handle expiration like the old CacheService.setCache
+      final int expirationTimestamp = DateTime.now().add(Duration(days: _cacheDurationDays)).millisecondsSinceEpoch;
+      
+      await _cacheService.saveData(cacheKey, jsonEncode(prayerTimesJson)); // Save data
+      await _cacheService.saveData('${cacheKey}_expiration', expirationTimestamp); // Save expiration
+
+      _logger.debug('Cached prayer times for ${prayerTimes.date} with key $cacheKey until ${DateTime.fromMillisecondsSinceEpoch(expirationTimestamp)}');
 
       // Clean up old cached entries
       await _cleanupOldCache();
@@ -69,33 +79,24 @@ class PrayerTimesCache {
   ) async {
     try {
       final cacheKey = _generateCacheKey(date, coordinates);
-      // Use CacheService's getCache method
-      final cachedData = _cacheService.getCache<Map<String, dynamic>>(cacheKey);
-
-      if (cachedData == null) {
+      
+      // Manually handle expiration like the old CacheService.getCache
+      final int? expirationTimestamp = _cacheService.getData('${cacheKey}_expiration') as int?;
+      if (expirationTimestamp == null || expirationTimestamp < DateTime.now().millisecondsSinceEpoch) {
+        await _cacheService.removeData(cacheKey); // Remove data
+        await _cacheService.removeData('${cacheKey}_expiration'); // Remove expiration
+        _logger.debug('Cached prayer times for $date with key $cacheKey expired or not found.');
         return null;
       }
 
-      final Map<String, dynamic> prayerTimesJson = cachedData;
-
-      // Helper to safely parse DateTime?
-      DateTime? safeParseDateTime(String? dateString) {
-        return dateString == null ? null : DateTime.tryParse(dateString);
+      final String? jsonData = _cacheService.getData(cacheKey) as String?;
+      if (jsonData == null) {
+        return null;
       }
-
-      return PrayerTimesModel(
-        fajr: safeParseDateTime(prayerTimesJson['fajr'] as String?),
-        sunrise: safeParseDateTime(prayerTimesJson['sunrise'] as String?),
-        dhuhr: safeParseDateTime(prayerTimesJson['dhuhr'] as String?),
-        asr: safeParseDateTime(prayerTimesJson['asr'] as String?),
-        maghrib: safeParseDateTime(prayerTimesJson['maghrib'] as String?),
-        isha: safeParseDateTime(prayerTimesJson['isha'] as String?),
-        date: DateTime.parse(prayerTimesJson['date'] as String),
-        hijriDay: prayerTimesJson['hijriDay'] as int,
-        hijriMonth: prayerTimesJson['hijriMonth'] as int,
-        hijriYear: prayerTimesJson['hijriYear'] as int,
-        hijriMonthName: prayerTimesJson['hijriMonthName'] as String,
-      );
+      
+      final Map<String, dynamic> prayerTimesJson = jsonDecode(jsonData) as Map<String, dynamic>;
+      _logger.debug('Retrieved cached prayer times for $date with key $cacheKey');
+      return PrayerTimesModel.fromJson(prayerTimesJson);
     } catch (e, s) {
       _logger.error(
         'Error retrieving cached prayer times',
@@ -149,32 +150,4 @@ class PrayerTimesCache {
     }
   }
 
-  /// Prefetch prayer times for the next several days
-  Future<void> prefetchPrayerTimes(
-    Future<PrayerTimesModel> Function(DateTime) getPrayerTimes,
-    Coordinates coordinates, {
-    int daysToFetch = 7,
-  }) async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    for (int i = 0; i < daysToFetch; i++) {
-      final date = today.add(Duration(days: i));
-
-      final cached = await getCachedPrayerTimes(date, coordinates);
-      if (cached == null) {
-        try {
-          _logger.debug('Prefetching prayer times for $date');
-          final prayerTimes = await getPrayerTimes(date);
-          await cachePrayerTimes(prayerTimes, coordinates);
-        } catch (e, s) {
-          _logger.error(
-            'Error prefetching prayer times for $date',
-            error: e,
-            stackTrace: s,
-          );
-        }
-      }
-    }
-  }
 }

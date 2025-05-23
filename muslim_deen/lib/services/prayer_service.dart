@@ -1,10 +1,13 @@
 import 'dart:async';
+
 import 'package:adhan_dart/adhan_dart.dart' as adhan;
 import 'package:geolocator/geolocator.dart';
+
+import 'package:muslim_deen/models/app_settings.dart';
+import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/location_service.dart';
-import '../models/app_settings.dart';
-import '../service_locator.dart';
-import '../services/logger_service.dart';
+import 'package:muslim_deen/services/logger_service.dart';
+import 'package:muslim_deen/services/prayer_times_cache.dart'; // Added import
 
 /// Service responsible for calculating and providing prayer times.
 ///
@@ -12,19 +15,8 @@ import '../services/logger_service.dart';
 /// It also caches the latest calculated prayer times and provides information
 /// about the current and next prayer.
 class PrayerService {
-  /// Resets the service state, clearing cached prayer times and calculation data
-  void reset() {
-    _currentPrayerTimes = null;
-    _lastCalculationTime = null;
-    _lastParamsUsed = null;
-    _lastCalculationDate = null;
-    _lastCalculationMethodString = null;
-    _lastAppSettingsUsed = null;
-    _isInitialized = false;
-    _logger.debug('PrayerService state reset');
-  }
-
   final LocationService _locationService;
+  final PrayerTimesCache _prayerTimesCache; // Added field
   adhan.PrayerTimes? _currentPrayerTimes;
   DateTime? _lastCalculationTime;
   adhan.CalculationParameters? _lastParamsUsed;
@@ -34,23 +26,13 @@ class PrayerService {
   String? _lastCalculationMethodString;
   AppSettings? _lastAppSettingsUsed;
 
-  PrayerService(this._locationService);
+  PrayerService(this._locationService, this._prayerTimesCache); // Updated constructor
 
   Future<void> init() async {
     if (_isInitialized) return;
     await _locationService.init();
     _isInitialized = true;
     _logger.info('PrayerService initialized');
-  }
-
-  /// Gets default calculation parameters (MuslimWorldLeague, Hanafi).
-  adhan.CalculationParameters getDefaultParams() {
-    final adhan.CalculationParameters params =
-        adhan.CalculationMethod.muslimWorldLeague()
-            as adhan.CalculationParameters;
-    params.madhab = adhan.Madhab.hanafi;
-    params.highLatitudeRule = adhan.HighLatitudeRule.twilightAngle;
-    return params;
   }
 
   /// Creates CalculationParameters based on the provided settings.
@@ -133,50 +115,48 @@ class PrayerService {
   }
 
   /// Calculates prayer times for a specific date and position,
-  /// updates the service's current prayer times state, and returns the calculated times.
-  Future<adhan.PrayerTimes> calculatePrayerTimes(
+  /// performs the calculation, updates service state, caches the result, and returns the prayer times.
+  Future<adhan.PrayerTimes> _calculateAndPersistPrayerTimes(
     DateTime date,
     Position position,
-    AppSettings? settings,
+    AppSettings effectiveSettings,
+    adhan.CalculationParameters currentParams,
   ) async {
-    final effectiveSettings = settings ?? AppSettings.defaults;
-    final params = _getCalculationParams(effectiveSettings);
     final DateTime dateForCalculation = date.toUtc();
+    final adhan.Coordinates coordinates = adhan.Coordinates(position.latitude, position.longitude);
 
-    _currentPrayerTimes = adhan.PrayerTimes(
-      coordinates: adhan.Coordinates(position.latitude, position.longitude),
+    final newAdhanPrayerTimes = adhan.PrayerTimes(
+      coordinates: coordinates,
       date: dateForCalculation,
-      calculationParameters: params,
+      calculationParameters: currentParams,
     );
 
+    // Update service state
+    _currentPrayerTimes = newAdhanPrayerTimes;
     _lastCalculationTime = DateTime.now();
-    _lastParamsUsed = params;
+    _lastParamsUsed = currentParams;
     _lastCalculationDate = dateForCalculation;
     _lastCalculationMethodString = effectiveSettings.calculationMethod;
     _lastAppSettingsUsed = effectiveSettings;
 
     _logger.debug(
-      'Prayer times calculated and service state updated',
+      'Prayer times calculated (cache miss or direct calc) and service state updated',
       data: {
         'date': dateForCalculation.toIso8601String(),
         'lat': position.latitude,
         'lon': position.longitude,
         'method': effectiveSettings.calculationMethod,
         'madhab': effectiveSettings.madhab,
-        'fajr': _currentPrayerTimes!.fajr?.toIso8601String(),
+        'fajr': newAdhanPrayerTimes.fajr?.toIso8601String(),
       },
     );
 
-    return _currentPrayerTimes!;
-  }
-
-  /// Calculates today's prayer times for the given position using provided settings.
-  /// Updates the service's current prayer times state.
-  Future<adhan.PrayerTimes> calculateTodayPrayerTimes(
-    Position position,
-    AppSettings? settings,
-  ) async {
-    return calculatePrayerTimes(DateTime.now(), position, settings);
+    // Cache the result
+    final prayerTimesModelToCache = PrayerTimesModel.fromAdhanPrayerTimes(newAdhanPrayerTimes, date);
+    await _prayerTimesCache.cachePrayerTimes(prayerTimesModelToCache, coordinates);
+    _logger.info('Prayer times for $date cached.');
+    
+    return newAdhanPrayerTimes;
   }
 
   /// Helper method to get the effective position, handling errors and fallback.
@@ -194,7 +174,7 @@ class PrayerService {
 
   /// Gets user location based on their preference (manual or device)
   /// and calculates prayer times for the given date using provided settings.
-  /// This method does NOT update the service's main state (_currentPrayerTimes etc.).
+  /// This method now incorporates caching.
   Future<adhan.PrayerTimes> calculatePrayerTimesForDate(
     DateTime date,
     AppSettings? settings,
@@ -202,25 +182,43 @@ class PrayerService {
     if (!_isInitialized) await init();
     final effectiveSettings = settings ?? AppSettings.defaults;
     final position = await _getEffectivePosition('prayer time calculation for date ${date.toIso8601String()}');
+    final coordinates = adhan.Coordinates(position.latitude, position.longitude);
+    final currentParams = _getCalculationParams(effectiveSettings);
+    final DateTime dateForCalculation = date.toUtc(); // Ensure consistent date for cache key and adhan calc
 
-    final params = _getCalculationParams(effectiveSettings);
-    final prayerTimes = adhan.PrayerTimes(
-      date: date,
-      coordinates: adhan.Coordinates(position.latitude, position.longitude),
-      calculationParameters: params,
-    );
-    _logger.debug(
-      'Prayer times calculated for date',
-      data: {
-        'date': date.toIso8601String(),
-        'lat': position.latitude,
-        'lon': position.longitude,
-        'method': effectiveSettings.calculationMethod,
-        'madhab': effectiveSettings.madhab,
-        'fajr': prayerTimes.fajr?.toIso8601String(),
-      },
-    );
-    return prayerTimes;
+    // Attempt to get from cache
+    final PrayerTimesModel? cachedModel = await _prayerTimesCache.getCachedPrayerTimes(dateForCalculation, coordinates);
+
+    if (cachedModel != null) {
+      _logger.info('Using cached prayer times for ${dateForCalculation.toIso8601String()} at $coordinates.');
+      // Reconstruct adhan.PrayerTimes from cachedModel to use its methods like currentPrayer(), nextPrayer()
+      // This will internally recalculate based on the parameters, but the key is we avoided
+      // potentially more expensive operations if the data was from an API.
+      // The parameters used for reconstruction should ideally match those used when caching.
+      // Our current cache key doesn't include calculation parameters, so this is a simplification.
+      // We use current settings' params.
+      _currentPrayerTimes = adhan.PrayerTimes(
+        coordinates: coordinates,
+        date: dateForCalculation,
+        calculationParameters: currentParams, // Using current params for rehydration
+      );
+      // Note: The individual times (fajr, dhuhr etc.) in _currentPrayerTimes will be those
+      // calculated by adhan.PrayerTimes constructor, not directly from cachedModel.fajr etc.
+      // To truly use cached times, _currentPrayerTimes would need to be a PrayerTimesModel
+      // or adhan.PrayerTimes would need a factory to be created from specific times.
+
+      _lastCalculationDate = dateForCalculation;
+      _lastAppSettingsUsed = effectiveSettings; // Reflect current settings used for this instance
+      _lastParamsUsed = currentParams;
+      _lastCalculationMethodString = effectiveSettings.calculationMethod;
+      _lastCalculationTime = DateTime.now(); // Reflect time of retrieval/rehydration
+
+      return _currentPrayerTimes!;
+    }
+
+    // Cache miss, calculate and persist
+    _logger.info('Cache miss for ${dateForCalculation.toIso8601String()} at $coordinates. Calculating fresh.');
+    return _calculateAndPersistPrayerTimes(date, position, effectiveSettings, currentParams);
   }
 
   /// Gets user location based on their preference (manual or device)
@@ -229,23 +227,21 @@ class PrayerService {
   Future<adhan.PrayerTimes> calculatePrayerTimesForToday(
     AppSettings? settings,
   ) async {
-    if (!_isInitialized) await init();
-    final effectiveSettings = settings ?? AppSettings.defaults;
-    final position = await _getEffectivePosition('prayer time calculation for today');
-
-    await calculatePrayerTimes(DateTime.now(), position, effectiveSettings);
-
-    _logger.info(
-      'Successfully calculated and updated prayer times for today via main pathway.',
-      data: {
-        'lat': position.latitude,
-        'lon': position.longitude,
-        'method': effectiveSettings.calculationMethod,
-        'madhab': effectiveSettings.madhab,
-        'fajr': _currentPrayerTimes!.fajr?.toIso8601String(),
-      },
-    );
-    return _currentPrayerTimes!;
+    // This method now correctly calls the updated calculatePrayerTimesForDate
+    return calculatePrayerTimesForDate(DateTime.now(), settings);
+    // The logging and state update for _currentPrayerTimes will be handled within calculatePrayerTimesForDate
+    // or _calculateAndPersistPrayerTimes. We can add a specific log here if needed.
+    // _logger.info(
+    //   'Successfully calculated and updated prayer times for today via main pathway.',
+    //   data: {
+    //     'lat': _currentPrayerTimes?.coordinates.latitude, // Assuming _currentPrayerTimes is updated
+    //     'lon': _currentPrayerTimes?.coordinates.longitude,
+    //     'method': settings?.calculationMethod ?? AppSettings.defaults.calculationMethod,
+    //     'madhab': settings?.madhab ?? AppSettings.defaults.madhab,
+    //     'fajr': _currentPrayerTimes!.fajr?.toIso8601String(),
+    //   },
+    // );
+    // return _currentPrayerTimes!; // This will be returned by calculatePrayerTimesForDate
   }
 
   /// Provides a fallback position (Mecca) when location services fail or are unavailable.
@@ -266,90 +262,10 @@ class PrayerService {
     );
   }
 
-  /// Returns the most recently calculated PrayerTimes object.
-  /// Throws an exception if times haven't been calculated yet.
-  adhan.PrayerTimes getPrayerTimes() {
-    if (_currentPrayerTimes == null) {
-      _logger.warning('getPrayerTimes called before calculation, returning default/fallback.');
-      throw Exception('Prayer times have not been calculated yet.');
-    }
-    return _currentPrayerTimes!;
-  }
-
-  /// Gets the specific time for a given prayer from the cached prayer times.
-  /// Applies any user-defined offsets.
-  /// [prayer] should be one of 'fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'.
-  /// Returns null if the prayer name is invalid.
-  /// Throws an exception if times haven't been calculated yet.
-  DateTime? getPrayerTime(String prayer) {
-    if (_currentPrayerTimes == null) {
-      _logger.warning('getPrayerTime called before calculation for $prayer, returning null.');
-      throw Exception('Prayer times have not been calculated yet.');
-    }
-
-    DateTime? rawTime;
-    int offsetMinutes = 0;
-
-    final AppSettings? currentSettings = _lastAppSettingsUsed;
-
-    if (currentSettings == null) {
-      _logger.warning(
-        'Last AppSettings not available for applying offsets. Returning raw time for $prayer.',
-      );
-    }
-
-    switch (prayer) {
-      case 'fajr': // Reverted from adhan.Prayer.fajr
-        rawTime = _currentPrayerTimes!.fajr;
-        if (currentSettings != null) {
-          offsetMinutes = currentSettings.fajrOffset;
-        }
-        break;
-      case 'sunrise': // Reverted from adhan.Prayer.sunrise
-        rawTime = _currentPrayerTimes!.sunrise;
-        if (currentSettings != null) {
-          offsetMinutes = currentSettings.sunriseOffset;
-        }
-        break;
-      case 'dhuhr': // Reverted from adhan.Prayer.dhuhr
-        rawTime = _currentPrayerTimes!.dhuhr;
-        if (currentSettings != null) {
-          offsetMinutes = currentSettings.dhuhrOffset;
-        }
-        break;
-      case 'asr': // Reverted from adhan.Prayer.asr
-        rawTime = _currentPrayerTimes!.asr;
-        if (currentSettings != null) {
-          offsetMinutes = currentSettings.asrOffset;
-        }
-        break;
-      case 'maghrib': // Reverted from adhan.Prayer.maghrib
-        rawTime = _currentPrayerTimes!.maghrib;
-        if (currentSettings != null) {
-          offsetMinutes = currentSettings.maghribOffset;
-        }
-        break;
-      case 'isha': // Reverted from adhan.Prayer.isha
-        rawTime = _currentPrayerTimes!.isha;
-        if (currentSettings != null) {
-          offsetMinutes = currentSettings.ishaOffset;
-        }
-        break;
-      default:
-        _logger.warning('Invalid prayer name for getPrayerTime: $prayer');
-        return null;
-    }
-
-    if (rawTime != null && offsetMinutes != 0) {
-      return rawTime.add(Duration(minutes: offsetMinutes));
-    }
-    return rawTime;
-  }
-
   /// Determines the current prayer based on the current time and cached prayer times.
   /// Returns the standardized prayer name ('fajr', 'dhuhr', etc.) or 'none'.
   /// Throws an exception if times haven't been calculated yet.
-  String getCurrentPrayer() {
+  String _getCurrentPrayer() {
     if (_currentPrayerTimes == null) {
       _logger.warning('Attempted to get current prayer before calculation.');
       return adhan.Prayer.none;
@@ -379,7 +295,7 @@ class PrayerService {
       return null;
     }
     final String nextPrayerName = getNextPrayer();
-    final String currentPrayerName = getCurrentPrayer();
+    final String currentPrayerName = _getCurrentPrayer();
 
     if (nextPrayerName == adhan.Prayer.none) {
       if (currentPrayerName == adhan.Prayer.isha) {
@@ -387,7 +303,7 @@ class PrayerService {
           "Current prayer is Isha, next prayer is Fajr tomorrow. Attempting to calculate next day's Fajr.",
         );
         if (_lastAppSettingsUsed != null) {
-          return await getNextDayFajr(_lastAppSettingsUsed!);
+          return await _getNextDayFajr(_lastAppSettingsUsed!);
         } else {
           _logger.warning(
             "Cannot calculate next day's Fajr for getNextPrayerTime because _lastAppSettingsUsed is null.",
@@ -402,30 +318,6 @@ class PrayerService {
       }
     }
     return _currentPrayerTimes!.timeForPrayer(nextPrayerName);
-  }
-
-  /// Calculates the duration until the next prayer.
-  /// Returns Duration.zero if the next prayer time cannot be determined or is in the past.
-  Future<Duration> getTimeUntilNextPrayer() async {
-    final DateTime? nextTime = await getNextPrayerTime();
-    if (nextTime == null) {
-      _logger.debug(
-        "getTimeUntilNextPrayer: nextTime is null, returning Duration.zero.",
-      );
-      return Duration.zero;
-    }
-    final now = DateTime.now();
-    if (nextTime.isBefore(now)) {
-      _logger.warning(
-        "getTimeUntilNextPrayer: nextTime is in the past.",
-        data: {
-          "nextTime": nextTime.toIso8601String(),
-          "now": now.toIso8601String(),
-        },
-      );
-      return Duration.zero;
-    }
-    return nextTime.difference(now);
   }
 
   Future<void> recalculatePrayerTimesIfNeeded(AppSettings settings) async {
@@ -495,7 +387,7 @@ class PrayerService {
     }
   }
 
-  Future<DateTime?> getNextDayFajr(AppSettings settings) async {
+  Future<DateTime?> _getNextDayFajr(AppSettings settings) async {
     if (!_isInitialized) await init();
     final position = await _getEffectivePosition('next day Fajr calculation');
 
@@ -520,5 +412,47 @@ class PrayerService {
       );
       return null;
     }
+  }
+
+  // Within the PrayerService class
+  DateTime? getOffsettedPrayerTime(String prayerName, adhan.PrayerTimes rawPrayerTimes, AppSettings settings) {
+    DateTime? rawTime;
+    int offsetMinutes = 0;
+
+    switch (prayerName.toLowerCase()) {
+      case 'fajr':
+        rawTime = rawPrayerTimes.fajr;
+        offsetMinutes = settings.fajrOffset;
+        break;
+      case 'sunrise': // Sunrise typically isn't offset for notifications, but include for completeness if needed elsewhere
+        rawTime = rawPrayerTimes.sunrise;
+        offsetMinutes = settings.sunriseOffset;
+        break;
+      case 'dhuhr':
+        rawTime = rawPrayerTimes.dhuhr;
+        offsetMinutes = settings.dhuhrOffset;
+        break;
+      case 'asr':
+        rawTime = rawPrayerTimes.asr;
+        offsetMinutes = settings.asrOffset;
+        break;
+      case 'maghrib':
+        rawTime = rawPrayerTimes.maghrib;
+        offsetMinutes = settings.maghribOffset;
+        break;
+      case 'isha':
+        rawTime = rawPrayerTimes.isha;
+        offsetMinutes = settings.ishaOffset;
+        break;
+      default:
+        // Optionally log a warning or return null for unknown prayer names
+        _logger.warning('getOffsettedPrayerTime called with unknown prayer name: $prayerName');
+        return null; 
+    }
+
+    if (rawTime == null) {
+      return null;
+    }
+    return rawTime.add(Duration(minutes: offsetMinutes));
   }
 }

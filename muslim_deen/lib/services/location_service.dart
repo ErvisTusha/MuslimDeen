@@ -1,19 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
-import '../services/logger_service.dart';
 
-/// Custom exception for location service related errors
-class LocationServiceException implements Exception {
-  final String message;
-  const LocationServiceException(this.message);
-
-  @override
-  String toString() => 'LocationServiceException: $message';
-}
+// LocationServiceException class removed
 
 /// A service that handles location-related functionality including device location,
 /// manual location settings, and location streaming.
@@ -28,14 +23,11 @@ enum PermissionRequestState {
 
 class LocationService {
   final LoggerService _logger = locator<LoggerService>();
-  // Permission request state
   PermissionRequestState _permissionState = PermissionRequestState.notStarted;
   final _permissionStateController =
       StreamController<PermissionRequestState>.broadcast();
 
-  Stream<PermissionRequestState> get permissionState =>
-      _permissionStateController.stream;
-  // Private fields
+  // permissionState getter removed
   SharedPreferences? _prefs;
   StreamSubscription<Position>? _locationSubscription;
   Position? _lastKnownPosition; // For persistent storage fallback
@@ -58,13 +50,11 @@ class LocationService {
   DateTime? _lastDevicePositionFetchTime;
   static const Duration _deviceLocationCacheDuration = Duration(seconds: 30);
 
-  // Public getters
   Stream<bool> get locationStatus =>
       _locationStatusController?.stream ?? Stream.value(false);
   bool get isLocationBlocked => _isLocationPermissionBlocked;
 
-  // Constants
-  static const LocationSettings defaultLocationSettings = LocationSettings(
+  static const LocationSettings _defaultLocationSettings = LocationSettings(
     accuracy: LocationAccuracy.high,
     distanceFilter: 100, // Update only if moved 100 meters
     timeLimit: Duration(seconds: 10), // Add timeout to prevent hanging
@@ -94,9 +84,9 @@ class LocationService {
       await _loadLastPosition(); // For fallback
 
       // Set device location as default if not already set
-      await setDefaultToDeviceLocation(); // This will also update cache
+      await _setDefaultToDeviceLocation(); // This will also update cache
 
-      await startPermissionFlow();
+      await _startPermissionFlow();
       _isInitialized = true;
       _logger.info('LocationService initialized successfully.');
     } catch (e, s) {
@@ -140,7 +130,7 @@ class LocationService {
     }
   }
 
-  Future<void> startPermissionFlow() async {
+  Future<void> _startPermissionFlow() async {
     _logger.info(
       'Starting permission flow.',
       data: {'currentState': _permissionState.toString()},
@@ -151,7 +141,7 @@ class LocationService {
     }
 
     // Show explanation dialog first
-    final explanationAccepted = await showPermissionExplanationDialog();
+    final explanationAccepted = await _showPermissionExplanationDialog();
     if (!explanationAccepted) {
       _updatePermissionState(PermissionRequestState.denied);
       _logger.info('Permission explanation not accepted.');
@@ -177,7 +167,7 @@ class LocationService {
     _updatePermissionState(PermissionRequestState.notificationRequested);
 
     // Request location permission
-    final locationPermission = await requestLocationWithDialog();
+    final locationPermission = await _requestLocationWithDialog();
     if (!locationPermission) {
       _updatePermissionState(PermissionRequestState.denied);
       _logger.info('Location permission denied via dialog.');
@@ -186,7 +176,7 @@ class LocationService {
     }
 
     _updatePermissionState(PermissionRequestState.completed);
-    await checkLocationPermission();
+    await _checkLocationPermission();
     _logger.info('Permission flow completed.');
   }
 
@@ -197,11 +187,11 @@ class LocationService {
     );
     // This would show a dialog explaining how to enable permissions
     // For now, we just log the issue
-    await setUseManualLocation(true);
+    await _setUseManualLocation(true);
   }
 
-  Future<bool> showPermissionExplanationDialog() async {
-    _logger.debug('showPermissionExplanationDialog called (simulated true)');
+  Future<bool> _showPermissionExplanationDialog() async {
+    _logger.debug('_showPermissionExplanationDialog called (simulated true)');
     try {
       // This would be implemented by the UI layer showing an AlertDialog
       // Default to true to prevent blocking functionality during development
@@ -212,8 +202,8 @@ class LocationService {
     }
   }
 
-  Future<bool> showLocationRationaleDialog() async {
-    _logger.debug('showLocationRationaleDialog called (simulated true)');
+  Future<bool> _showLocationRationaleDialog() async {
+    _logger.debug('_showLocationRationaleDialog called (simulated true)');
     try {
       // This would be implemented by the UI layer
       // Default to true to prevent blocking functionality during development
@@ -224,7 +214,7 @@ class LocationService {
     }
   }
 
-  Future<bool> requestLocationWithDialog() async {
+  Future<bool> _requestLocationWithDialog() async {
     _logger.debug('Requesting location with dialog.');
     try {
       final permission = await Geolocator.checkPermission();
@@ -235,7 +225,7 @@ class LocationService {
 
       if (permission == LocationPermission.denied) {
         // Show rationale dialog before requesting
-        final showRationale = await showLocationRationaleDialog();
+        final showRationale = await _showLocationRationaleDialog();
         if (!showRationale) {
           _logger.info('User chose not to proceed after location rationale.');
           return false;
@@ -269,7 +259,7 @@ class LocationService {
     }
   }
 
-  Future<void> checkLocationPermission() async {
+  Future<void> _checkLocationPermission() async {
     if (_disposed) return;
 
     // Debounce checks to prevent rapid consecutive calls
@@ -298,10 +288,9 @@ class LocationService {
     }
   }
 
-  // Keep original method name for compatibility
-  Future<bool> isLocationPermissionGranted() => hasLocationPermission();
+  // isLocationPermissionGranted method removed
 
-  Future<bool> hasLocationPermission() async {
+  Future<bool> _hasLocationPermission() async {
     final permission = await Geolocator.checkPermission();
     return permission == LocationPermission.whileInUse ||
         permission == LocationPermission.always;
@@ -352,14 +341,14 @@ class LocationService {
   }
 
   /// Set whether to use manual location or device location
-  Future<void> setUseManualLocation(bool useManual) async {
+  Future<void> _setUseManualLocation(bool useManual) async {
     await _prefs?.setBool(_useManualLocationKey, useManual);
     _useManualLocationCached = useManual; // Update cache
     _logger.debug("Set useManualLocation to $useManual and updated cache.");
   }
 
   /// Check if manual location is being used
-  bool isUsingManualLocation() {
+  bool _isUsingManualLocation() {
     // Prefer cached value, fallback to SharedPreferences if not initialized (should not happen in normal flow)
     return _useManualLocationCached ??
         (_prefs?.getBool(_useManualLocationKey) ?? false);
@@ -391,9 +380,9 @@ class LocationService {
 
   /// Get the current location either from device or manual settings
   Future<Position> getLocation() async {
-    if (isUsingManualLocation()) {
+    if (_isUsingManualLocation()) {
       _logger.debug("Fetching manual location via getLocation().");
-      return getManualLocation();
+      return _getManualLocation();
     } else {
       _logger.debug("Fetching device location via getLocation().");
       // Check cache first
@@ -408,7 +397,7 @@ class LocationService {
       }
 
       try {
-        final hasPermission = await _checkLocationPermission();
+        final hasPermission = await _hasLocationPermission();
         if (!hasPermission) {
           _logger.warning(
             'Location permission denied while attempting to get device location.',
@@ -440,7 +429,7 @@ class LocationService {
 
         _cachedDevicePosition = position;
         _lastDevicePositionFetchTime = DateTime.now();
-        await cacheCurrentLocation(
+        await _cacheCurrentLocation(
           position,
         ); // This also saves to persistent _lastKnownPosition
         _logger.info(
@@ -464,7 +453,7 @@ class LocationService {
   }
 
   /// Get the manual location set by the user from cache or SharedPreferences
-  Future<Position> getManualLocation() async {
+  Future<Position> _getManualLocation() async {
     // Prefer cached values
     final lat = _manualLatCached ?? _prefs?.getDouble(_manualLatKey);
     final lng = _manualLngCached ?? _prefs?.getDouble(_manualLngKey);
@@ -494,60 +483,14 @@ class LocationService {
     );
   }
 
-  Future<String?> getLocationName() async {
-    return _locationNameCached ?? _prefs?.getString(_locationNameKey);
-  }
-
-  // Method to update location name in cache and SharedPreferences
-  // This might be called from HomeView or other places if they modify the location name directly.
-  Future<void> updateLocationName(String? newName) async {
-    if (newName == null || newName.isEmpty) {
-      await _prefs?.remove(_locationNameKey);
-      _locationNameCached = null;
-      _logger.debug("Cleared location name from cache and SharedPreferences.");
-    } else {
-      await _prefs?.setString(_locationNameKey, newName);
-      _locationNameCached = newName;
-      _logger.debug(
-        "Updated location name to '$newName' in cache and SharedPreferences.",
-      );
-    }
-  }
-
-  Stream<Position> getLocationStream({LocationSettings? settings}) async* {
-    await _locationSubscription?.cancel();
-
-    final stream = Geolocator.getPositionStream(
-          locationSettings: settings ?? defaultLocationSettings,
-        )
-        .timeout(
-          const Duration(seconds: 30),
-          onTimeout: (sink) {
-            _logger.info('Location stream timed out');
-            sink.close();
-          },
-        )
-        .handleError((Object error) {
-          _logger.error('Location stream error', error: error);
-        });
-
-    await for (final position in stream) {
-      yield position;
-      // Cache each position update
-      await cacheCurrentLocation(position);
-    }
-  }
-
-  Future<bool> openLocationSettings() async {
-    return await Geolocator.openLocationSettings();
-  }
-
-  Future<bool> openAppSettings() async {
-    return await Geolocator.openAppSettings();
-  }
+  // getLocationName method removed
+  // updateLocationName method removed
+  // getLocationStream method removed
+  // openLocationSettings method removed
+  // openAppSettings method removed
 
   /// Sets device location as default if no location preference exists
-  Future<void> setDefaultToDeviceLocation() async {
+  Future<void> _setDefaultToDeviceLocation() async {
     try {
       // Only set default if _prefs is initialized
       if (_prefs != null) {
@@ -555,7 +498,7 @@ class LocationService {
         if (!_prefs!.containsKey(_useManualLocationKey)) {
           // Set the flag to false to use device location by default
           // This will also update the _useManualLocationCached via setUseManualLocation
-          await setUseManualLocation(false);
+          await _setUseManualLocation(false);
           _logger.info(
             'Default location set to use device location (and updated cache).',
           );
@@ -574,19 +517,6 @@ class LocationService {
     }
   }
 
-  /// Check if location permission is granted
-  Future<bool> _checkLocationPermission() async {
-    // This method is identical to hasLocationPermission, consider removing one.
-    try {
-      final permission = await Geolocator.checkPermission();
-      return permission == LocationPermission.whileInUse ||
-          permission == LocationPermission.always;
-    } catch (e) {
-      _logger.error('Error checking location permission', error: e);
-      return false;
-    }
-  }
-
   /// Gets last known location from shared preferences or returns default
   Future<Position> _getLastKnownLocationOrDefault() async {
     try {
@@ -596,7 +526,7 @@ class LocationService {
       }
 
       // Try to get manual location as fallback if manual mode is active and lat/lng are set
-      if (isUsingManualLocation()) {
+      if (_isUsingManualLocation()) {
         final manualLat = _manualLatCached ?? _prefs?.getDouble(_manualLatKey);
         final manualLng = _manualLngCached ?? _prefs?.getDouble(_manualLngKey);
         if (manualLat != null && manualLng != null) {
@@ -652,7 +582,7 @@ class LocationService {
   /// Cache the current location when it's successfully retrieved
   /// This updates the _lastKnownPosition for persistent fallback.
   /// The short-term _cachedDevicePosition is handled in getLocation().
-  Future<void> cacheCurrentLocation(Position position) async {
+  Future<void> _cacheCurrentLocation(Position position) async {
     try {
       await _saveLastPosition(
         position,

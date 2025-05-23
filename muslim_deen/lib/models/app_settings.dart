@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../services/notification_service.dart';
+import 'package:muslim_deen/services/notification_service.dart';
 
 enum PrayerNotification { fajr, sunrise, dhuhr, asr, maghrib, isha }
 
@@ -27,7 +27,7 @@ class AppSettings {
 
   AppSettings({
     this.calculationMethod = 'MuslimWorldLeague',
-    this.madhab = 'hanafi', // Changed to string 'hanafi'
+    this.madhab = 'hanafi',
     this.themeMode = ThemeMode.system,
     this.language = 'en',
     Map<PrayerNotification, bool>? notifications,
@@ -35,7 +35,7 @@ class AppSettings {
         NotificationPermissionStatus.notDetermined,
     this.timeFormat = TimeFormat.twelveHour,
     this.dateFormatOption = DateFormatOption.dayMonthYear,
-    this.azanSoundForStandardPrayers = 'makkah_adhan.mp3', // Default Azan sound
+    this.azanSoundForStandardPrayers = 'makkah_adhan.mp3',
     this.fajrOffset = 0,
     this.sunriseOffset = 0,
     this.dhuhrOffset = 0,
@@ -120,7 +120,7 @@ class AppSettings {
         if (index != null && index >= 0 && index < ThemeMode.values.length) {
           return ThemeMode.values[index];
         }
-        return ThemeMode.system; // Default value
+        return ThemeMode.system;
       }(),
       language: json['language'] as String,
       notificationPermissionStatus: () {

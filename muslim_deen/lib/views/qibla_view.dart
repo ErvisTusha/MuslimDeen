@@ -1,20 +1,20 @@
-// Standard library imports
 import 'dart:async';
 import 'dart:math' as math;
 
-// Third-party imports
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_compass/flutter_compass.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
 
-// Local imports
-import '../service_locator.dart';
-import '../services/compass_service.dart';
-import '../services/location_service.dart';
-import '../services/logger_service.dart';
-import '../styles/app_styles.dart';
+import 'package:flutter_compass/flutter_compass.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
+
+import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/compass_service.dart';
+import 'package:muslim_deen/services/location_service.dart';
+import 'package:muslim_deen/services/logger_service.dart';
+import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/widgets/custom_app_bar.dart'; // Added import
+import 'package:muslim_deen/widgets/message_display.dart'; // Added import
 
 class QiblaView extends StatefulWidget {
   const QiblaView({super.key});
@@ -179,13 +179,14 @@ class _QiblaViewState extends State<QiblaView>
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    final bool isDarkMode = brightness == Brightness.dark;
+    // final bool isDarkMode = brightness == Brightness.dark; // No longer needed for scaffoldBg
 
     // Define colors similar to TesbihView
-    final Color scaffoldBg =
-        isDarkMode
-            ? AppColors.surface(brightness)
-            : AppColors.background(brightness);
+    // final Color scaffoldBg = // Replaced by AppColors.getScaffoldBackground
+    //     isDarkMode
+    //         ? AppColors.surface(brightness)
+    //         : AppColors.background(brightness);
+    final bool isDarkMode = brightness == Brightness.dark; // Still needed for other color logic
     final Color contentSurface =
         isDarkMode
             ? const Color(0xFF2C2C2C)
@@ -196,18 +197,10 @@ class _QiblaViewState extends State<QiblaView>
     final Color textColorSecondary = AppColors.textSecondary(brightness);
 
     return Scaffold(
-      backgroundColor: scaffoldBg,
-      appBar: AppBar(
-        title: Text("Qibla Finder", style: AppTextStyles.appTitle(brightness)),
-        backgroundColor: AppColors.primary(brightness),
-        elevation: 2,
-        shadowColor: AppColors.shadowColor(brightness),
-        centerTitle: true,
-        systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: AppColors.primary(brightness),
-          statusBarIconBrightness:
-              isDarkMode ? Brightness.light : Brightness.light,
-        ),
+      backgroundColor: AppColors.getScaffoldBackground(brightness),
+      appBar: CustomAppBar(
+        title: "Qibla Finder",
+        brightness: brightness,
         actions: [
           IconButton(
             icon: RotationTransition(
@@ -239,13 +232,7 @@ class _QiblaViewState extends State<QiblaView>
                   strokeWidth: 3,
                 )
                 : _errorMessage != null
-                ? _buildErrorView(
-                  brightness,
-                  isDarkMode,
-                  contentSurface,
-                  errorColor,
-                  accentColor,
-                )
+                ? _buildErrorView(brightness, accentColor) // Removed isDarkMode, contentSurface, errorColor
                 : _buildQiblaView(
                   brightness,
                   isDarkMode,
@@ -260,78 +247,34 @@ class _QiblaViewState extends State<QiblaView>
 
   Widget _buildErrorView(
     Brightness brightness,
-    bool isDarkMode,
-    Color contentSurface,
-    Color errorColor,
-    Color accentColor,
+    // bool isDarkMode, // Removed
+    // Color contentSurface, // Removed
+    // Color errorColor, // Removed as MessageDisplay handles its error color
+    Color accentColor, // Still needed for button if not error state
   ) {
-    String msg = _errorMessage ?? "An unknown error occurred.";
-    if (_errorMessage ==
-        'Location permission denied. Please enable it in settings.') {
-      msg = "Location permission denied. Please enable it in settings.";
-    } else if (_errorMessage?.contains('permission') ?? false) {
-      msg = "Location permission error.";
-    } else if (_errorMessage?.contains('service is disabled') ?? false) {
-      msg = "Location service is disabled.";
-    } else if (_errorMessage?.contains('Location unavailable') ?? false) {
-      msg = "Location unavailable.";
-    } else if (_errorMessage?.contains('Compass') ?? false) {
-      msg = "Compass sensor error.";
+    // The original _buildErrorView had complex message processing.
+    // For now, using the simpler _errorMessage or a generic one.
+    // If specific messages are crucial, _getProcessedErrorMessage would need to be implemented.
+    String displayMessage = _errorMessage ?? "An unknown error occurred.";
+    if (displayMessage == 'Location permission denied. Please enable it in settings.') {
+      // Keep specific important messages if desired
+    } else if (displayMessage.contains('permission')) {
+      displayMessage = "Location permission error. Please check settings.";
+    } else if (displayMessage.contains('service is disabled')) {
+      displayMessage = "Location service is disabled. Please enable it.";
+    } else if (displayMessage.contains('Compass sensor error')) {
+      displayMessage = "Compass sensor error. Please try again.";
     }
 
-    return Container(
-      margin: const EdgeInsets.all(24),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-      decoration: BoxDecoration(
-        color: contentSurface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: errorColor.withAlpha(100)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowColor(
-              brightness,
-            ).withAlpha(isDarkMode ? 20 : 40),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.error_outline_rounded, color: errorColor, size: 48),
-          const SizedBox(height: 16),
-          Text(
-            msg,
-            style: AppTextStyles.label(
-              brightness,
-            ).copyWith(color: errorColor, fontSize: 16),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.refresh),
-            label: Text("Retry"),
-            onPressed: () {
-              _logger.logInteraction(
-                'QiblaView',
-                'Retry after error',
-                data: {'error': _errorMessage},
-              );
-              _initQiblaFinder();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: accentColor,
-              foregroundColor: Colors.white, // Text color for the button
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              textStyle: AppTextStyles.label(
-                brightness,
-              ).copyWith(fontWeight: FontWeight.w600, color: Colors.white),
-            ),
-          ),
-        ],
-      ),
+
+    return MessageDisplay(
+      message: displayMessage,
+      icon: Icons.error_outline_rounded,
+      onRetry: _initQiblaFinder,
+      isError: true,
+      // The retry button color will be AppColors.error if isError is true,
+      // or AppColors.accentGreen if isError is false (which is not the case here).
+      // The accentColor param for _buildErrorView might not be needed if we always use error styling.
     );
   }
 
@@ -480,7 +423,7 @@ class _QiblaViewState extends State<QiblaView>
         if (_magneticHeading != null && _qiblaDirection != null)
           CustomPaint(
             size: const Size(240, 240), // Painter area
-            painter: QiblaDirectionPainter(
+            painter: _QiblaDirectionPainter(
               qiblaAngleFromTrueNorth: _qiblaDirection!,
               magneticDeviceHeading: _magneticHeading!,
               magneticDeclination:
@@ -709,13 +652,13 @@ class _QiblaViewState extends State<QiblaView>
   double _degreesToRadians(double degrees) => degrees * (math.pi / 180);
 }
 
-class QiblaDirectionPainter extends CustomPainter {
+class _QiblaDirectionPainter extends CustomPainter {
   final double qiblaAngleFromTrueNorth;
   final double magneticDeviceHeading;
   final double magneticDeclination;
   final Color arrowColor;
 
-  QiblaDirectionPainter({
+  _QiblaDirectionPainter({
     required this.qiblaAngleFromTrueNorth,
     required this.magneticDeviceHeading,
     required this.magneticDeclination,
@@ -773,7 +716,7 @@ class QiblaDirectionPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant QiblaDirectionPainter old) =>
+  bool shouldRepaint(covariant _QiblaDirectionPainter old) =>
       old.qiblaAngleFromTrueNorth != qiblaAngleFromTrueNorth ||
       old.magneticDeviceHeading != magneticDeviceHeading ||
       old.magneticDeclination != magneticDeclination ||

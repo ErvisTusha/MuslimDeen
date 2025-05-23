@@ -1,10 +1,12 @@
-import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+
+import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
+
+import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/cache_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
-import 'package:muslim_deen/service_locator.dart';
 
 class Mosque {
   final String name;
@@ -14,7 +16,6 @@ class Mosque {
 
   Mosque({required this.name, required this.location, this.id, this.distance});
 
-  // Supports serialization for caching
   Map<String, dynamic> toJson() {
     return {
       'name': name,
@@ -27,7 +28,6 @@ class Mosque {
     };
   }
 
-  // Supports deserialization from cache
   factory Mosque.fromJson(Map<String, dynamic> json) {
     return Mosque(
       name: json['name'] as String,
@@ -210,14 +210,4 @@ class MapService {
     return null;
   }
   */
-
-  void clearCache() {
-    if (cacheService != null) {
-      // Clear all mosque-related caches
-      // The loop was redundant as clearAllCache clears everything.
-      // Keeping the call to clearAllCache as it seems intended.
-      cacheService!.clearAllCache();
-      _logger.info('MapService cache cleared');
-    }
-  }
 }

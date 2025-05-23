@@ -1,8 +1,8 @@
 import 'package:adhan_dart/adhan_dart.dart';
-import 'package:muslim_deen/services/prayer_service.dart';
-import 'package:muslim_deen/models/app_settings.dart'; // Added import
 
-// Extension methods to add the required functionality for PrayerService
+import 'package:muslim_deen/models/app_settings.dart';
+import 'package:muslim_deen/services/prayer_service.dart';
+
 extension PrayerServiceExtension on PrayerService {
   /// Gets prayer times for the specified date using user's location and settings.
   Future<PrayerTimes> getPrayerTimesForDate(DateTime date, AppSettings? settings) async {

@@ -23,7 +23,7 @@ class AppColors {
   static const Color _primaryDarkVariant = Color(
     0xFF000000,
   ); // Black for variants or main background
-  static const Color _backgroundDark = Color(0xFF000000); // Black background
+  static const Color _backgroundDark = Color(0xFF000000);
   static const Color _surfaceDark = Color(
     0xFF1A1A1A,
   ); // Very dark gray for elevated surfaces (cards, dialogs)
@@ -87,6 +87,10 @@ class AppColors {
           : _switchTrackActiveDark;
   static Color error(Brightness brightness) =>
       brightness == Brightness.light ? _errorLight : _errorDark;
+
+  static Color getScaffoldBackground(Brightness brightness) {
+    return brightness == Brightness.dark ? _surfaceDark : _backgroundLight;
+  }
 }
 
 /// Text styles used throughout the app
@@ -120,9 +124,6 @@ class AppTextStyles {
       brightness,
     ), // Use green accent for current prayer name
   );
-
-  static TextStyle arabicName(Brightness brightness) =>
-      TextStyle(fontSize: 12, color: AppColors.textSecondary(brightness));
 
   static TextStyle sectionTitle(Brightness brightness) => TextStyle(
     fontSize: 18,
@@ -176,43 +177,5 @@ class AppTextStyles {
     color: AppColors.accentGreen(
       brightness,
     ), // Use green accent for current prayer time
-  );
-}
-
-/// Common decorations used in the app
-class AppDecorations {
-  static BoxDecoration headerDecoration(Brightness brightness) => BoxDecoration(
-    color:
-        brightness == Brightness.light
-            ? AppColors.primary(brightness)
-            : AppColors.surface(
-              brightness,
-            ), // AppBar dark is surface, light is primary
-    boxShadow: [
-      BoxShadow(
-        color: AppColors.shadowColor(brightness),
-        blurRadius: 4,
-        offset: const Offset(0, 2),
-      ),
-    ],
-  );
-
-  static BoxDecoration currentPrayerBox(Brightness brightness) => BoxDecoration(
-    color: AppColors.primaryVariant(
-      brightness,
-    ), // Use primaryVariant (was primaryLight)
-    borderRadius: BorderRadius.circular(10),
-  );
-
-  static BoxDecoration prayerItemDecoration({
-    required Brightness brightness,
-    bool isCurrent = false,
-  }) => BoxDecoration(
-    color:
-        isCurrent
-            ? AppColors.primaryVariant(brightness)
-            : AppColors.surface(brightness), // Use primaryVariant and surface
-    borderRadius: BorderRadius.circular(10),
-    border: Border.all(color: AppColors.borderColor(brightness)),
   );
 }

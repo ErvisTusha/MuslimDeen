@@ -1,8 +1,9 @@
 import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../service_locator.dart';
-import '../services/logger_service.dart';
+import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/logger_service.dart';
 
 /// The Result class implements the Either pattern for error handling
 class Result<T> {
@@ -18,14 +19,6 @@ class Result<T> {
 
   T get value => _value!;
   AppError get error => _error!;
-
-  R fold<R>(R Function(T) onSuccess, R Function(AppError) onFailure) {
-    if (isSuccess) {
-      return onSuccess(_value as T);
-    } else {
-      return onFailure(_error!);
-    }
-  }
 }
 
 /// Standardized error class for application errors
@@ -51,22 +44,14 @@ class AppError {
     if (details != null) buffer.write('\nDetails: $details');
     return buffer.toString();
   }
-
-  static AppError fromException(Object e, [StackTrace? stack]) {
-    return AppError(
-      message: e.toString(),
-      stackTrace: stack,
-      originalException: e,
-    );
-  }
 }
 
 /// Error handler service to centralize error handling
 class ErrorHandlerService {
   final LoggerService _logger = locator<LoggerService>();
-  final _errorController = StreamController<AppError>.broadcast();
+  // final _errorController = StreamController<AppError>.broadcast(); // Field removed
 
-  Stream<AppError> get errorStream => _errorController.stream;
+  // errorStream getter removed
 
   void reportError(AppError error, {String? context}) {
     _logger.error(
@@ -76,7 +61,7 @@ class ErrorHandlerService {
       data: {'code': error.code, 'details': error.details},
     );
 
-    _errorController.add(error);
+    // _errorController.add(error); // Line removed
 
     // Consider adding reporting to external services like Firebase Crashlytics or Sentry here.
   }
@@ -96,34 +81,9 @@ class ErrorHandlerService {
     }
   }
 
-  Result<T> guardSync<T>(T Function() fn, {String? context}) {
-    try {
-      final result = fn();
-      return Result.success(result);
-    } catch (e, stack) {
-      final appError = AppError(
-        message: e.toString(),
-        stackTrace: stack,
-        originalException: e,
-      );
-      reportError(appError, context: context);
-      return Result.failure(appError);
-    }
-  }
-
-  void dispose() {
-    _errorController.close();
-  }
+  // guardSync method removed
+  // dispose method removed
 }
 
-// Provider for error handler service
-final errorHandlerProvider = Provider<ErrorHandlerService>((ref) {
-  final errorHandler = ErrorHandlerService();
-  ref.onDispose(errorHandler.dispose);
-  return errorHandler;
-});
-
-// Stream provider for error notifications across the app
-final appErrorsProvider = StreamProvider<AppError>((ref) {
-  return ref.watch(errorHandlerProvider).errorStream;
-});
+// errorHandlerProvider (defined in this file) removed
+// appErrorsProvider removed

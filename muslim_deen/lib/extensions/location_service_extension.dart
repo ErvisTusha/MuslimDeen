@@ -1,7 +1,8 @@
 import 'package:adhan_dart/adhan_dart.dart';
+
+import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
-import 'package:muslim_deen/service_locator.dart';
 
 /// Extension methods to enhance LocationService functionality for specific use cases
 extension LocationServiceExtension on LocationService {

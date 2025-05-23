@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import 'package:intl/intl.dart';
+
 import 'package:muslim_deen/models/prayer_display_info_data.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/views/settings_view.dart'; // For navigation

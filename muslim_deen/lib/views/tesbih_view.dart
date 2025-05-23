@@ -3,17 +3,19 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get_it/get_it.dart';
-import 'package:audioplayers/audioplayers.dart';
 
-import '../providers/providers.dart';
-import '../providers/tesbih_reminder_provider.dart';
-import '../service_locator.dart';
-import '../services/logger_service.dart';
-import '../services/notification_service.dart' show NotificationService;
-import '../services/storage_service.dart';
-import '../styles/app_styles.dart';
+import 'package:muslim_deen/providers/providers.dart';
+import 'package:muslim_deen/providers/tesbih_reminder_provider.dart';
+import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/logger_service.dart';
+import 'package:muslim_deen/services/notification_service.dart'
+    show NotificationService;
+import 'package:muslim_deen/services/storage_service.dart';
+import 'package:muslim_deen/styles/app_styles.dart';
 
 class TesbihView extends ConsumerStatefulWidget {
   const TesbihView({super.key});
@@ -30,7 +32,6 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   bool _soundEnabled = false;
   int _target = 33;
 
-  Timer? _permissionCheckTimer;
   late final NotificationService _notificationService =
       GetIt.I<NotificationService>();
   late final StorageService _storageService = GetIt.I<StorageService>();
@@ -772,13 +773,13 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    final bool isDarkMode = brightness == Brightness.dark;
+    final bool isDarkMode = brightness == Brightness.dark; // Still needed for other color logic
 
     // Define colors for TesbihView in dark mode to make it lighter
-    final Color tesbihScaffoldBg =
-        isDarkMode
-            ? AppColors.surface(brightness)
-            : AppColors.background(brightness);
+    // final Color tesbihScaffoldBg = // Replaced by AppColors.getScaffoldBackground
+    //     isDarkMode
+    //         ? AppColors.surface(brightness)
+    //         : AppColors.background(brightness);
     // AppBar uses AppColors.primary(brightness) which is 0xFF1A1A1A in dark mode, this is fine.
 
     final Color tesbihContentSurface =
@@ -805,7 +806,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
         isDarkMode ? tesbihContentSurface : AppColors.background(brightness);
 
     return Scaffold(
-      backgroundColor: tesbihScaffoldBg,
+      backgroundColor: AppColors.getScaffoldBackground(brightness),
       appBar: AppBar(
         title: Text("Tasbih", style: AppTextStyles.appTitle(brightness)),
         backgroundColor: AppColors.primary(

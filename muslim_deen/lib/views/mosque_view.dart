@@ -2,16 +2,19 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../service_locator.dart';
-import '../services/location_service.dart';
-import '../services/map_service.dart';
-import '../services/logger_service.dart';
-import '../styles/app_styles.dart';
+import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/location_service.dart';
+import 'package:muslim_deen/services/logger_service.dart';
+import 'package:muslim_deen/services/map_service.dart';
+import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/widgets/custom_app_bar.dart'; // Added import
+import 'package:muslim_deen/widgets/message_display.dart'; // Added import
 
-Future<void> openMosqueInMapsApp(BuildContext context, Mosque mosque) async {
+Future<void> _openMosqueInMapsApp(BuildContext context, Mosque mosque) async {
   if (!context.mounted) return;
 
   final logger = locator<LoggerService>();
@@ -204,18 +207,19 @@ class _MosqueViewState extends State<MosqueView> {
       'open_in_maps',
       data: {'mosque_name': mosque.name, 'widget': 'MosqueCard'},
     );
-    await openMosqueInMapsApp(context, mosque);
+    await _openMosqueInMapsApp(context, mosque);
   }
 
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    final bool isDarkMode = brightness == Brightness.dark;
+    // final bool isDarkMode = brightness == Brightness.dark; // No longer needed for scaffoldBg
 
-    final Color scaffoldBg =
-        isDarkMode
-            ? AppColors.surface(brightness)
-            : AppColors.background(brightness);
+    // final Color scaffoldBg = // Replaced by AppColors.getScaffoldBackground
+    //     isDarkMode
+    //         ? AppColors.surface(brightness)
+    //         : AppColors.background(brightness);
+    final bool isDarkMode = brightness == Brightness.dark; // Still needed for other color logic
     final Color contentSurface =
         isDarkMode ? const Color(0xFF2C2C2C) : AppColors.background(brightness);
     final Color cardBorderColor = AppColors.borderColor(
@@ -223,21 +227,10 @@ class _MosqueViewState extends State<MosqueView> {
     ).withAlpha(isDarkMode ? 100 : 150);
 
     return Scaffold(
-      backgroundColor: scaffoldBg,
-      appBar: AppBar(
-        title: Text(
-          "Nearby Mosques",
-          style: AppTextStyles.appTitle(brightness),
-        ),
-        backgroundColor: AppColors.primary(brightness),
-        elevation: 2.0,
-        shadowColor: AppColors.shadowColor(brightness),
-        centerTitle: true,
-        systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: AppColors.primary(brightness),
-          statusBarIconBrightness:
-              isDarkMode ? Brightness.light : Brightness.light,
-        ),
+      backgroundColor: AppColors.getScaffoldBackground(brightness),
+      appBar: CustomAppBar(
+        title: "Nearby Mosques",
+        brightness: brightness,
         actions: [
           IconButton(
             icon: Icon(
@@ -261,130 +254,45 @@ class _MosqueViewState extends State<MosqueView> {
                 ),
               )
               : _errorMessage != null
-              ? _buildErrorView(brightness, isDarkMode, contentSurface)
+              ? MessageDisplay(
+                  message: _errorMessage ?? "Unknown error",
+                  icon: Icons.error_outline_rounded,
+                  onRetry: _loadNearbyMosques,
+                  isError: true,
+                )
               : _buildMosqueListView(
                 brightness,
-                isDarkMode,
+                // isDarkMode, // No longer needed by _buildMosqueListView if its content is replaced
+                // contentSurface, // No longer needed by _buildMosqueListView if its content is replaced
                 contentSurface,
                 cardBorderColor,
               ),
     );
   }
 
-  Widget _buildErrorView(
+  Widget _buildErrorView( // Parameters isDarkMode and contentSurface are no longer needed
     Brightness brightness,
-    bool isDarkMode,
-    Color contentSurface,
+    // bool isDarkMode,
+    // Color contentSurface, 
   ) {
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.all(24),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-        decoration: BoxDecoration(
-          color: contentSurface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.error(brightness).withAlpha(100)),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.shadowColor(
-                brightness,
-              ).withAlpha(isDarkMode ? 20 : 40),
-              spreadRadius: 1,
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline_rounded,
-              color: AppColors.error(brightness),
-              size: 48,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _errorMessage ?? 'Unknown error',
-              style: AppTextStyles.label(
-                brightness,
-              ).copyWith(color: AppColors.error(brightness), fontSize: 16),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.refresh),
-              label: const Text("Retry"),
-              onPressed: _loadNearbyMosques,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentGreen(brightness),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                textStyle: AppTextStyles.label(
-                  brightness,
-                ).copyWith(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return MessageDisplay(
+      message: _errorMessage ?? "Unknown error",
+      icon: Icons.error_outline_rounded,
+      onRetry: _loadNearbyMosques,
+      isError: true,
     );
   }
 
   Widget _buildMosqueListView(
     Brightness brightness,
-    bool isDarkMode,
-    Color contentSurface,
-    Color cardBorderColor,
+    // bool isDarkMode, // No longer needed by MessageDisplay directly
+    // Color contentSurface, // No longer needed by MessageDisplay directly
+    Color cardBorderColor, // Still needed for mosque cards if list is not empty
   ) {
     if (_nearbyMosques.isEmpty) {
-      return Center(
-        child: Container(
-          margin: const EdgeInsets.all(24),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          decoration: BoxDecoration(
-            color: contentSurface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppColors.borderColor(
-                brightness,
-              ).withAlpha(isDarkMode ? 100 : 150),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.shadowColor(
-                  brightness,
-                ).withAlpha(isDarkMode ? 20 : 40),
-                spreadRadius: 1,
-                blurRadius: 5,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.search_off_rounded,
-                color: AppColors.textSecondary(brightness),
-                size: 48,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                "No mosques found nearby. Try adjusting search radius or location.",
-                style: AppTextStyles.label(brightness).copyWith(
-                  color: AppColors.textSecondary(brightness),
-                  fontSize: 16,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
+      return const MessageDisplay(
+        message: "No mosques found nearby. Try adjusting search radius or location.",
+        icon: Icons.search_off_rounded,
       );
     }
 

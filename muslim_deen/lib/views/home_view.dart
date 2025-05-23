@@ -1,42 +1,42 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:adhan_dart/adhan_dart.dart' as adhan;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // Added
+
+import 'package:adhan_dart/adhan_dart.dart' as adhan;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hijri/hijri_calendar.dart';
 import 'package:intl/intl.dart';
 
-import '../models/app_settings.dart';
-import '../models/custom_exceptions.dart'; // Added
-import '../models/prayer_display_info_data.dart';
-import '../providers/providers.dart'; // Changed for Riverpod
-import '../service_locator.dart';
-import '../services/location_service.dart';
-import '../services/logger_service.dart';
-import '../services/notification_service.dart';
-import '../services/prayer_service.dart';
-import '../services/storage_service.dart';
-import '../styles/app_styles.dart';
-import '../widgets/prayer_list_item.dart';
-import '../widgets/prayer_countdown_timer.dart';
-import 'settings_view.dart';
+import 'package:muslim_deen/models/app_settings.dart';
+import 'package:muslim_deen/models/custom_exceptions.dart';
+import 'package:muslim_deen/models/prayer_display_info_data.dart';
+import 'package:muslim_deen/providers/providers.dart';
+import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/location_service.dart';
+import 'package:muslim_deen/services/logger_service.dart';
+import 'package:muslim_deen/services/notification_service.dart';
+import 'package:muslim_deen/services/prayer_service.dart';
+import 'package:muslim_deen/services/storage_service.dart';
+import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/views/settings_view.dart';
+import 'package:muslim_deen/widgets/custom_app_bar.dart'; // Added import
+import 'package:muslim_deen/widgets/prayer_countdown_timer.dart';
+import 'package:muslim_deen/widgets/prayer_list_item.dart';
 
 class HomeView extends ConsumerStatefulWidget {
-  // Changed
   const HomeView({super.key});
 
   @override
-  ConsumerState<HomeView> createState() => _HomeViewState(); // Changed
+  ConsumerState<HomeView> createState() => _HomeViewState();
 }
 
 class _HomeViewState extends ConsumerState<HomeView>
     with WidgetsBindingObserver {
-  // Changed
   final LocationService _locationService = locator<LocationService>();
   final PrayerService _prayerService = locator<PrayerService>();
   final NotificationService _notificationService =
@@ -44,13 +44,11 @@ class _HomeViewState extends ConsumerState<HomeView>
   final LoggerService _logger = locator<LoggerService>();
   final ScrollController _scrollController = ScrollController();
   static const double _prayerItemHeight = 80.0;
-  Timer? _dailyRefreshTimer; // VoidCallback? _settingsListener; // Removed
-  // AppSettings? _previousSettings; // Removed
+  Timer? _dailyRefreshTimer;
   ProviderSubscription? _settingsListenerSubscription; // Added for listenManual
   String? _lastKnownCity; // Store last known location details for loading state
   String?
   _lastKnownCountry; // Note: Loading/error states are managed through FutureBuilder
-  // late final SettingsProvider _settingsProvider; // Removed
 
   bool _isUiFetchInProgress = false; // Flag for UI-triggered fetches
 
@@ -63,15 +61,15 @@ class _HomeViewState extends ConsumerState<HomeView>
   adhan.PrayerTimes? _prayerTimes;
   String _nextPrayerName = '';
   String _currentPrayerName = '';
-  PrayerNotification? _currentPrayerEnum; // Added
+  PrayerNotification? _currentPrayerEnum;
   DateTime? _nextPrayerDateTime; // Stores the time of the next prayer
-  late Future<Map<String, dynamic>> _dataLoadingFuture; // Renamed future
+  late Future<Map<String, dynamic>> _dataLoadingFuture;
 
   @override
   void initState() {
     super.initState();
     _logger.info('HomeView initialized');
-    WidgetsBinding.instance.addObserver(this); // Add observer
+    WidgetsBinding.instance.addObserver(this);
 
     // Initial data load and scheduling
     _dataLoadingFuture = _fetchDataAndScheduleNotifications();
@@ -79,7 +77,7 @@ class _HomeViewState extends ConsumerState<HomeView>
     // Initial permission check
     ref
         .read(settingsProvider.notifier)
-        .checkNotificationPermissionStatus(); // Changed
+        .checkNotificationPermissionStatus();
 
     // Listen to settings changes using Riverpod with listenManual
     _settingsListenerSubscription = ref.listenManual<AppSettings>(
@@ -184,10 +182,9 @@ class _HomeViewState extends ConsumerState<HomeView>
 
   /// Starts a timer to refresh prayer times daily around midnight.
   void _startDailyRefreshTimer() {
-    _dailyRefreshTimer?.cancel(); // Cancel existing timer if any
+    _dailyRefreshTimer?.cancel();
 
     final now = DateTime.now();
-    // Calculate duration until the next midnight
     final nextMidnight = DateTime(now.year, now.month, now.day + 1);
     final durationUntilMidnight = nextMidnight.difference(now);
 
@@ -221,7 +218,6 @@ class _HomeViewState extends ConsumerState<HomeView>
     AppSettings newSettings,
     AppSettings? oldSettings,
   ) {
-    // Signature changed
     _logger.debug(
       'Settings changed in HomeView',
       data: {
@@ -230,39 +226,33 @@ class _HomeViewState extends ConsumerState<HomeView>
       },
     );
     // No need to check _prayerTimes == null here, rescheduling only happens if it's not null anyway.
-    if (!mounted || oldSettings == null) return; // Changed
+    if (!mounted || oldSettings == null) return;
 
     bool needsReschedule = false;
     bool needsReload = false;
 
     // Check relevant settings for changes that require reloading prayer times
-    if (newSettings.calculationMethod !=
-            oldSettings.calculationMethod || // Changed
+    if (newSettings.calculationMethod != oldSettings.calculationMethod ||
         newSettings.madhab != oldSettings.madhab) {
-      // Changed
       needsReload = true;
       needsReschedule = true; // Reload implies reschedule
       _logger.info(
         "Calculation method or Madhab change detected, reloading data...",
         data: {
-          'oldMethod': oldSettings.calculationMethod, // Changed
+          'oldMethod': oldSettings.calculationMethod,
           'newMethod': newSettings.calculationMethod,
-          'oldMadhab': oldSettings.madhab, // Changed
+          'oldMadhab': oldSettings.madhab,
           'newMadhab': newSettings.madhab,
         },
       );
     }
     // Check for changes that only require rescheduling notifications
-    else if (!mapEquals(
-      newSettings.notifications,
-      oldSettings.notifications, // Changed
-    )) {
+    else if (!mapEquals(newSettings.notifications, oldSettings.notifications)) {
       needsReschedule = true;
       _logger.info(
         "Notification settings change detected, rescheduling notifications...",
         data: {
           'oldNotifications': oldSettings.notifications.map(
-            // Changed
             (key, value) => MapEntry(key.toString(), value),
           ),
           'newNotifications': newSettings.notifications.map(
@@ -271,8 +261,6 @@ class _HomeViewState extends ConsumerState<HomeView>
         },
       );
     }
-
-    // _previousSettings = newSettings; // Removed, Riverpod manages state
 
     if (needsReload) {
       // Trigger data reload, which will then reschedule notifications upon completion
@@ -295,7 +283,7 @@ class _HomeViewState extends ConsumerState<HomeView>
     if (adhanPrayer == adhan.Prayer.asr) return PrayerNotification.asr;
     if (adhanPrayer == adhan.Prayer.maghrib) return PrayerNotification.maghrib;
     if (adhanPrayer == adhan.Prayer.isha) return PrayerNotification.isha;
-    return null; // For 'none' or other cases
+    return null;
   }
 
   /// Updates the current/next prayer names and scrolls to the current prayer.
@@ -317,13 +305,14 @@ class _HomeViewState extends ConsumerState<HomeView>
         nextPrayerStr,
       );
 
+      // AppSettings needed for _getPrayerDisplayInfo for offsets
+      final appSettings = ref.read(settingsProvider); 
+
       String currentPrayerDisplayName = '---';
       if (newCurrentPrayerEnum != null && _prayerTimes != null) {
         currentPrayerDisplayName =
-            _getPrayerDisplayInfo(newCurrentPrayerEnum, _prayerTimes!).name;
+            _getPrayerDisplayInfo(newCurrentPrayerEnum, _prayerTimes!, appSettings).name;
       } else if (newCurrentPrayerEnum != null) {
-        // Fallback if _prayerTimes is somehow null but enum is not
-        // This case should ideally not happen if data is loaded correctly
         currentPrayerDisplayName =
             newCurrentPrayerEnum.toString().split('.').last;
         _logger.warning(
@@ -334,7 +323,7 @@ class _HomeViewState extends ConsumerState<HomeView>
       String nextPrayerDisplayName = '---';
       if (newNextPrayerEnum != null && _prayerTimes != null) {
         nextPrayerDisplayName =
-            _getPrayerDisplayInfo(newNextPrayerEnum, _prayerTimes!).name;
+            _getPrayerDisplayInfo(newNextPrayerEnum, _prayerTimes!, appSettings).name;
       } else if (newNextPrayerEnum != null) {
         nextPrayerDisplayName = newNextPrayerEnum.toString().split('.').last;
         _logger.warning(
@@ -348,7 +337,6 @@ class _HomeViewState extends ConsumerState<HomeView>
 
         setState(() {
           _currentPrayerEnum = newCurrentPrayerEnum;
-          // _nextPrayerEnum was removed, newNextPrayerEnum is still used for _nextPrayerName
           _currentPrayerName = currentPrayerDisplayName;
           _nextPrayerName = nextPrayerDisplayName;
         });
@@ -369,7 +357,6 @@ class _HomeViewState extends ConsumerState<HomeView>
       if (mounted) {
         setState(() {
           _currentPrayerEnum = null;
-          // _nextPrayerEnum was removed
           _currentPrayerName = 'Error';
           _nextPrayerName = 'Error';
         });
@@ -379,7 +366,6 @@ class _HomeViewState extends ConsumerState<HomeView>
 
   /// Scrolls the list view to the specified prayer item.
   void _scrollToPrayer(PrayerNotification? prayerEnum) {
-    // Changed parameter
     if (prayerEnum == null) {
       _logger.warning("Cannot scroll, prayerEnum is null.");
       return;
@@ -434,15 +420,12 @@ class _HomeViewState extends ConsumerState<HomeView>
 
     locationName = locationName.trim();
 
-    // Check if it looks like coordinates
     final coordRegex = RegExp(r'^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$');
     if (coordRegex.hasMatch(locationName)) {
       return {'city': 'Current Location', 'country': null};
     } else if (locationName.contains(',')) {
-      // Assume "City, Country" or similar
       final parts = locationName.split(',');
       city = parts[0].trim();
-      // If more than one comma, join the rest as country
       country = parts.length > 1 ? parts.sublist(1).join(',').trim() : null;
 
       if (city.isEmpty) {
@@ -450,12 +433,10 @@ class _HomeViewState extends ConsumerState<HomeView>
         country = null;
       }
     } else {
-      // Assume it's just a city or place name
       city = locationName;
       country = null;
     }
 
-    // Ensure city is never null or empty for display
     if (city.isEmpty) {
       city = 'Unknown';
     }
@@ -468,16 +449,12 @@ class _HomeViewState extends ConsumerState<HomeView>
   Future<Map<String, dynamic>> _fetchDataAndScheduleNotifications() async {
     _logger.info('Starting _fetchDataAndScheduleNotifications...');
     try {
-      // Set loading state is handled by the FutureBuilder
-
-      Position? position; // Keep as nullable: Position? position;
+      Position? position;
       String? locationNameToUse;
 
-      // Use the injected _locationService instance
       final isUsingManualLocation = _locationService.isUsingManualLocation();
 
       if (isUsingManualLocation) {
-        // Use the injected _locationService instance
         position = await _locationService.getLocation();
         locationNameToUse = await _locationService.getLocationName();
         _logger.info(
@@ -485,10 +462,8 @@ class _HomeViewState extends ConsumerState<HomeView>
           data: {'locationName': locationNameToUse},
         );
       } else {
-        // Get current device location with proper error handling
         try {
           position = await _locationService.getLocation();
-          // Cache successful location data
           await _locationService.cacheCurrentLocation(position);
           _logger.info(
             "Fetched current device location",
@@ -498,7 +473,6 @@ class _HomeViewState extends ConsumerState<HomeView>
             },
           );
 
-          // Try reverse geocoding the current location
           try {
             final List<Placemark> placemarks = await placemarkFromCoordinates(
               position.latitude,
@@ -534,7 +508,6 @@ class _HomeViewState extends ConsumerState<HomeView>
                   '${position.latitude.toStringAsFixed(3)}, ${position.longitude.toStringAsFixed(3)}';
             }
 
-            // Update saved location with new values
             locator<StorageService>().saveLocation(
               position.latitude,
               position.longitude,
@@ -558,7 +531,6 @@ class _HomeViewState extends ConsumerState<HomeView>
             );
           }
         } catch (e, s) {
-          // If getting current location fails, fallback to saved location
           _logger.warning(
             "Error getting current location, falling back to saved location",
             data: {'error': e.toString(), 'stackTrace': s.toString()},
@@ -589,26 +561,21 @@ class _HomeViewState extends ConsumerState<HomeView>
         }
       }
 
-      // Parse the location name for display
       final displayNames = _parseLocationName(locationNameToUse);
       final displayCity = displayNames['city'];
       final displayCountry = displayNames['country'];
 
-      // Store fetched location for loading state display
-      // Ensure these are assigned correctly
       if (mounted) {
-        // Check mounted before accessing state
         setState(() {
           _lastKnownCity = displayCity;
           _lastKnownCountry = displayCountry;
         });
       }
 
-      // Check if mounted before accessing context for settings in logger
       String? logSettingsJson;
       if (mounted) {
         try {
-          final currentSettings = ref.read(settingsProvider); // Changed
+          final currentSettings = ref.read(settingsProvider);
           logSettingsJson = jsonEncode(currentSettings.toJson());
         } catch (e, s) {
           _logger.warning(
@@ -621,8 +588,6 @@ class _HomeViewState extends ConsumerState<HomeView>
         logSettingsJson = 'context_not_mounted';
       }
 
-      // At this point, if position couldn't be determined, an exception should have been thrown.
-      // Thus, position should not be null here.
       _logger.info(
         "Calculating prayer times for position",
         data: {
@@ -633,7 +598,7 @@ class _HomeViewState extends ConsumerState<HomeView>
       );
 
       if (!mounted) return {};
-      final settings = ref.read(settingsProvider); // Changed
+      final settings = ref.read(settingsProvider);
 
       final adhan.PrayerTimes? calculatedPrayerTimes = await _prayerService
           .calculatePrayerTimesForToday(settings);
@@ -658,57 +623,43 @@ class _HomeViewState extends ConsumerState<HomeView>
         },
       );
 
-      // Get the next prayer time for the countdown timer
       final DateTime? nextPrayerTime = await _prayerService.getNextPrayerTime();
 
-      // Update state variables *before* scheduling notifications
       _prayerTimes = calculatedPrayerTimes;
       _nextPrayerDateTime = nextPrayerTime;
 
-      // Schedule notifications now that prayer times are calculated
-      // Use addPostFrameCallback to ensure context is valid and build is complete
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _scheduleAllPrayerNotifications(context, calculatedPrayerTimes);
-          // Update display and scroll after scheduling
-          _updatePrayerTimingsDisplay(); // This will now also set _currentPrayerEnum
+          _updatePrayerTimingsDisplay();
 
-          // Scroll to the initial current prayer using the enum
-          // _updatePrayerTimingsDisplay would have set _currentPrayerEnum
-          // We need to ensure _currentPrayerEnum is set before calling _scrollToPrayer
-          // The _updatePrayerTimingsDisplay call above handles this.
-          // If _currentPrayerEnum is not null, scroll to it.
           if (_currentPrayerEnum != null) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              // Ensure scroll happens after build
               if (mounted) _scrollToPrayer(_currentPrayerEnum);
             });
           }
         }
       });
 
-      // Return data needed for the UI build
       return {
-        'prayerTimes': calculatedPrayerTimes, // Still needed for initial build
+        'prayerTimes': calculatedPrayerTimes,
         'displayCity': displayCity,
         'displayCountry': displayCountry,
         'position': position,
         'locationName': locationNameToUse,
-        'nextPrayerTime': nextPrayerTime, // Still needed for initial build
+        'nextPrayerTime': nextPrayerTime,
       };
     } on Exception catch (e, s) {
       _logger.error(
         'Error in _fetchDataAndScheduleNotifications',
         data: {'error': e.toString(), 'stackTrace': s.toString()},
       );
-      // Reset prayer times on error to avoid using stale data
       _prayerTimes = null;
       _nextPrayerDateTime = null;
       rethrow;
     }
   }
 
-  // Helper to process errors for display in FutureBuilder
   String _processLoadError(Object? error) {
     _logger.error(
       'FutureBuilder caught error',
@@ -717,7 +668,7 @@ class _HomeViewState extends ConsumerState<HomeView>
     String specificError =
         'Failed to load prayer times. Please check connection and location settings.';
     if (error is PrayerDataException) {
-      specificError = error.message; // Use the message from PrayerDataException
+      specificError = error.message;
     } else if (error is Exception) {
       final errorString = error.toString();
       if (errorString.contains('Location services are disabled')) {
@@ -736,7 +687,6 @@ class _HomeViewState extends ConsumerState<HomeView>
         specificError = 'Initialization error. Please restart the app.';
       }
     } else if (error != null) {
-      // Handle non-Exception errors if necessary
       specificError = 'An unexpected error occurred: ${error.toString()}';
     }
     return specificError;
@@ -748,20 +698,13 @@ class _HomeViewState extends ConsumerState<HomeView>
     BuildContext context,
     adhan.PrayerTimes prayerTimes,
   ) async {
-    // Ensure widget is still mounted before accessing context or scheduling
     if (!mounted) return;
 
-    // final localizations = AppLocalizations.of(context)!; // Removed
-    // Use read here as this function is called from post-frame callbacks or FutureBuilder,
-    // and we don't want this specific function call to trigger rebuilds on settings change.
-    // The watch() in the build method handles reacting to settings changes.
-    final appSettings = ref.read(settingsProvider); // Changed
-    // final settings = settingsProvider.settings; // Removed, use appSettings
+    final appSettings = ref.read(settingsProvider);
 
     _logger.info("Scheduling/Rescheduling notifications...");
 
-    await _notificationService
-        .cancelAllNotifications(); // Clear existing before scheduling new ones
+    await _notificationService.cancelAllNotifications();
 
     for (var prayerEnum in PrayerNotification.values) {
       final prayerInfo = _getPrayerDisplayInfo(prayerEnum, prayerTimes);
@@ -770,11 +713,11 @@ class _HomeViewState extends ConsumerState<HomeView>
       if (prayerInfo.time != null && isEnabled) {
         await _notificationService.schedulePrayerNotification(
           id: prayerEnum.index,
-          localizedTitle: "Prayer Time: ${prayerInfo.name}", // Simplified title
+          localizedTitle: "Prayer Time: ${prayerInfo.name}",
           localizedBody: "It's time for ${prayerInfo.name} prayer.",
           prayerTime: prayerInfo.time!,
-          isEnabled: true, // This is always true if we reach here
-          appSettings: appSettings, // Pass the current appSettings
+          isEnabled: true,
+          appSettings: appSettings,
         );
       }
     }
@@ -784,41 +727,56 @@ class _HomeViewState extends ConsumerState<HomeView>
   PrayerDisplayInfoData _getPrayerDisplayInfo(
     PrayerNotification prayerEnum,
     adhan.PrayerTimes? prayerTimes,
+    AppSettings appSettings, // Added appSettings parameter
   ) {
     DateTime? time;
     String name;
     IconData icon;
 
+    // Ensure prayerTimes is not null before calling getOffsettedPrayerTime
+    if (prayerTimes == null) {
+      _logger.warning("_getPrayerDisplayInfo called with null prayerTimes for $prayerEnum");
+      // Return a default or error state
+      String prayerNameStr = prayerEnum.toString().split('.').last;
+      prayerNameStr = prayerNameStr[0].toUpperCase() + prayerNameStr.substring(1);
+      return PrayerDisplayInfoData(
+        name: prayerNameStr, 
+        time: null, 
+        prayerEnum: prayerEnum, 
+        iconData: Icons.error_outline // Default error icon
+      );
+    }
+
     switch (prayerEnum) {
       case PrayerNotification.fajr:
-        time = prayerTimes?.fajr;
         name = "Fajr";
         icon = Icons.wb_sunny_outlined; // Dawn/Sunrise icon
+        time = _prayerService.getOffsettedPrayerTime("fajr", prayerTimes, appSettings);
         break;
       case PrayerNotification.sunrise:
-        time = prayerTimes?.sunrise;
         name = "Sunrise";
         icon = Icons.wb_twilight_outlined; // Sunrise icon
+        time = _prayerService.getOffsettedPrayerTime("sunrise", prayerTimes, appSettings);
         break;
       case PrayerNotification.dhuhr:
-        time = prayerTimes?.dhuhr;
         name = "Dhuhr";
         icon = Icons.wb_sunny; // Midday sun
+        time = _prayerService.getOffsettedPrayerTime("dhuhr", prayerTimes, appSettings);
         break;
       case PrayerNotification.asr:
-        time = prayerTimes?.asr;
         name = "Asr";
         icon = Icons.wb_twilight; // Afternoon/twilight
+        time = _prayerService.getOffsettedPrayerTime("asr", prayerTimes, appSettings);
         break;
       case PrayerNotification.maghrib:
-        time = prayerTimes?.maghrib;
         name = "Maghrib";
         icon = Icons.brightness_4_outlined; // Sunset icon
+        time = _prayerService.getOffsettedPrayerTime("maghrib", prayerTimes, appSettings);
         break;
       case PrayerNotification.isha:
-        time = prayerTimes?.isha;
         name = "Isha";
         icon = Icons.nights_stay; // Moon/night icon
+        time = _prayerService.getOffsettedPrayerTime("isha", prayerTimes, appSettings);
         break;
     }
     return PrayerDisplayInfoData(
@@ -882,13 +840,14 @@ class _HomeViewState extends ConsumerState<HomeView>
 
     // final localizations = AppLocalizations.of(context)!; // Removed
     final brightness = Theme.of(context).brightness;
-    final bool isDarkMode = brightness == Brightness.dark;
+    // final bool isDarkMode = brightness == Brightness.dark; // No longer needed for scaffoldBg
 
     // Define colors similar to TesbihView
-    final Color scaffoldBg =
-        isDarkMode
-            ? AppColors.surface(brightness)
-            : AppColors.background(brightness);
+    // final Color scaffoldBg = // Replaced by AppColors.getScaffoldBackground
+    //     isDarkMode
+    //         ? AppColors.surface(brightness)
+    //         : AppColors.background(brightness);
+    final bool isDarkMode = brightness == Brightness.dark; // Still needed for other color logic
     final Color contentSurface =
         isDarkMode
             ? const Color(0xFF2C2C2C)
@@ -907,21 +866,10 @@ class _HomeViewState extends ConsumerState<HomeView>
             : AppColors.primary(brightness);
 
     return Scaffold(
-      backgroundColor: scaffoldBg,
-      appBar: AppBar(
-        title: Text(
-          "Prayer Times", // Replaced localizations.appTitle;
-          style: AppTextStyles.appTitle(brightness),
-        ),
-        backgroundColor: AppColors.primary(brightness),
-        elevation: 2,
-        shadowColor: AppColors.shadowColor(brightness),
-        centerTitle: true,
-        systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: AppColors.primary(brightness),
-          statusBarIconBrightness:
-              isDarkMode ? Brightness.light : Brightness.light,
-        ),
+      backgroundColor: AppColors.getScaffoldBackground(brightness),
+      appBar: CustomAppBar(
+        title: "Prayer Times",
+        brightness: brightness,
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _dataLoadingFuture,
@@ -938,7 +886,7 @@ class _HomeViewState extends ConsumerState<HomeView>
               // localizations: localizations, // Removed
               brightness: brightness,
               isDarkMode: isDarkMode,
-              scaffoldBg: scaffoldBg,
+              // scaffoldBg: scaffoldBg, // Removed
               contentSurface: contentSurface,
               currentPrayerItemBg: currentPrayerItemBg,
               currentPrayerItemBorder: currentPrayerItemBorder,
@@ -1050,10 +998,8 @@ class _HomeViewState extends ConsumerState<HomeView>
     required String? displayCity,
     required String? displayCountry,
     required AppSettings appSettings,
-    // required AppLocalizations localizations, // Removed
     required Brightness brightness,
     required bool isDarkMode,
-    required Color scaffoldBg,
     required Color contentSurface,
     required Color currentPrayerItemBg,
     required Color currentPrayerItemBorder,
@@ -1338,16 +1284,15 @@ class _HomeViewState extends ConsumerState<HomeView>
                         ),
                     itemBuilder: (context, index) {
                       final prayerEnum = prayerOrder[index];
+                      // Pass appSettings to _getPrayerDisplayInfo
                       final prayerInfo = _getPrayerDisplayInfo(
                         prayerEnum,
                         prayerTimes,
+                        appSettings, 
                       );
 
-                      // final bool isEnabled = settings.notifications[prayerEnum] ?? false; // Unused
                       final bool isCurrent =
-                          !isLoading &&
-                          _currentPrayerEnum ==
-                              prayerInfo.prayerEnum; // Compare enums
+                          !isLoading && _currentPrayerEnum == prayerInfo.prayerEnum;
 
                       return PrayerListItem(
                         prayerInfo: prayerInfo,
