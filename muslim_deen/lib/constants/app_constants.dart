@@ -1,10 +1,10 @@
 import 'package:geolocator/geolocator.dart';
 
 class AppConstants {
-  static const Position meccaPosition = Position(
+  static final Position meccaPosition = Position(
     latitude: 21.4225,
     longitude: 39.8262,
-    timestamp: const DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+    timestamp: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
     accuracy: 0.0,
     altitude: 0.0,
     altitudeAccuracy: 0.0,
