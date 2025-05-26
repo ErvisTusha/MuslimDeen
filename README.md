@@ -9,8 +9,14 @@
 - **Accurate Prayer Times**  
   Get precise prayer timings based on your location, with customizable calculation methods and notifications for each prayer.
 
+- **Smart Prayer Notifications**  
+  Receive notifications for all prayers with customizable Adhan sounds. Dhuhr, Asr, Maghrib, and Isha prayers play your selected Adhan, while Fajr and Sunrise use gentle system sounds.
+
 - **Qibla Direction Finder**  
-  Easily locate the direction of the Kaaba (Qibla) from anywhere in the world using your device’s compass and GPS.
+  Easily locate the direction of the Kaaba (Qibla) from anywhere in the world using your device's compass and GPS.
+
+- **Digital Dhikr Counter (Tesbih)**  
+  Count your daily dhikr with a beautiful digital tasbih featuring vibration feedback, audio pronunciation, and customizable targets for different remembrances.
 
 - **Quran Reading & Audio**  
   Read the entire Holy Quran with clear Arabic text, translations, and listen to high-quality audio recitations by renowned Qaris.
@@ -37,13 +43,19 @@
 2. **Set Up Location**  
    Allow location access for accurate prayer times and Qibla direction, or enter your city manually.
 
-3. **Explore Features**  
+3. **Configure Prayer Notifications**  
+   Enable prayer notifications and select your preferred Adhan sound for the main prayers (Dhuhr, Asr, Maghrib, Isha).
+
+4. **Use Digital Tesbih**  
+   Access the Dhikr counter to perform your daily remembrance with guided counts and audio assistance.
+
+5. **Explore Features**  
    Navigate through the app to access prayer times, Quran, Duas, and more.
 
-4. **Enable Notifications**  
+6. **Enable Notifications**  
    Turn on prayer notifications so you never miss a prayer.
 
-5. **Personalize Settings**  
+7. **Personalize Settings**  
    Adjust calculation methods, themes, and other preferences in the settings menu.
 
 ---

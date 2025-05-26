@@ -1,20 +1,17 @@
-// Standard library imports
 import 'dart:async';
 
-// Flutter imports
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Added for SystemUiOverlayStyle
 
-// Third-party package imports
 import 'package:geocoding/geocoding.dart';
 
-// Local application imports
-import '../service_locator.dart';
-import '../services/location_service.dart';
-import '../services/logger_service.dart';
-import '../styles/app_styles.dart';
-import '../widgets/city_search_bar.dart';
-import '../widgets/city_search_results_list.dart';
+import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/location_service.dart';
+import 'package:muslim_deen/services/logger_service.dart';
+import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/styles/ui_theme_helper.dart';
+import 'package:muslim_deen/widgets/city_search_bar.dart';
+import 'package:muslim_deen/widgets/city_search_results_list.dart';
+import 'package:muslim_deen/widgets/custom_app_bar.dart';
 
 class CitySearchScreen extends StatefulWidget {
   const CitySearchScreen({super.key});
@@ -89,7 +86,6 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
       _isLoading = true;
       _errorMessage = null;
       _searchResults.clear();
-      // _searchAttempts++; // Moved to _onSearchChanged or manage per query
     });
     _searchAttempts++; // Increment for the current query attempt
 
@@ -343,57 +339,34 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    final bool isDarkMode = brightness == Brightness.dark;
+    final colors = UIThemeHelper.getThemeColors(brightness);
 
-    // Define colors similar to TesbihView
-    final Color scaffoldBg =
-        isDarkMode
-            ? AppColors.surface(brightness)
-            : AppColors.background(brightness);
-    final Color contentSurface =
-        isDarkMode
-            ? const Color(0xFF2C2C2C)
-            : AppColors.primaryVariant(brightness); // For cards/containers
     final Color textFieldBg =
-        isDarkMode ? const Color(0xFF3C3C3C) : AppColors.background(brightness);
-    final Color textColor = AppColors.textPrimary(brightness);
-    final Color hintColor = AppColors.textSecondary(brightness);
-    final Color iconColor = AppColors.iconInactive(brightness);
-    final Color borderColor = AppColors.borderColor(brightness);
-    final Color errorColor = AppColors.error(brightness);
+        colors.isDarkMode
+            ? const Color(0xFF3C3C3C)
+            : AppColors.background(brightness);
     final Color listTileSelectedColor =
-        isDarkMode
-            ? AppColors.accentGreen(brightness).withAlpha(50)
+        colors.isDarkMode
+            ? colors.accentColor.withAlpha(50)
             : AppColors.primary(brightness).withAlpha(30);
 
     return Scaffold(
-      backgroundColor: scaffoldBg,
-      appBar: AppBar(
-        title: Text(
-          "Set Location Manually",
-          style: AppTextStyles.appTitle(brightness),
-        ),
-        backgroundColor: AppColors.primary(brightness),
-        elevation: 2.0,
-        shadowColor: AppColors.shadowColor(brightness),
-        centerTitle: true,
-        systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: AppColors.primary(brightness),
-          statusBarIconBrightness:
-              isDarkMode ? Brightness.light : Brightness.light,
-        ),
+      backgroundColor: AppColors.getScaffoldBackground(brightness),
+      appBar: CustomAppBar(
+        title: "Set Location Manually",
+        brightness: brightness,
       ),
       body: Column(
         children: [
           CitySearchBar(
             controller: _searchController,
             brightness: brightness,
-            contentSurfaceColor: contentSurface,
+            contentSurfaceColor: colors.contentSurface,
             textFieldBackgroundColor: textFieldBg,
-            textColor: textColor,
-            hintColor: hintColor,
-            iconColor: iconColor,
-            borderColor: borderColor,
+            textColor: colors.textColorPrimary,
+            hintColor: colors.textColorSecondary,
+            iconColor: colors.iconInactive,
+            borderColor: colors.borderColor,
             onClear: () {
               _searchController.clear();
               setState(() {
@@ -409,87 +382,35 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
               padding: const EdgeInsets.all(24.0),
               child: Center(
                 child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    AppColors.accentGreen(brightness),
-                  ),
-                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(colors.accentColor),
                 ),
               ),
             ),
-
           if (_errorMessage != null && !_isLoading)
-            Container(
-              width: double.infinity,
-              // color: contentSurface, // Removed: Already in BoxDecoration
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20.0,
-                vertical: 16.0,
-              ),
-              margin: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 8.0,
-              ),
-              decoration: BoxDecoration(
-                color: contentSurface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: errorColor.withAlpha(100)),
-              ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
               child: Text(
                 _errorMessage!,
                 style: AppTextStyles.label(
                   brightness,
-                ).copyWith(color: errorColor, fontSize: 15),
+                ).copyWith(color: colors.errorColor),
                 textAlign: TextAlign.center,
               ),
             ),
-
-          if (_searchController.text.isNotEmpty &&
-              _searchResults.isEmpty &&
-              !_isLoading &&
-              _errorMessage == null)
-            Container(
-              width: double.infinity,
-              // color: contentSurface, // Removed: Already in BoxDecoration
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20.0,
-                vertical: 16.0,
-              ),
-              margin: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 8.0,
-              ),
-              decoration: BoxDecoration(
-                color: contentSurface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: borderColor.withAlpha(isDarkMode ? 100 : 150),
-                ),
-              ),
-              child: Text(
-                _searchController.text.length <
-                        3 // Adjusted for better UX
-                    ? "Type at least 3 characters to search"
-                    : "No locations found for \"${_searchController.text}\"",
-                style: AppTextStyles.label(
-                  brightness,
-                ).copyWith(color: hintColor, fontSize: 15),
-                textAlign: TextAlign.center,
+          if (_searchResults.isNotEmpty && !_isLoading)
+            Expanded(
+              child: CitySearchResultsList(
+                searchResults: _searchResults,
+                brightness: brightness,
+                contentSurfaceColor: colors.contentSurface,
+                textColor: colors.textColorPrimary,
+                hintColor: colors.textColorSecondary,
+                iconColor: colors.iconInactive,
+                borderColor: colors.borderColor,
+                listTileSelectedColor: listTileSelectedColor,
+                onSelectLocation: _selectLocation,
               ),
             ),
-
-          Expanded(
-            child: CitySearchResultsList(
-              searchResults: _searchResults,
-              brightness: brightness,
-              contentSurfaceColor: contentSurface,
-              borderColor: borderColor,
-              listTileSelectedColor: listTileSelectedColor,
-              textColor: textColor,
-              hintColor: hintColor,
-              iconColor: iconColor,
-              onSelectLocation: _selectLocation,
-            ),
-          ),
         ],
       ),
     );

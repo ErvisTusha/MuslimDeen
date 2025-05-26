@@ -7,33 +7,15 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
-import '../service_locator.dart';
-import '../services/logger_service.dart';
-import '../models/app_settings.dart'; // Added for AppSettings
+
+import 'package:muslim_deen/models/app_settings.dart';
+import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/logger_service.dart';
 
 /// Represents the current status of notification permissions
 enum NotificationPermissionStatus { granted, denied, notDetermined, restricted }
 
-/// Configuration for a scheduled notification
-class NotificationConfig {
-  final int id;
-  final String title;
-  final String body;
-  final DateTime scheduledTime;
-  final bool isExact;
-  final String? payload;
-  final NotificationChannel channel;
-
-  const NotificationConfig({
-    required this.id,
-    required this.title,
-    required this.body,
-    required this.scheduledTime,
-    required this.channel,
-    this.isExact = false,
-    this.payload,
-  });
-}
+// Removed class NotificationConfig
 
 /// Represents different notification channels with their specific settings
 enum NotificationChannel {
@@ -67,18 +49,7 @@ enum NotificationChannel {
   });
 }
 
-/// Custom exception for notification-related errors
-class NotificationException implements Exception {
-  final String message;
-  final String? code;
-  final dynamic originalError;
-
-  NotificationException(this.message, {this.code, this.originalError});
-
-  @override
-  String toString() =>
-      'NotificationException: $message${code != null ? ' (Code: $code)' : ''}';
-}
+// Removed class NotificationException
 
 /// Service responsible for managing local notifications in the application
 class NotificationService {
@@ -89,7 +60,7 @@ class NotificationService {
   NotificationPermissionStatus _permissionStatus =
       NotificationPermissionStatus.notDetermined;
   bool _hasExactAlarmPermission = false;
-  bool _disposed = false;
+  final bool _disposed = false;
 
   final _permissionStatusController =
       StreamController<NotificationPermissionStatus>.broadcast();
@@ -103,8 +74,7 @@ class NotificationService {
       _permissionStatus == NotificationPermissionStatus.denied ||
       _permissionStatus == NotificationPermissionStatus.restricted;
 
-  bool get canRequestPermission =>
-      _permissionStatus == NotificationPermissionStatus.notDetermined;
+  // Removed getter canRequestPermission
 
   Future<void> init() async {
     if (_isInitialized || _disposed) return;
@@ -114,7 +84,7 @@ class NotificationService {
     await _initializeNotificationsPlugin();
     // Clean up expired notifications on startup
     if (_isInitialized && !_disposed) {
-      cleanupExpiredNotifications();
+      _cleanupExpiredNotifications();
     }
   }
 
@@ -201,20 +171,8 @@ class NotificationService {
     }
   }
 
-  void dispose() {
-    if (_disposed) return;
-
-    _disposed = true;
-    if (!_permissionStatusController.isClosed) {
-      _permissionStatusController.close();
-    }
-  }
-
-  Future<void> checkPermissionStatus() async {
-    if (_disposed) return;
-    _logger.debug('Checking notification permission status.');
-    await _checkInitialPermissions();
-  }
+  // Removed method dispose()
+  // Removed method checkPermissionStatus()
 
   void _updatePermissionStatus(NotificationPermissionStatus status) {
     if (_permissionStatus != status && !_disposed) {
@@ -403,35 +361,7 @@ class NotificationService {
     }
   }
 
-  Future<void> displayInstantNotification(NotificationConfig config) async {
-    if (!_isInitialized) {
-      throw NotificationException('Notification service not initialized');
-    }
-
-    if (isBlocked) {
-      throw NotificationException(
-        'Notifications are blocked',
-        code: 'notifications_blocked',
-      );
-    }
-
-    final notificationDetails = _createNotificationDetails(config.channel);
-
-    try {
-      await _notificationsPlugin.show(
-        config.id,
-        config.title,
-        config.body,
-        notificationDetails,
-        payload: config.payload,
-      );
-    } catch (e) {
-      throw NotificationException(
-        'Error showing instant notification',
-        originalError: e,
-      );
-    }
-  }
+  // Removed method displayInstantNotification()
 
   Future<void> schedulePrayerNotification({
     required int id,
@@ -440,7 +370,7 @@ class NotificationService {
     required DateTime prayerTime,
     required bool isEnabled,
     String? payload,
-    AppSettings? appSettings, // Added to access Azan sound setting
+    AppSettings? appSettings,
   }) async {
     if (!isEnabled || _disposed) {
       if (isEnabled == false) await cancelNotification(id);
@@ -482,53 +412,58 @@ class NotificationService {
       }
     }
 
-    // Determine the sound based on the prayer type (id)
+    // Enhanced sound selection logic for prayer notifications
     String? soundName;
     bool useCustomSound = false;
 
-    // Assuming PrayerNotification enum values correspond to IDs:
-    // Fajr = 0, Sunrise = 1, Dhuhr = 2, Asr = 3, Maghrib = 4, Isha = 5
-    // Tespi notifications might have different IDs, adjust as needed.
-    // For this example, we'll use a simple mapping.
-    // A more robust solution would be to pass the PrayerNotification enum directly
-    // or have a clear mapping from id to PrayerNotification type.
-
+    // Map notification ID to PrayerNotification enum
     PrayerNotification? prayerType;
-    // Ensure PrayerNotification.values is accessible and id is within bounds.
-    // This check assumes PrayerNotification enum is defined and imported.
     if (id >= 0 && id < PrayerNotification.values.length) {
       prayerType = PrayerNotification.values[id];
     }
 
-    if (prayerType == PrayerNotification.dhuhr ||
-        prayerType == PrayerNotification.asr ||
-        prayerType == PrayerNotification.maghrib ||
-        prayerType == PrayerNotification.isha) {
-      // Use selected Azan for Dhuhr, Asr, Maghrib, Isha
-      // For now, using a default Azan from AppSettings or a hardcoded one
-      soundName =
-          appSettings?.azanSoundForStandardPrayers ?? 'makkah_adhan.mp3';
-      useCustomSound = true;
-    } else if (prayerType == PrayerNotification.fajr ||
-        prayerType == PrayerNotification.sunrise) {
-      // Use default system sound for Fajr and Sunrise
-      soundName = null; // Indicates default system sound
-      useCustomSound = false;
+    // Apply sound selection rules based on prayer type
+    if (prayerType != null) {
+      switch (prayerType) {
+        case PrayerNotification.dhuhr:
+        case PrayerNotification.asr:
+        case PrayerNotification.maghrib:
+        case PrayerNotification.isha:
+          // Use selected Adhan for main prayers
+          soundName =
+              appSettings?.azanSoundForStandardPrayers ?? 'makkah_adhan.mp3';
+          useCustomSound = true;
+          _logger.info(
+            'Using custom Adhan sound for ${prayerType.name}',
+            data: {'soundName': soundName},
+          );
+          break;
+        case PrayerNotification.fajr:
+        case PrayerNotification.sunrise:
+          // Use default system sound for Fajr and Sunrise
+          soundName = null;
+          useCustomSound = false;
+          _logger.info('Using default system sound for ${prayerType.name}');
+          break;
+      }
     } else {
-      // For other notifications like 'Tespi', use default system sound
-      // This assumes 'Tespi' notifications will have IDs outside the PrayerNotification enum range
-      // or a specific logic to identify them.
+      // For non-prayer notifications (like Tesbih reminders), use default system sound
       soundName = null;
       useCustomSound = false;
+      _logger.info(
+        'Using default system sound for non-prayer notification',
+        data: {'id': id},
+      );
     }
 
     _logger.info(
-      'Notification sound determined',
+      'Notification sound configuration',
       data: {
         'id': id,
-        'prayerType': prayerType?.toString(),
-        'soundName': soundName,
+        'prayerType': prayerType?.name ?? 'unknown',
+        'soundName': soundName ?? 'default_system',
         'useCustomSound': useCustomSound,
+        'selectedAdhan': appSettings?.azanSoundForStandardPrayers,
       },
     );
 
@@ -549,6 +484,7 @@ class NotificationService {
         jsonEncode({
           'prayerTime': scheduledTime.toIso8601String(),
           'title': localizedTitle,
+          'prayerType': prayerType?.name,
         });
 
     try {
@@ -566,13 +502,15 @@ class NotificationService {
       );
 
       _logger.info(
-        'Scheduled prayer notification',
+        'Scheduled prayer notification successfully',
         data: {
           'id': id,
           'title': localizedTitle,
+          'prayerType': prayerType?.name ?? 'unknown',
           'time': scheduledTime.toIso8601String(),
           'exact': useExact,
-          'sound': soundName ?? 'default',
+          'sound': soundName ?? 'default_system',
+          'useCustomSound': useCustomSound,
         },
       );
     } catch (e, s) {
@@ -580,7 +518,11 @@ class NotificationService {
         'Error scheduling notification',
         error: e,
         stackTrace: s,
-        data: {'id': id, 'title': localizedTitle},
+        data: {
+          'id': id,
+          'title': localizedTitle,
+          'prayerType': prayerType?.name ?? 'unknown',
+        },
       );
     }
   }
@@ -636,31 +578,6 @@ class NotificationService {
     );
   }
 
-  NotificationDetails _createNotificationDetails(NotificationChannel channel) {
-    final androidDetails = AndroidNotificationDetails(
-      channel.id,
-      channel.name,
-      channelDescription: channel.description,
-      importance: channel.importance,
-      priority: channel.priority,
-      playSound: true,
-      enableLights: true,
-      enableVibration: true,
-    );
-
-    const darwinDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-
-    return NotificationDetails(
-      android: androidDetails,
-      iOS: darwinDetails,
-      macOS: darwinDetails,
-    );
-  }
-
   Future<void> cancelNotification(int id) async {
     if (kIsWeb || _disposed) {
       if (kIsWeb) {
@@ -703,7 +620,7 @@ class NotificationService {
     }
   }
 
-  Future<void> cleanupExpiredNotifications() async {
+  Future<void> _cleanupExpiredNotifications() async {
     if (!_isInitialized || _disposed) return;
 
     try {
@@ -748,14 +665,10 @@ class NotificationService {
     }
   }
 
-  Future<bool> requestExactAlarmPermission() async {
-    await _checkExactAlarmsSupport(checkOnly: false);
-    return _hasExactAlarmPermission;
-  }
-
-  NotificationPermissionStatus get permissionStatus => _permissionStatus;
-  bool get isInitialized => _isInitialized;
-  bool get hasExactAlarmPermission => _hasExactAlarmPermission;
+  // Removed method requestExactAlarmPermission()
+  // Removed getter permissionStatus
+  // Removed getter isInitialized
+  // Removed getter hasExactAlarmPermission
 
   Future<void> _checkInitialPermissions() async {
     if (defaultTargetPlatform == TargetPlatform.android) {

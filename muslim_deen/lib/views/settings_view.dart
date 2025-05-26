@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:audioplayers/audioplayers.dart';
 
-import '../models/app_settings.dart';
-import '../providers/providers.dart';
-import '../providers/settings_notifier.dart';
-import '../service_locator.dart';
-import '../services/location_service.dart';
-import '../services/logger_service.dart';
-import '../styles/app_styles.dart';
-import '../widgets/settings_ui_elements.dart';
-import 'about_view.dart';
-import 'city_search_screen.dart';
+import 'package:muslim_deen/models/app_settings.dart';
+import 'package:muslim_deen/providers/providers.dart';
+import 'package:muslim_deen/providers/settings_notifier.dart';
+import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/location_service.dart';
+import 'package:muslim_deen/services/logger_service.dart';
+import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/styles/ui_theme_helper.dart';
+import 'package:muslim_deen/views/about_view.dart';
+import 'package:muslim_deen/views/city_search_screen.dart';
+import 'package:muslim_deen/widgets/custom_app_bar.dart';
+import 'package:muslim_deen/widgets/settings_ui_elements.dart';
 
 class SettingsView extends ConsumerStatefulWidget {
-  // Add constructor parameters to indicate where to scroll initially
   final bool scrollToNotifications;
   final bool scrollToLocation;
   final bool scrollToDate;
@@ -38,9 +38,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   Position? _currentPosition;
   bool _isLoadingLocation = false;
   final AudioPlayer _audioPlayer = AudioPlayer();
-  // Add scroll controller to manage scrolling
   final ScrollController _scrollController = ScrollController();
-  // Add global keys for sections we need to scroll to
   final GlobalKey _notificationsKey = GlobalKey();
   final GlobalKey _locationKey = GlobalKey();
   final GlobalKey _dateKey = GlobalKey();
@@ -48,7 +46,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // No need for explicit Provider.of call - Riverpod manages this
   }
 
   @override
@@ -57,13 +54,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     _logger.info('SettingsView initialized');
     _loadCurrentLocation();
 
-    // Schedule scroll to appropriate section after build if requested
+    /// Schedule scroll to appropriate section after build if requested
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
-      // Use Future.delayed with Duration.zero to ensure scrolling happens
-      // after the current build cycle and layout phase is fully complete,
-      // giving more time for GlobalKey contexts to be established.
       Future.delayed(Duration.zero, () {
         if (!mounted) return;
 
@@ -73,7 +67,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         } else if (widget.scrollToLocation) {
           _logger.debug('Delayed auto-scroll to location section');
           _scrollToLocationSection();
-          // The _showLocationOptionsDialog is called within _scrollToLocationSection
         } else if (widget.scrollToDate) {
           _logger.debug('Delayed auto-scroll to date section');
           _scrollToDateSection();
@@ -85,7 +78,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   @override
   void dispose() {
     _logger.debug('SettingsView disposed');
-    // Dispose the scroll controller
     _scrollController.dispose();
     _audioPlayer.dispose();
     super.dispose();
@@ -100,7 +92,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     });
 
     try {
-      // Force a fresh location request by using Geolocator directly when in automatic mode
       if (!_locationService.isUsingManualLocation()) {
         try {
           final position = await Geolocator.getCurrentPosition(
@@ -129,15 +120,12 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             error: e.toString(),
             stackTrace: s,
           );
-          // Fall through to use LocationService as backup
         }
       }
 
-      // Use LocationService as fallback or when in manual mode
       final position = await _locationService.getLocation();
       if (!mounted) return;
 
-      // Log location information
       _logger.info(
         'Using cached/manual location',
         data: {
@@ -165,7 +153,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     }
   }
 
-  // Method to scroll to date (appearance) section
   void _scrollToDateSection() {
     _logger.debug('Attempting to scroll to Date & Time section');
     if (!mounted) {
@@ -180,7 +167,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           _dateKey.currentContext!,
           duration: const Duration(milliseconds: 500),
           curve: Curves.easeInOut,
-          alignment: 0.0, // Align to the top of the viewport
+          alignment: 0.0,
         );
         _logger.debug(
           'Successfully initiated scroll to Date & Time section using ensureVisible.',
@@ -201,13 +188,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         },
       );
     }
-    // Show date format dialog after scrolling if requested
     if (widget.scrollToDate && mounted) {
-      // This if statement was missing its closing brace
       Future.delayed(const Duration(milliseconds: 600), () {
         if (mounted) {
           final settingsNotifierInstance = ref.read(settingsProvider.notifier);
-          // Get the current settings to pass the dateFormatOption
           final currentSettings = ref.read(settingsProvider);
           _showDateFormatDialog(
             context,
@@ -216,10 +200,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           );
         }
       });
-    } // <-- Added missing closing brace for the if statement on line 197
+    }
   }
 
-  // Method to scroll to notifications section
   void _scrollToNotificationsSection() {
     if (!mounted) {
       _logger.warning(
@@ -238,7 +221,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     }
   }
 
-  // Method to scroll to location section
   void _scrollToLocationSection() {
     if (!mounted) {
       _logger.warning(
@@ -246,7 +228,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       );
       return;
     }
-    // Try to scroll the location section into view
     if (_locationKey.currentContext != null && _scrollController.hasClients) {
       Scrollable.ensureVisible(
         _locationKey.currentContext!,
@@ -255,7 +236,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         alignment: 0.0,
       );
     }
-    // Fallback: scroll to bottom to ensure location section is visible
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
@@ -264,7 +244,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       );
     }
 
-    // Add a small delay before showing the location options dialog
     if (widget.scrollToLocation) {
       Future.delayed(const Duration(milliseconds: 600), () {
         if (mounted) {
@@ -283,18 +262,8 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     final brightness = Theme.of(context).brightness;
 
     return Scaffold(
-      backgroundColor: AppColors.background(brightness),
-      appBar: AppBar(
-        title: Text("Settings", style: AppTextStyles.appTitle(brightness)),
-        backgroundColor: AppColors.primary(brightness),
-        elevation: 2.0,
-        shadowColor: AppColors.shadowColor(brightness),
-        centerTitle: true,
-        systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: AppColors.primary(brightness),
-          statusBarIconBrightness: Brightness.light,
-        ),
-      ),
+      backgroundColor: AppColors.getScaffoldBackground(brightness),
+      appBar: CustomAppBar(title: "Settings", brightness: brightness),
       body: ListView(
         controller: _scrollController,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -378,7 +347,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   'Toggle prayer notification',
                   data: {'prayer': prayer.toString(), 'enabled': value},
                 );
-                settingsNotifier.setPrayerNotification(prayer, value);
+                settingsNotifier.updatePrayerNotification(prayer, value);
               },
             ),
           ),
@@ -388,16 +357,18 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           SettingsListItem(
             icon: Icons.calculate_outlined,
             title: "Calculation Method",
-            subtitle: _getCalculationMethodName(
-              settings.calculationMethod,
-            ),
+            subtitle: _getCalculationMethodName(settings.calculationMethod),
             onTap: () {
               _logger.logInteraction(
                 'SettingsView',
                 'Change calculation method',
                 data: {'current': settings.calculationMethod},
               );
-              _showCalculationMethodPicker(context, settings.calculationMethod, settingsNotifier);
+              _showCalculationMethodPicker(
+                context,
+                settings.calculationMethod,
+                settingsNotifier,
+              );
             },
           ),
 
@@ -428,19 +399,14 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
           // Date & Time and Units section grouped for scrolling
           Column(
-            key: _dateKey, // Moved GlobalKey here
+            key: _dateKey,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SettingsSectionHeader(
-                title: "Date & Time",
-                // sectionKey: _dateKey, // Removed GlobalKey from here
-              ),
+              SettingsSectionHeader(title: "Date & Time"),
               SettingsListItem(
                 icon: Icons.calendar_today,
                 title: "Date Format",
-                subtitle: _getDateFormatName(
-                  settings.dateFormatOption,
-                ),
+                subtitle: _getDateFormatName(settings.dateFormatOption),
                 onTap: () {
                   _logger.logInteraction(
                     'SettingsView',
@@ -457,9 +423,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               SettingsListItem(
                 icon: Icons.access_time,
                 title: "Time Format",
-                subtitle: _getTimeFormatName(
-                  settings.timeFormat,
-                ),
+                subtitle: _getTimeFormatName(settings.timeFormat),
                 onTap: () {
                   _logger.logInteraction(
                     'SettingsView',
@@ -486,7 +450,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               _logger.logInteraction('SettingsView', 'Open about screen');
               Navigator.push(
                 context,
-                MaterialPageRoute<void>(builder: (context) => const AboutScreen()),
+                MaterialPageRoute<void>(
+                  builder: (context) => const AboutScreen(),
+                ),
               );
             },
           ),
@@ -503,44 +469,43 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     final localSettingsNotifier = ref.read(settingsProvider.notifier);
     final bool isBlocked = localSettingsNotifier.areNotificationsBlocked;
     final brightness = Theme.of(context).brightness;
+    final colors = UIThemeHelper.getThemeColors(brightness);
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
         color:
             isBlocked
-                ? AppColors.background(brightness).withAlpha(178)
-                : AppColors.background(brightness),
+                ? colors.contentSurface.withAlpha(178)
+                : colors.contentSurface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderColor(brightness)),
+        border: Border.all(color: colors.borderColor),
       ),
       child: Column(
         children: [
           SwitchListTile(
             title: Text(
               _getPrayerName(prayer),
-              style: AppTextStyles.prayerName(brightness).copyWith(
-                color: isBlocked ? AppColors.iconInactive(brightness) : null,
-              ),
+              style: AppTextStyles.prayerName(
+                brightness,
+              ).copyWith(color: isBlocked ? colors.iconInactive : null),
             ),
             subtitle: Text(
               "Receive notification for ${_getPrayerName(prayer)} prayer",
-              style: AppTextStyles.label(brightness).copyWith(
-                color: isBlocked ? AppColors.iconInactive(brightness) : null,
-              ),
+              style: AppTextStyles.label(
+                brightness,
+              ).copyWith(color: isBlocked ? colors.iconInactive : null),
             ),
             value: value,
             onChanged: isBlocked ? null : onChanged,
-            activeColor: AppColors.primary(brightness),
-            activeTrackColor: AppColors.switchTrackActive(brightness),
+            activeColor: colors.accentColor,
+            inactiveThumbColor: colors.iconInactive,
+            inactiveTrackColor: colors.borderColor,
             secondary: Icon(
               isBlocked
                   ? Icons.notifications_off
                   : Icons.notifications_outlined,
-              color: AppColors.iconInactive(brightness),
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              color: colors.iconInactive,
             ),
           ),
           if (isBlocked)
@@ -553,10 +518,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   Expanded(
                     child: Text(
                       "Notifications are blocked. Enable them in system settings.",
-                      style: AppTextStyles.label(brightness).copyWith(
-                        color: Colors.orange,
-                        fontSize: 12,
-                      ),
+                      style: AppTextStyles.label(
+                        brightness,
+                      ).copyWith(color: Colors.orange, fontSize: 12),
                     ),
                   ),
                 ],
@@ -567,9 +531,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     );
   }
 
-  Widget _buildLocationTile(
-    BuildContext context,
-  ) {
+  Widget _buildLocationTile(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -603,7 +565,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
                 if (isManualLocation) {
                   return FutureBuilder<String?>(
-                    future: _locationService.getLocationName(),
+                    future: _locationService.getStoredLocationName(),
                     builder: (context, nameSnapshot) {
                       return Text(
                         nameSnapshot.data ?? "Unknown Location",
@@ -613,19 +575,13 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   );
                 } else {
                   return _isLoadingLocation
-                      ? Text(
-                        "Loading",
-                        style: AppTextStyles.label(brightness),
-                      )
+                      ? Text("Loading", style: AppTextStyles.label(brightness))
                       : _currentPosition != null
                       ? Text(
                         "${_currentPosition!.latitude.toStringAsFixed(4)}, ${_currentPosition!.longitude.toStringAsFixed(4)}",
                         style: AppTextStyles.label(brightness),
                       )
-                      : Text(
-                        "Not Set",
-                        style: AppTextStyles.label(brightness),
-                      );
+                      : Text("Not Set", style: AppTextStyles.label(brightness));
                 }
               },
             ),
@@ -663,7 +619,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: Icon(Icons.my_location, color: AppColors.primary(brightness)),
+                leading: Icon(
+                  Icons.my_location,
+                  color: AppColors.primary(brightness),
+                ),
                 title: Text(
                   'Current Device Location',
                   style: AppTextStyles.prayerName(brightness),
@@ -683,7 +642,10 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ),
               Divider(color: AppColors.divider(brightness)),
               ListTile(
-                leading: Icon(Icons.search, color: AppColors.primary(brightness)),
+                leading: Icon(
+                  Icons.search,
+                  color: AppColors.primary(brightness),
+                ),
                 title: Text(
                   "Set Location Manually",
                   style: AppTextStyles.prayerName(brightness),
@@ -714,7 +676,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary(brightness)),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary(brightness),
+              ),
               child: Text("Cancel"),
             ),
           ],
@@ -723,44 +687,75 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     );
   }
 
-  void _showThemePicker(BuildContext context, ThemeMode currentThemeMode, SettingsNotifier notifier) {
+  Future<void> _showGenericSelectionDialog<T>({
+    required BuildContext context,
+    required String dialogTitle,
+    required T currentValue,
+    required List<T> options,
+    required String Function(T option) optionTitleBuilder,
+    required void Function(T? value) onSettingChanged,
+  }) async {
     final brightness = Theme.of(context).brightness;
-    final bool isDarkMode = brightness == Brightness.dark;
-    final Color dialogBgColor =
-        isDarkMode ? const Color(0xFF2C2C2C) : Colors.white;
-    final Color textColor = AppColors.textPrimary(brightness);
-    final Color accentColor = AppColors.accentGreen(brightness);
+    final dialogBackgroundColor = AppColors.surface(brightness);
+    final textColor = AppTextStyles.label(brightness).color;
+    final activeColor = AppColors.primary(brightness);
 
-    showDialog<void>(
+    return showDialog<void>(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
-          backgroundColor: dialogBgColor,
+          backgroundColor: dialogBackgroundColor,
           title: Text(
-            "Select Theme",
-            style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+            dialogTitle,
+            style: AppTextStyles.sectionTitle(
+              brightness,
+            ).copyWith(color: textColor),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: ThemeMode.values.map((themeMode) {
-              return RadioListTile<ThemeMode>(
-                title: Text(
-                  _getThemeName(themeMode),
-                  style: TextStyle(color: textColor),
-                ),
-                value: themeMode,
-                groupValue: currentThemeMode, // Use passed currentThemeMode
-                activeColor: accentColor,
-                onChanged: (ThemeMode? value) {
-                  if (value != null) {
-                    notifier.updateThemeMode(value); // Corrected method name
-                    Navigator.of(context).pop();
-                  }
-                },
-              );
-            }).toList(),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children:
+                  options.map((option) {
+                    return RadioListTile<T>(
+                      title: Text(
+                        optionTitleBuilder(option),
+                        style: AppTextStyles.label(
+                          brightness,
+                        ).copyWith(color: textColor),
+                      ),
+                      value: option,
+                      groupValue: currentValue,
+                      activeColor: activeColor,
+                      onChanged: (T? value) {
+                        if (value != null) {
+                          onSettingChanged(value);
+                          Navigator.of(dialogContext).pop();
+                        }
+                      },
+                    );
+                  }).toList(),
+            ),
           ),
         );
+      },
+    );
+  }
+
+  void _showThemePicker(
+    BuildContext context,
+    ThemeMode currentThemeMode,
+    SettingsNotifier notifier,
+  ) {
+    _showGenericSelectionDialog<ThemeMode>(
+      context: context,
+      dialogTitle: "Select Theme",
+      currentValue: currentThemeMode,
+      options: ThemeMode.values,
+      optionTitleBuilder: _getThemeName,
+      onSettingChanged: (ThemeMode? value) {
+        if (value != null) {
+          notifier.updateThemeMode(value);
+        }
       },
     );
   }
@@ -783,9 +778,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     showDialog<void>(
       context: context,
       builder: (dialogContext) {
-        // Changed context to dialogContext for clarity
         return StatefulBuilder(
-          // Used StatefulBuilder to manage dialog state
           builder: (BuildContext context, StateSetter setStateDialog) {
             return AlertDialog(
               backgroundColor: AppColors.background(brightness),
@@ -806,12 +799,11 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                         style: AppTextStyles.prayerName(brightness),
                       ),
                       value: soundFile,
-                      groupValue: tempSelectedAzan, // Use temporary selection
+                      groupValue: tempSelectedAzan,
                       activeColor: AppColors.primary(brightness),
                       onChanged: (value) async {
                         if (value != null) {
                           setStateDialog(() {
-                            // Update dialog state
                             tempSelectedAzan = value;
                           });
                           await _audioPlayer.stop();
@@ -850,9 +842,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 TextButton(
                   onPressed: () async {
                     if (tempSelectedAzan != null) {
-                      settingsNotifier.updateAzanSoundForStandardPrayers(
-                        tempSelectedAzan!,
-                      );
+                      settingsNotifier.updateAzanSound(tempSelectedAzan!);
                     }
                     final navigator = Navigator.of(dialogContext);
                     await _audioPlayer.stop();
@@ -871,19 +861,14 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         );
       },
     ).then((_) async {
-      // Ensure audio stops if dialog is dismissed by tapping outside
       await _audioPlayer.stop();
     });
   }
 
-  String _getAzanSoundDisplayName(
-    String fileName,
-  ) {
-    // Helper to convert filename to a more readable display name
-    // This could be enhanced with actual localized names if available
-    if (fileName.isEmpty) return "Not Set"; // Or some default
+  String _getAzanSoundDisplayName(String fileName) {
+    if (fileName.isEmpty) return "Not Set";
     String name = fileName.replaceAll('_adhan.mp3', '').replaceAll('_', ' ');
-    name = name.replaceAll('azaan ', ''); // for azaan_turkish
+    name = name.replaceAll('azaan ', '');
     name = name[0].toUpperCase() + name.substring(1);
     if (name.toLowerCase().contains('makkah')) {
       return "Makkah Adhan";
@@ -897,7 +882,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     if (name.toLowerCase().contains('turkish')) {
       return "Turkish Adhan";
     }
-    return name; // Fallback to a processed name
+    return name;
   }
 
   String _getThemeName(ThemeMode themeMode) {
@@ -911,23 +896,17 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     }
   }
 
-  String _getCalculationMethodName(String method) { // Added this function
-    // This is a placeholder. You might want to map keys to display names.
-    // For example, if method is 'MuslimWorldLeague', return 'Muslim World League'
-    // This depends on how your calculation method strings are stored and how you want to display them.
+  String _getCalculationMethodName(String method) {
     return method;
   }
 
-  String _getMadhabName(String madhab) { // Changed Madhab to String
-    // Assuming madhab is stored as a string like 'shafi' or 'hanafi'
+  String _getMadhabName(String madhab) {
     if (madhab.toLowerCase() == 'shafi') return "Shafi";
     if (madhab.toLowerCase() == 'hanafi') return "Hanafi";
-    return madhab; // Fallback to the raw string if not recognized
+    return madhab;
   }
 
-  String _getPrayerName(
-    PrayerNotification prayer,
-  ) {
+  String _getPrayerName(PrayerNotification prayer) {
     switch (prayer) {
       case PrayerNotification.fajr:
         return "Fajr";
@@ -969,38 +948,17 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     DateFormatOption currentDateFormatOption,
     SettingsNotifier notifier,
   ) {
-    final brightness = Theme.of(context).brightness;
-    showDialog<void>(
+    _showGenericSelectionDialog<DateFormatOption>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            backgroundColor: AppColors.background(brightness),
-            title: Text(
-              "Date Format",
-              style: AppTextStyles.sectionTitle(brightness),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children:
-                  DateFormatOption.values
-                      .map(
-                        (opt) => RadioListTile<DateFormatOption>(
-                          title: Text(
-                            _getDateFormatName(opt),
-                            style: AppTextStyles.prayerName(brightness),
-                          ),
-                          value: opt,
-                          groupValue: currentDateFormatOption,
-                          activeColor: AppColors.primary(brightness),
-                          onChanged: (v) {
-                            if (v != null) notifier.updateDateFormatOption(v);
-                            Navigator.pop(ctx);
-                          },
-                        ),
-                      )
-                      .toList(),
-            ),
-          ),
+      dialogTitle: "Date Format",
+      currentValue: currentDateFormatOption,
+      options: DateFormatOption.values,
+      optionTitleBuilder: _getDateFormatName,
+      onSettingChanged: (DateFormatOption? value) {
+        if (value != null) {
+          notifier.updateDateFormatOption(value);
+        }
+      },
     );
   }
 
@@ -1009,173 +967,84 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     TimeFormat currentTimeFormat,
     SettingsNotifier notifier,
   ) {
-    final brightness = Theme.of(context).brightness;
-    showDialog<void>(
+    _showGenericSelectionDialog<TimeFormat>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            backgroundColor: AppColors.background(brightness),
-            title: Text(
-              "Time Format",
-              style: AppTextStyles.sectionTitle(brightness),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children:
-                  TimeFormat.values
-                      .map(
-                        (fmt) => RadioListTile<TimeFormat>(
-                          title: Text(
-                            _getTimeFormatName(fmt),
-                            style: AppTextStyles.prayerName(brightness),
-                          ),
-                          value: fmt,
-                          groupValue: currentTimeFormat,
-                          activeColor: AppColors.primary(brightness),
-                          onChanged: (v) {
-                            if (v != null) notifier.updateTimeFormat(v);
-                            Navigator.pop(ctx);
-                          },
-                        ),
-                      )
-                      .toList(),
-            ),
-          ),
+      dialogTitle: "Time Format",
+      currentValue: currentTimeFormat,
+      options: TimeFormat.values,
+      optionTitleBuilder: _getTimeFormatName,
+      onSettingChanged: (TimeFormat? value) {
+        if (value != null) {
+          notifier.updateTimeFormat(value);
+        }
+      },
     );
   }
 
   void _showCalculationMethodPicker(
     BuildContext context,
-    String currentCalculationMethod, // Add currentCalculationMethod parameter
+    String currentCalculationMethod,
     SettingsNotifier notifier,
   ) {
-    final brightness = Theme.of(context).brightness;
-    final bool isDarkMode = brightness == Brightness.dark;
-    final Color dialogBgColor =
-        isDarkMode ? const Color(0xFF2C2C2C) : Colors.white;
-    final Color textColor = AppColors.textPrimary(brightness);
-    final Color accentColor = AppColors.accentGreen(brightness);
-
-    // Placeholder for actual calculation methods
-    // You need to define how you get these. Example:
     final List<String> calculationMethods = [
-      'MuslimWorldLeague', 
-      'Egyptian', 
-      'Karachi', 
-      'UmmAlQura', 
-      'Dubai', 
-      'MoonsightingCommittee', 
-      'NorthAmerica', 
-      'Kuwait', 
-      'Qatar', 
-      'Singapore', 
-      'Tehran', 
-      'Turkey'
-      ];
+      'MuslimWorldLeague',
+      'Egyptian',
+      'Karachi',
+      'UmmAlQura',
+      'Dubai',
+      'MoonsightingCommittee',
+      'NorthAmerica',
+      'Kuwait',
+      'Qatar',
+      'Singapore',
+      'Tehran',
+      'Turkey',
+    ];
 
-    showDialog<void>(
+    _showGenericSelectionDialog<String>(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: dialogBgColor,
-          title: Text(
-            "Select Calculation Method",
-            style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: calculationMethods.length,
-              itemBuilder: (context, index) {
-                final method = calculationMethods[index];
-                return RadioListTile<String>(
-                  title: Text(
-                    _getCalculationMethodName(method), // Use helper to get display name
-                    style: TextStyle(color: textColor),
-                  ),
-                  value: method,
-                  groupValue: currentCalculationMethod, // Use passed currentCalculationMethod
-                  onChanged: (String? value) {
-                    if (value != null) {
-                      notifier.updateCalculationMethod(value); // Corrected method name
-                      _recalculatePrayerTimes(newMethod: value);
-                      Navigator.of(context).pop();
-                    }
-                  },
-                  activeColor: accentColor,
-                  controlAffinity: ListTileControlAffinity.trailing,
-                  tileColor: dialogBgColor,
-                  selectedTileColor: accentColor.withAlpha((255 * 0.1).round()),
-                );
-              },
-            ),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.0),
-          ),
-        );
+      dialogTitle: "Select Calculation Method",
+      currentValue: currentCalculationMethod,
+      options: calculationMethods,
+      optionTitleBuilder: _getCalculationMethodName,
+      onSettingChanged: (String? value) {
+        if (value != null) {
+          notifier.updateCalculationMethod(value);
+          _recalculatePrayerTimes(newMethod: value);
+        }
       },
     );
   }
 
-  void _showMadhabPicker(BuildContext context, String currentMadhab, SettingsNotifier notifier) { // Add currentMadhab parameter
-    final brightness = Theme.of(context).brightness;
-    final bool isDarkMode = brightness == Brightness.dark;
-    final Color dialogBgColor =
-        isDarkMode ? const Color(0xFF2C2C2C) : Colors.white;
-    final Color textColor = AppColors.textPrimary(brightness);
-    final Color accentColor = AppColors.accentGreen(brightness);
-    
-    // Placeholder for actual madhab options
-    // You need to define how you get these. Example:
-    final List<String> madhabs = ['shafi', 'hanafi']; 
+  void _showMadhabPicker(
+    BuildContext context,
+    String currentMadhab,
+    SettingsNotifier notifier,
+  ) {
+    final List<String> madhabs = ['shafi', 'hanafi'];
 
-    showDialog<void>(
+    _showGenericSelectionDialog<String>(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: dialogBgColor,
-          title: Text(
-            "Select Madhab",
-            style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: madhabs.map((madhab) { // Use the string list
-              return RadioListTile<String>(
-                title: Text(
-                  _getMadhabName(madhab), // Use helper to get display name
-                  style: TextStyle(color: textColor),
-                ),
-                value: madhab,
-                groupValue: currentMadhab, // Use passed currentMadhab
-                onChanged: (String? value) { // Changed Madhab to String
-                  if (value != null) {
-                    notifier.updateMadhab(value); // Corrected method name
-                    _recalculatePrayerTimes(newMadhab: value);
-                    Navigator.of(context).pop();
-                  }
-                },
-                activeColor: accentColor,
-                controlAffinity: ListTileControlAffinity.trailing,
-                tileColor: dialogBgColor,
-                selectedTileColor: accentColor.withAlpha((255 * 0.1).round()),
-              );
-            }).toList(),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.0),
-          ),
-        );
+      dialogTitle: "Select Madhab",
+      currentValue: currentMadhab,
+      options: madhabs,
+      optionTitleBuilder: _getMadhabName,
+      onSettingChanged: (String? value) {
+        if (value != null) {
+          notifier.updateMadhab(value);
+          _recalculatePrayerTimes(newMadhab: value);
+        }
       },
     );
   }
 
   Future<void> _recalculatePrayerTimes({
-    String? newMethod, // Changed PrayerCalculationMethod to String
-    String? newMadhab, // Changed Madhab to String
+    String? newMethod,
+    String? newMadhab,
   }) async {
-    // Your logic to recalculate prayer times based on newMethod and newMadhab
+    _logger.info(
+      'RecalculatePrayerTimes called (placeholder)',
+      data: {'newMethod': newMethod, 'newMadhab': newMadhab},
+    );
   }
 }

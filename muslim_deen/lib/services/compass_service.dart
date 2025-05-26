@@ -1,19 +1,19 @@
-import 'dart:math' as math;
 import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geolocator/geolocator.dart';
+
+import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/cache_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
-import 'package:muslim_deen/service_locator.dart';
 
 /// Service to handle compass functionality and Qibla direction calculations
 class CompassService {
   final LoggerService _logger = locator<LoggerService>();
-  // Kaaba coordinates
   static const double _kaabaLatDeg = 21.422487;
   static const double _kaabaLngDeg = 39.826206;
 
-  // Pre-calculated Kaaba coordinates in radians
   static final double _kaabaLatRad = _degreesToRadians(_kaabaLatDeg);
   static final double _kaabaLngRad = _degreesToRadians(_kaabaLngDeg);
 
@@ -34,7 +34,6 @@ class CompassService {
       '[DEBUG-QIBLA] Starting Qibla calculation for position: (${position.latitude}, ${position.longitude}, alt: ${position.altitude})',
     );
 
-    // Try to get cached qibla direction first
     final cacheKey =
         cacheService?.generateLocationCacheKey(
           'qibla_true',
@@ -55,14 +54,11 @@ class CompassService {
       return cachedDirection;
     }
 
-    // Calculate user's location in radians
     final startLatRad = _degreesToRadians(position.latitude);
     final startLngRad = _degreesToRadians(position.longitude);
 
-    // Calculate difference in longitude
     final dLng = _kaabaLngRad - startLngRad;
 
-    // Calculate bearing using optimized formula
     final y = math.sin(dLng) * _cosKaabaLatRad;
     final x =
         math.cos(startLatRad) * _sinKaabaLatRad -
@@ -71,7 +67,6 @@ class CompassService {
     final bearingRad = math.atan2(y, x);
     final bearingDeg = _radiansToDegrees(bearingRad);
 
-    // Normalize bearing to 0-360 degrees
     final result = (bearingDeg + 360) % 360; // This is bearing from True North
 
     _logger.info('[DEBUG-QIBLA] Calculated true Qibla direction: $result°');
@@ -79,7 +74,6 @@ class CompassService {
       '[DEBUG-QIBLA] Calculation details: y=$y, x=$x, bearingRad=$bearingRad, bearingDeg=$bearingDeg',
     );
 
-    // Cache the newly calculated Qibla direction
     cacheService?.setCache(
       cacheKey,
       result,

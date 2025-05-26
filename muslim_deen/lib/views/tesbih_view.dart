@@ -3,17 +3,20 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get_it/get_it.dart';
-import 'package:audioplayers/audioplayers.dart';
 
-import '../providers/providers.dart';
-import '../providers/tesbih_reminder_provider.dart';
-import '../service_locator.dart';
-import '../services/logger_service.dart';
-import '../services/notification_service.dart' show NotificationService;
-import '../services/storage_service.dart';
-import '../styles/app_styles.dart';
+import 'package:muslim_deen/providers/providers.dart';
+import 'package:muslim_deen/providers/tesbih_reminder_provider.dart';
+import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/logger_service.dart';
+import 'package:muslim_deen/services/notification_service.dart'
+    show NotificationService;
+import 'package:muslim_deen/services/storage_service.dart';
+import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/styles/ui_theme_helper.dart';
 
 class TesbihView extends ConsumerStatefulWidget {
   const TesbihView({super.key});
@@ -23,14 +26,13 @@ class TesbihView extends ConsumerStatefulWidget {
 }
 
 class _TesbihViewState extends ConsumerState<TesbihView>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, AutomaticKeepAliveClientMixin {
   int _count = 0;
   String _currentDhikr = 'Subhanallah';
   bool _vibrationEnabled = true;
   bool _soundEnabled = false;
   int _target = 33;
 
-  Timer? _permissionCheckTimer;
   late final NotificationService _notificationService =
       GetIt.I<NotificationService>();
   late final StorageService _storageService = GetIt.I<StorageService>();
@@ -78,10 +80,14 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   final Map<String, int> _customDhikrTargets = {};
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _logger.info('TesbihView initialized');
+
     _loadPreferences();
   }
 
@@ -91,7 +97,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
       _saveDataIfNeeded();
     } else if (state == AppLifecycleState.resumed &&
         ref.read(tesbihReminderProvider).reminderEnabled) {
-      ref.read(settingsProvider.notifier).checkNotificationPermissionStatus();
+      ref.read(settingsProvider.notifier).refreshNotificationPermissionStatus();
       _notificationsBlocked =
           ref.read(settingsProvider.notifier).areNotificationsBlocked;
     }
@@ -108,11 +114,10 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   void dispose() {
     _logger.debug('TesbihView disposed');
     WidgetsBinding.instance.removeObserver(this);
-    _permissionCheckTimer?.cancel();
 
-    if (mounted && ref.read(tesbihReminderProvider).reminderEnabled) {
-      _notificationService.cancelNotification(9876);
-    }
+    // NOTE: Removed cancelNotification(9876) call to prevent Tasbih reminder
+    // from being canceled when switching between views. Tasbih reminders should
+    // persist independently of view state, just like prayer notifications.
 
     _dhikrPlayer?.dispose();
     _counterPlayer?.dispose();
@@ -151,7 +156,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     try {
       await ref
           .read(settingsProvider.notifier)
-          .checkNotificationPermissionStatus();
+          .refreshNotificationPermissionStatus();
       if (mounted) {
         _notificationsBlocked =
             ref.read(settingsProvider.notifier).areNotificationsBlocked;
@@ -224,13 +229,12 @@ class _TesbihViewState extends ConsumerState<TesbihView>
         'Scheduling Tesbih reminder for ${scheduledDateTime.toIso8601String()}, enabled: ${ref.read(tesbihReminderProvider).reminderEnabled}',
       );
 
-      // Remove notification title - only use body text
       final notificationBody =
           "🤲 Time for your dhikr. Remember Allah with a peaceful heart.";
 
       await _notificationService.schedulePrayerNotification(
         id: 9876,
-        localizedTitle: "", // Empty string for no title
+        localizedTitle: "",
         localizedBody: notificationBody,
         prayerTime: scheduledDateTime,
         isEnabled: ref.read(tesbihReminderProvider).reminderEnabled,
@@ -771,330 +775,270 @@ class _TesbihViewState extends ConsumerState<TesbihView>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+
     final brightness = Theme.of(context).brightness;
-    final bool isDarkMode = brightness == Brightness.dark;
-
-    // Define colors for TesbihView in dark mode to make it lighter
-    final Color tesbihScaffoldBg =
-        isDarkMode
-            ? AppColors.surface(brightness)
-            : AppColors.background(brightness);
-    // AppBar uses AppColors.primary(brightness) which is 0xFF1A1A1A in dark mode, this is fine.
-
-    final Color tesbihContentSurface =
-        isDarkMode
-            ? const Color(0xFF2C2C2C)
-            : AppColors.primaryVariant(brightness);
-    final Color tesbihCounterCircleBg =
-        isDarkMode ? const Color(0xFF3C3C3C) : AppColors.background(brightness);
-
-    final Color tesbihDhikrArabicText =
-        isDarkMode
-            ? AppColors.textPrimary(brightness)
-            : AppColors.primary(brightness);
-    final Color tesbihCounterProgress =
-        isDarkMode
-            ? AppColors.accentGreen(brightness)
-            : AppColors.primary(brightness);
-    final Color tesbihCounterCountText =
-        isDarkMode
-            ? AppColors.accentGreen(brightness)
-            : AppColors.primary(brightness);
-
-    final Color tesbihToggleCardBg =
-        isDarkMode ? tesbihContentSurface : AppColors.background(brightness);
+    final colors = UIThemeHelper.getThemeColors(brightness);
+    final tesbihColors = _getTesbihColors(colors);
 
     return Scaffold(
-      backgroundColor: tesbihScaffoldBg,
+      backgroundColor: AppColors.getScaffoldBackground(brightness),
       appBar: AppBar(
         title: Text("Tasbih", style: AppTextStyles.appTitle(brightness)),
-        backgroundColor: AppColors.primary(
-          brightness,
-        ), // Stays 0xFF1A1A1A in dark mode
+        backgroundColor: AppColors.primary(brightness),
         elevation: 2,
         shadowColor: AppColors.shadowColor(brightness),
         centerTitle: true,
         systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent, // Make status bar transparent
-          statusBarIconBrightness:
-              Brightness.light, // Keep icons light since AppBar is always dark
-          statusBarBrightness: Brightness.dark, // This affects iOS status bar
-          systemNavigationBarColor:
-              tesbihScaffoldBg, // Match scaffold background
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarColor: AppColors.getScaffoldBackground(brightness),
           systemNavigationBarIconBrightness:
-              isDarkMode ? Brightness.light : Brightness.dark,
+              colors.isDarkMode ? Brightness.light : Brightness.dark,
         ),
       ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-              color: tesbihContentSurface, // Applied tesbihContentSurface
-              child: Column(
-                children: [
-                  Text(
-                    _dhikrArabic[_currentDhikr] ?? '',
-                    style: AppTextStyles.appTitle(brightness).copyWith(
-                      fontSize: 40,
-                      height: 1.4,
-                      color:
-                          tesbihDhikrArabicText, // Applied tesbihDhikrArabicText
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _currentDhikr,
-                    style: AppTextStyles.label(brightness).copyWith(
-                      fontSize: 16,
-                      color: AppColors.textPrimary(brightness).withAlpha(
-                        isDarkMode ? 230 : 204,
-                      ), // Slightly more opaque for better readability on new bg
-                    ),
-                  ),
-                ],
+            _buildDhikrHeader(colors, tesbihColors),
+            _buildCounterSection(colors, tesbihColors),
+            _buildActionButtons(colors),
+            _buildSettingsSection(colors),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Creates Tesbih-specific colors
+  TesbihColors _getTesbihColors(UIColors colors) {
+    return TesbihColors(
+      contentSurface:
+          colors.isDarkMode
+              ? const Color(0xFF2C2C2C)
+              : AppColors.primaryVariant(colors.brightness),
+      counterCircleBg:
+          colors.isDarkMode
+              ? const Color(0xFF3C3C3C)
+              : AppColors.background(colors.brightness),
+      dhikrArabicText:
+          colors.isDarkMode
+              ? colors.textColorPrimary
+              : AppColors.primary(colors.brightness),
+      counterProgress:
+          colors.isDarkMode
+              ? colors.accentColor
+              : AppColors.primary(colors.brightness),
+      counterCountText:
+          colors.isDarkMode
+              ? colors.accentColor
+              : AppColors.primary(colors.brightness),
+      toggleCardBg:
+          colors.isDarkMode
+              ? const Color(0xFF2C2C2C)
+              : AppColors.background(colors.brightness),
+    );
+  }
+
+  Widget _buildDhikrHeader(UIColors colors, TesbihColors tesbihColors) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      color: tesbihColors.contentSurface,
+      child: Column(
+        children: [
+          Text(
+            _dhikrArabic[_currentDhikr] ?? '',
+            style: AppTextStyles.appTitle(colors.brightness).copyWith(
+              fontSize: 40,
+              height: 1.4,
+              color: tesbihColors.dhikrArabicText,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _currentDhikr,
+            style: AppTextStyles.label(colors.brightness).copyWith(
+              fontSize: 16,
+              color: colors.textColorPrimary.withAlpha(
+                colors.isDarkMode ? 230 : 204,
               ),
             ),
-            GestureDetector(
-              onTap: _incrementCount,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 40),
-                color: tesbihContentSurface, // Applied tesbihContentSurface
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCounterSection(UIColors colors, TesbihColors tesbihColors) {
+    return GestureDetector(
+      onTap: _incrementCount,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        color: tesbihColors.contentSurface,
+        child: Center(
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 300,
+                height: 300,
+                child: CircularProgressIndicator(
+                  value: _target > 0 ? (_count / _target).clamp(0.0, 1.0) : 0,
+                  strokeWidth: 8,
+                  backgroundColor: colors.borderColor.withAlpha(
+                    colors.isDarkMode ? 80 : 128,
+                  ),
+                  color: tesbihColors.counterProgress,
+                ),
+              ),
+              Container(
+                width: 280,
+                height: 280,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: tesbihColors.counterCircleBg,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.shadowColor(
+                        colors.brightness,
+                      ).withAlpha(colors.isDarkMode ? 60 : 128),
+                      spreadRadius: 1,
+                      blurRadius: 8,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
                 child: Center(
-                  child: Stack(
-                    alignment: Alignment.center,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      SizedBox(
-                        width: 300,
-                        height: 300,
-                        child: CircularProgressIndicator(
-                          value:
-                              _target > 0
-                                  ? (_count / _target).clamp(0.0, 1.0)
-                                  : 0,
-                          strokeWidth: 8,
-                          backgroundColor: AppColors.borderColor(
-                            brightness,
-                          ).withAlpha(isDarkMode ? 80 : 128),
-                          color:
-                              tesbihCounterProgress, // Applied tesbihCounterProgress
+                      Text(
+                        '$_count',
+                        style: AppTextStyles.currentPrayer(
+                          colors.brightness,
+                        ).copyWith(
+                          fontSize: 80,
+                          fontWeight: FontWeight.w600,
+                          color: tesbihColors.counterCountText,
                         ),
                       ),
-                      Container(
-                        width: 280,
-                        height: 280,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
+                      const SizedBox(height: 4),
+                      Text(
+                        "Target: $_target",
+                        style: AppTextStyles.label(colors.brightness).copyWith(
+                          fontSize: 15,
                           color:
-                              tesbihCounterCircleBg, // Applied tesbihCounterCircleBg
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.shadowColor(
-                                brightness,
-                              ).withAlpha(isDarkMode ? 60 : 128),
-                              spreadRadius: 1,
-                              blurRadius: 8,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                '$_count',
-                                style: AppTextStyles.currentPrayer(
-                                  brightness,
-                                ).copyWith(
-                                  fontSize: 80,
-                                  fontWeight: FontWeight.w600,
-                                  color:
-                                      tesbihCounterCountText, // Applied tesbihCounterCountText
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                "Target: $_target",
-                                style: AppTextStyles.label(brightness).copyWith(
-                                  fontSize: 15,
-                                  color:
-                                      isDarkMode
-                                          ? AppColors.textSecondary(
-                                            brightness,
-                                          ).withAlpha(200)
-                                          : AppColors.textSecondary(brightness),
-                                ),
-                              ),
-                            ],
-                          ),
+                              colors.isDarkMode
+                                  ? colors.textColorSecondary.withAlpha(200)
+                                  : colors.textColorSecondary,
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                color: tesbihContentSurface,
-              ), // Applied tesbihContentSurface
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildActionButton(
-                    Icons.refresh_rounded,
-                    "Reset",
-                    _resetCount,
-                    brightness,
-                  ),
-                  _buildActionButton(
-                    Icons.track_changes_rounded,
-                    "Set Target",
-                    _showTargetDialog,
-                    brightness,
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Expanded(
-                        child: _buildDhikrButton('Subhanallah', brightness),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildDhikrButton('Alhamdulillah', brightness),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Expanded(
-                        child: _buildDhikrButton('Astaghfirullah', brightness),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildDhikrButton('Allahu Akbar', brightness),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: tesbihToggleCardBg, // Applied tesbihToggleCardBg
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.borderColor(brightness)),
-              ),
-              child: Column(
-                children: [
-                  _buildToggleOption(
-                    "Vibration",
-                    Icons.vibration_rounded,
-                    _vibrationEnabled,
-                    (value) {
-                      if (!mounted) return;
-                      setState(() => _vibrationEnabled = value);
-                      _savePreferences().catchError((Object e, StackTrace? s) {
-                        _logger.error(
-                          "Error saving vibration preference",
-                          error: e,
-                          stackTrace: s,
-                        );
-                        if (mounted) {
-                          _showErrorSnackBar(
-                            "Failed to save vibration preference. Please try again.",
-                          );
-                        }
-                      });
-                    },
-                    brightness,
-                  ),
-                  Divider(color: AppColors.borderColor(brightness), height: 1),
-                  _buildToggleOption(
-                    "Sound",
-                    Icons.volume_up_rounded,
-                    _soundEnabled,
-                    (value) {
-                      if (!mounted) return;
-
-                      if (value && !_soundEnabled) {
-                        _initializeAudioPlayers();
-                      }
-
-                      setState(() => _soundEnabled = value);
-                      _savePreferences().catchError((Object e, StackTrace? s) {
-                        _logger.error(
-                          "Error saving sound preference",
-                          error: e,
-                          stackTrace: s,
-                        );
-                        if (mounted) {
-                          _showErrorSnackBar(
-                            "Failed to save sound preference. Please try again.",
-                          );
-                        }
-                      });
-                    },
-                    brightness,
-                  ),
-                  Divider(color: AppColors.borderColor(brightness), height: 1),
-                  _buildToggleOption(
-                    "Notifications",
-                    Icons.notifications_active_rounded,
-                    ref.watch(tesbihReminderProvider).reminderEnabled,
-                    (value) async {
-                      // This onChanged handler is simplified since most logic is in the Switch
-                      if (!value) {
-                        // Only handle disabling notifications here
-                        ref
-                            .read(tesbihReminderProvider.notifier)
-                            .toggleReminder(false);
-                      } else {
-                        // Enabling is handled by the Switch directly
-                        // The time picker will be shown in the Switch's onChanged
-                        ref
-                            .read(tesbihReminderProvider.notifier)
-                            .toggleReminder(true);
-                      }
-                    },
-                    brightness,
-                    trailing:
-                        ref.watch(tesbihReminderProvider).reminderEnabled &&
-                                ref
-                                        .watch(tesbihReminderProvider)
-                                        .reminderTime !=
-                                    null
-                            ? Text(
-                              ref
-                                  .watch(tesbihReminderProvider)
-                                  .reminderTime!
-                                  .format(context),
-                              style: AppTextStyles.label(brightness),
-                            )
-                            : null,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildActionButtons(UIColors colors) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(color: _getTesbihColors(colors).contentSurface),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildActionButton(
+            Icons.refresh_rounded,
+            "Reset",
+            _resetCount,
+            colors.brightness,
+          ),
+          _buildActionButton(
+            Icons.track_changes_rounded,
+            "Set Target",
+            _showTargetDialog,
+            colors.brightness,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsSection(UIColors colors) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.menu_book, color: colors.textColorPrimary, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                "Dhikr",
+                style: AppTextStyles.sectionTitle(
+                  colors.brightness,
+                ).copyWith(color: colors.textColorPrimary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildDhikrSelector(colors),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Icon(Icons.settings, color: colors.textColorPrimary, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                "Settings",
+                style: AppTextStyles.sectionTitle(
+                  colors.brightness,
+                ).copyWith(color: colors.textColorPrimary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildToggleGroup(colors),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDhikrSelector(UIColors colors) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            Expanded(
+              child: _buildDhikrButton('Subhanallah', colors.brightness),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildDhikrButton('Alhamdulillah', colors.brightness),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            Expanded(
+              child: _buildDhikrButton('Astaghfirullah', colors.brightness),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildDhikrButton('Allahu Akbar', colors.brightness),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -1160,6 +1104,80 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     );
   }
 
+  Widget _buildToggleGroup(UIColors colors) {
+    return Column(
+      children: [
+        _buildToggleOption(
+          "Vibration",
+          Icons.vibration_rounded,
+          _vibrationEnabled,
+          (value) {
+            if (!mounted) return;
+            setState(() => _vibrationEnabled = value);
+            _savePreferences().catchError((Object e, StackTrace? s) {
+              _logger.error(
+                "Error saving vibration preference",
+                error: e,
+                stackTrace: s,
+              );
+              if (mounted) {
+                _showErrorSnackBar(
+                  "Failed to save vibration preference. Please try again.",
+                );
+              }
+            });
+          },
+          colors.brightness,
+        ),
+        Divider(color: AppColors.borderColor(colors.brightness), height: 1),
+        _buildToggleOption("Sound", Icons.volume_up_rounded, _soundEnabled, (
+          value,
+        ) {
+          if (!mounted) return;
+
+          if (value && !_soundEnabled) {
+            _initializeAudioPlayers();
+          }
+
+          setState(() => _soundEnabled = value);
+          _savePreferences().catchError((Object e, StackTrace? s) {
+            _logger.error(
+              "Error saving sound preference",
+              error: e,
+              stackTrace: s,
+            );
+            if (mounted) {
+              _showErrorSnackBar(
+                "Failed to save sound preference. Please try again.",
+              );
+            }
+          });
+        }, colors.brightness),
+        Divider(color: AppColors.borderColor(colors.brightness), height: 1),
+        _buildToggleOption(
+          "Notifications",
+          Icons.notifications_active_rounded,
+          ref.watch(tesbihReminderProvider).reminderEnabled,
+          (value) async {
+            ref.read(tesbihReminderProvider.notifier).toggleReminder(value);
+          },
+          colors.brightness,
+          trailing:
+              ref.watch(tesbihReminderProvider).reminderEnabled &&
+                      ref.watch(tesbihReminderProvider).reminderTime != null
+                  ? Text(
+                    ref
+                        .watch(tesbihReminderProvider)
+                        .reminderTime!
+                        .format(context),
+                    style: AppTextStyles.label(colors.brightness),
+                  )
+                  : null,
+        ),
+      ],
+    );
+  }
+
   Widget _buildToggleOption(
     String title,
     IconData icon,
@@ -1181,16 +1199,9 @@ class _TesbihViewState extends ConsumerState<TesbihView>
               ? null
               : () {
                 if (isNotificationToggle) {
-                  // Special handling for notification toggle is within the Switch's onChanged
-                  // Directly calling onChanged here might bypass permission checks/dialogs
-                  // So, we let the Switch handle its own tap for notifications.
-                  // For other toggles, we can proceed.
                   if (value) {
-                    // If current value is true, new value will be false
                     onChanged(!value);
                   } else {
-                    // If current value is false, new value will be true
-                    // For non-notification toggles, just call onChanged
                     onChanged(!value);
                   }
                 } else {
@@ -1219,37 +1230,21 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                       ? null
                       : (newValue) async {
                         if (isNotificationToggle) {
-                          // Notifications toggle needs special handling
                           if (newValue) {
-                            // Check permissions first when enabling notifications
                             await _checkAndUpdateNotificationStatus();
                             if (_notificationsBlocked == true) {
                               _showErrorSnackBar(
                                 "Notifications are blocked. Enable them in system settings.",
                               );
-                              // Do not call onChanged(newValue) here as we don't want to change the state
-                              // if notifications are blocked. The switch should reflect the actual state.
-                              // We might need to refresh the provider state if it was optimistically updated.
-                              // For now, we assume the UI will reflect the actual provider state.
                               return;
                             }
-                            // Always show time picker when enabling notifications
-                            // The onChanged callback will be triggered by the dialog if time is set.
-                            // For now, we call onChanged(true) to update the provider,
-                            // and then show the dialog.
-                            onChanged(newValue); // Update provider state
-                            _showReminderSettingsDialog(); // Then show dialog
+                            onChanged(newValue);
+                            _showReminderSettingsDialog();
                           } else {
-                            // Disabling notifications
                             onChanged(newValue);
                           }
                         } else {
-                          // For other toggles (vibration, sound)
-                          onChanged(
-                            newValue,
-                          ); // This will call setState and _savePreferences
-                          // from the TesbihView's _buildToggleOption call.
-                          // Error handling for _savePreferences is added there.
+                          onChanged(newValue);
                         }
                       },
               activeColor: AppColors.primary(brightness),
@@ -1328,7 +1323,6 @@ class _TargetDialogState extends State<_TargetDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // Use widget.brightness here as it's passed to _TargetDialog
     final brightness = widget.brightness;
     final bool isDarkMode = brightness == Brightness.dark;
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:muslim_deen/models/app_settings.dart'; // For PrayerNotification
+
+import 'package:muslim_deen/models/app_settings.dart';
 
 class PrayerDisplayInfoData {
   final String name;

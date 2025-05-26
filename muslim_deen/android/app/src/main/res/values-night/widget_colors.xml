@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget Colors - Dark Theme (Auto-applied when device is in dark mode) -->
+    
+    <!-- Dynamic colors that change based on theme -->
+    <color name="widget_text_primary">#FFFFFF</color>            <!-- White primary text for dark theme -->
+    <color name="widget_text_secondary">#B0B0B0</color>         <!-- Light gray secondary text -->
+    <color name="widget_accent">#66BB6A</color>                 <!-- Lighter green accent for better contrast -->
+    <color name="current_prayer_color">#66BB6A</color>          <!-- Lighter green for current prayer -->
+    <color name="normal_prayer_color">#FFFFFF</color>           <!-- White for normal prayers -->
+    <color name="widget_background">#2D2D2D</color>             <!-- Dark background -->
+</resources> 

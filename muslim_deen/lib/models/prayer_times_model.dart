@@ -1,5 +1,6 @@
-import 'package:adhan_dart/adhan_dart.dart' as adhan;
 import 'package:flutter/material.dart';
+
+import 'package:adhan_dart/adhan_dart.dart' as adhan;
 import 'package:hijri/hijri_calendar.dart';
 
 /// Domain model for prayer times, decoupled from the underlying adhan package
@@ -18,6 +19,9 @@ class PrayerTimesModel {
   final int hijriYear;
   final String hijriMonthName;
 
+  // Added field for caching timestamp, useful for debugging cache
+  final DateTime? cachedAt; 
+
   PrayerTimesModel({
     required this.fajr,
     required this.sunrise,
@@ -30,6 +34,7 @@ class PrayerTimesModel {
     required this.hijriMonth,
     required this.hijriYear,
     required this.hijriMonthName,
+    this.cachedAt, // Initialize new field
   });
 
   /// Create a PrayerTimesModel from adhan package's PrayerTimes
@@ -37,7 +42,6 @@ class PrayerTimesModel {
     adhan.PrayerTimes prayerTimes,
     DateTime date,
   ) {
-    // Convert to Hijri date
     final hijri = HijriCalendar.fromDate(date);
 
     return PrayerTimesModel(
@@ -52,11 +56,51 @@ class PrayerTimesModel {
       hijriMonth: hijri.hMonth,
       hijriYear: hijri.hYear,
       hijriMonthName: hijri.longMonthName,
+      // cachedAt is not set here as this is for fresh calculation
+    );
+  }
+
+  // toJson method
+  Map<String, dynamic> toJson() {
+    return {
+      'fajr': fajr?.toIso8601String(),
+      'sunrise': sunrise?.toIso8601String(),
+      'dhuhr': dhuhr?.toIso8601String(),
+      'asr': asr?.toIso8601String(),
+      'maghrib': maghrib?.toIso8601String(),
+      'isha': isha?.toIso8601String(),
+      'date': date.toIso8601String(),
+      'hijriDay': hijriDay,
+      'hijriMonth': hijriMonth,
+      'hijriYear': hijriYear,
+      'hijriMonthName': hijriMonthName,
+      'cachedAt': cachedAt?.toIso8601String() ?? DateTime.now().toIso8601String(), // Store current time if not set
+    };
+  }
+
+  // fromJson factory
+  factory PrayerTimesModel.fromJson(Map<String, dynamic> json) {
+    DateTime? safeParseDateTime(String? dateString) {
+      return dateString == null ? null : DateTime.tryParse(dateString);
+    }
+    return PrayerTimesModel(
+      fajr: safeParseDateTime(json['fajr'] as String?),
+      sunrise: safeParseDateTime(json['sunrise'] as String?),
+      dhuhr: safeParseDateTime(json['dhuhr'] as String?),
+      asr: safeParseDateTime(json['asr'] as String?),
+      maghrib: safeParseDateTime(json['maghrib'] as String?),
+      isha: safeParseDateTime(json['isha'] as String?),
+      date: DateTime.parse(json['date'] as String),
+      hijriDay: json['hijriDay'] as int,
+      hijriMonth: json['hijriMonth'] as int,
+      hijriYear: json['hijriYear'] as int,
+      hijriMonthName: json['hijriMonthName'] as String,
+      cachedAt: safeParseDateTime(json['cachedAt'] as String?),
     );
   }
 
   /// Get all prayer times as a list of PrayerTime objects
-  List<PrayerTime> getAllPrayers() {
+  List<PrayerTime> _getAllPrayers() {
     return [
       PrayerTime(name: 'Fajr', time: fajr, iconData: Icons.nights_stay),
       PrayerTime(
@@ -78,7 +122,7 @@ class PrayerTimesModel {
   /// Get the next prayer based on current time
   PrayerTime getNextPrayer() {
     final now = DateTime.now();
-    final prayers = getAllPrayers();
+    final prayers = _getAllPrayers();
 
     for (final prayer in prayers) {
       if (prayer.time != null && prayer.time!.isAfter(now)) {
@@ -120,13 +164,13 @@ class PrayerTimesModel {
 /// Represents a single prayer time
 class PrayerTime {
   final String name;
-  final DateTime? time; // Made nullable
+  final DateTime? time;
   final IconData iconData;
   final bool isTomorrow;
 
   PrayerTime({
     required this.name,
-    this.time, // Made nullable
+    this.time,
     required this.iconData,
     this.isTomorrow = false,
   });
@@ -143,32 +187,5 @@ class PrayerTime {
       iconData: iconData ?? this.iconData,
       isTomorrow: isTomorrow ?? this.isTomorrow,
     );
-  }
-
-  /// Get the remaining time until this prayer
-  Duration timeUntil() {
-    if (time == null) return Duration.zero; // Handle null time
-    return time!.difference(DateTime.now());
-  }
-
-  /// Format the remaining time as a string
-  String formatTimeRemaining() {
-    if (time == null) return "N/A";
-
-    final duration = timeUntil();
-    if (duration.isNegative) return "Passed"; // Explicitly handle passed time first
-
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes % 60;
-    // final seconds = duration.inSeconds % 60; // If you need seconds too
-
-    if (hours > 0) {
-      return '$hours ${hours == 1 ? 'hour' : 'hours'} $minutes ${minutes == 1 ? 'minute' : 'minutes'}';
-    } else if (minutes > 0) { // Changed from minutes >= 0 to minutes > 0
-      return '$minutes ${minutes == 1 ? 'minute' : 'minutes'}';
-    } else if (duration.inSeconds > 0) { // Handle cases where only seconds remain
-      return '${duration.inSeconds} ${duration.inSeconds == 1 ? 'second' : 'seconds'}';
-    }
-    return "Now"; // If duration is exactly zero or very small (less than a second)
   }
 }

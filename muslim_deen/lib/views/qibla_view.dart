@@ -1,20 +1,18 @@
-// Standard library imports
 import 'dart:async';
 import 'dart:math' as math;
 
-// Third-party imports
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_compass/flutter_compass.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
 
-// Local imports
-import '../service_locator.dart';
-import '../services/compass_service.dart';
-import '../services/location_service.dart';
-import '../services/logger_service.dart';
-import '../styles/app_styles.dart';
+import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/compass_service.dart';
+import 'package:muslim_deen/services/logger_service.dart';
+import 'package:muslim_deen/services/location_permission_helper.dart';
+import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/styles/ui_theme_helper.dart';
+import 'package:muslim_deen/widgets/common_container_styles.dart';
+import 'package:muslim_deen/widgets/custom_app_bar.dart';
+import 'package:muslim_deen/widgets/loading_error_state_builder.dart';
 
 class QiblaView extends StatefulWidget {
   const QiblaView({super.key});
@@ -25,7 +23,6 @@ class QiblaView extends StatefulWidget {
 
 class _QiblaViewState extends State<QiblaView>
     with SingleTickerProviderStateMixin {
-  final LocationService _locationService = locator<LocationService>();
   final CompassService _compassService = locator<CompassService>();
   final LoggerService _logger = locator<LoggerService>();
 
@@ -75,45 +72,31 @@ class _QiblaViewState extends State<QiblaView>
       _isLoading = true;
       _errorMessage = null;
     });
+
     try {
-      final hasPermission = await _locationService.hasLocationPermission();
-      if (!hasPermission) {
-        _logger.error('Location permission not granted for Qibla finder');
+      // Use the new location permission helper
+      final validation =
+          await LocationPermissionHelper.validateLocationAccess();
+      if (!validation.isValid) {
         if (mounted) {
           setState(() {
-            _errorMessage =
-                'Location permission denied. Please enable it in settings.';
+            _errorMessage = validation.errorMessage;
             _isLoading = false;
           });
         }
         return;
       }
 
-      final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!isServiceEnabled) {
-        _logger.error('Location service is disabled for Qibla finder');
-        throw Exception('Location service is disabled');
-      }
-
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 10),
-        ),
-      );
+      final position = await LocationPermissionHelper.getCurrentPosition();
 
       // Get Qibla direction (which is already true Qibla from the service)
       _qiblaDirection = await _compassService.getQiblaDirection(position);
-      // Optionally fetch current city name via reverse geocoding
-      try {
-        final placemarks = await placemarkFromCoordinates(
-          position.latitude,
-          position.longitude,
-        );
-        _currentCity = placemarks.isNotEmpty ? placemarks.first.locality : null;
-      } catch (_) {
-        _currentCity = null;
-      }
+
+      // Get current city name using the helper
+      _currentCity = await LocationPermissionHelper.getCityFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
 
       if (_qiblaDirection == null) {
         _logger.error('Failed to calculate Qibla direction.');
@@ -179,42 +162,21 @@ class _QiblaViewState extends State<QiblaView>
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    final bool isDarkMode = brightness == Brightness.dark;
-
-    // Define colors similar to TesbihView
-    final Color scaffoldBg =
-        isDarkMode
-            ? AppColors.surface(brightness)
-            : AppColors.background(brightness);
-    final Color contentSurface =
-        isDarkMode
-            ? const Color(0xFF2C2C2C)
-            : AppColors.background(brightness); // For cards/containers
-    final Color accentColor = AppColors.accentGreen(brightness);
-    final Color errorColor = AppColors.error(brightness);
-    final Color textColorPrimary = AppColors.textPrimary(brightness);
-    final Color textColorSecondary = AppColors.textSecondary(brightness);
+    final colors = UIThemeHelper.getThemeColors(brightness);
 
     return Scaffold(
-      backgroundColor: scaffoldBg,
-      appBar: AppBar(
-        title: Text("Qibla Finder", style: AppTextStyles.appTitle(brightness)),
-        backgroundColor: AppColors.primary(brightness),
-        elevation: 2,
-        shadowColor: AppColors.shadowColor(brightness),
-        centerTitle: true,
-        systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: AppColors.primary(brightness),
-          statusBarIconBrightness:
-              isDarkMode ? Brightness.light : Brightness.light,
-        ),
+      backgroundColor: AppColors.getScaffoldBackground(brightness),
+      appBar: CustomAppBar(
+        title: "Qibla Finder",
+        brightness: brightness,
         actions: [
           IconButton(
             icon: RotationTransition(
               turns: _rotationAnimation,
               child: Icon(
                 Icons.explore,
-                color: isDarkMode ? textColorPrimary : Colors.white,
+                color:
+                    colors.isDarkMode ? colors.textColorPrimary : Colors.white,
               ),
             ),
             tooltip: "Retry",
@@ -231,133 +193,22 @@ class _QiblaViewState extends State<QiblaView>
           ),
         ],
       ),
-      body: Center(
-        child:
-            _isLoading
-                ? CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(accentColor),
-                  strokeWidth: 3,
-                )
-                : _errorMessage != null
-                ? _buildErrorView(
-                  brightness,
-                  isDarkMode,
-                  contentSurface,
-                  errorColor,
-                  accentColor,
-                )
-                : _buildQiblaView(
-                  brightness,
-                  isDarkMode,
-                  contentSurface,
-                  accentColor,
-                  textColorPrimary,
-                  textColorSecondary,
-                ),
+      body: LoadingErrorStateBuilder(
+        isLoading: _isLoading,
+        errorMessage: _errorMessage,
+        onRetry: _initQiblaFinder,
+        loadingText: "Finding Qibla direction...",
+        child: _buildQiblaView(colors),
       ),
     );
   }
 
-  Widget _buildErrorView(
-    Brightness brightness,
-    bool isDarkMode,
-    Color contentSurface,
-    Color errorColor,
-    Color accentColor,
-  ) {
-    String msg = _errorMessage ?? "An unknown error occurred.";
-    if (_errorMessage ==
-        'Location permission denied. Please enable it in settings.') {
-      msg = "Location permission denied. Please enable it in settings.";
-    } else if (_errorMessage?.contains('permission') ?? false) {
-      msg = "Location permission error.";
-    } else if (_errorMessage?.contains('service is disabled') ?? false) {
-      msg = "Location service is disabled.";
-    } else if (_errorMessage?.contains('Location unavailable') ?? false) {
-      msg = "Location unavailable.";
-    } else if (_errorMessage?.contains('Compass') ?? false) {
-      msg = "Compass sensor error.";
-    }
-
-    return Container(
-      margin: const EdgeInsets.all(24),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-      decoration: BoxDecoration(
-        color: contentSurface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: errorColor.withAlpha(100)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowColor(
-              brightness,
-            ).withAlpha(isDarkMode ? 20 : 40),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.error_outline_rounded, color: errorColor, size: 48),
-          const SizedBox(height: 16),
-          Text(
-            msg,
-            style: AppTextStyles.label(
-              brightness,
-            ).copyWith(color: errorColor, fontSize: 16),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.refresh),
-            label: Text("Retry"),
-            onPressed: () {
-              _logger.logInteraction(
-                'QiblaView',
-                'Retry after error',
-                data: {'error': _errorMessage},
-              );
-              _initQiblaFinder();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: accentColor,
-              foregroundColor: Colors.white, // Text color for the button
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              textStyle: AppTextStyles.label(
-                brightness,
-              ).copyWith(fontWeight: FontWeight.w600, color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQiblaView(
-    Brightness brightness,
-    bool isDarkMode,
-    Color contentSurface,
-    Color accentColor,
-    Color textColorPrimary,
-    Color textColorSecondary,
-  ) {
+  Widget _buildQiblaView(UIColors colors) {
     final aligned = _isQiblaAligned();
     final helpText = _getAlignmentHelpText();
-    final compassData = _buildCompassView(
-      aligned,
-      brightness,
-      isDarkMode,
-      contentSurface,
-      accentColor,
-      textColorPrimary,
-      textColorSecondary,
-    );
+    final compassData = _buildCompassView(aligned, colors);
     final compassStack = compassData[0] as Widget;
-    final qiblaIndicatorColor =
-        compassData[1]
-            as Color; // This is the color for the Qibla direction arrow/icon
+    final qiblaIndicatorColor = compassData[1] as Color;
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -367,38 +218,27 @@ class _QiblaViewState extends State<QiblaView>
           Text(
             "Point your phone towards the Kaaba",
             textAlign: TextAlign.center,
-            style: AppTextStyles.sectionTitle(brightness).copyWith(
-              color: textColorPrimary, // Use primary text color
-            ),
+            style: AppTextStyles.sectionTitle(
+              colors.brightness,
+            ).copyWith(color: colors.textColorPrimary),
           ),
-          const SizedBox(height: 16), // Adjusted spacing
-          Icon(
-            Icons.mosque_rounded,
-            size: 48,
-            color: qiblaIndicatorColor,
-          ), // Use the dynamic arrow color
-          const SizedBox(height: 12), // Adjusted spacing
+          const SizedBox(height: 16),
+          Icon(Icons.mosque_rounded, size: 48, color: qiblaIndicatorColor),
+          const SizedBox(height: 12),
           Expanded(child: Center(child: compassStack)),
           const SizedBox(height: 16),
           if (helpText.isNotEmpty)
             Text(
               helpText,
               textAlign: TextAlign.center,
-              style: AppTextStyles.prayerName(brightness).copyWith(
-                // Using prayerName style for prominence
-                color: aligned ? accentColor : textColorPrimary,
+              style: AppTextStyles.prayerName(colors.brightness).copyWith(
+                color: aligned ? colors.accentColor : colors.textColorPrimary,
                 fontWeight: aligned ? FontWeight.bold : FontWeight.normal,
                 fontSize: 17,
               ),
             ),
           const SizedBox(height: 20),
-          _buildLocationInfo(
-            brightness,
-            isDarkMode,
-            contentSurface,
-            textColorPrimary,
-            textColorSecondary,
-          ),
+          _buildLocationInfo(colors),
         ],
       ),
     );
@@ -411,31 +251,22 @@ class _QiblaViewState extends State<QiblaView>
     return err <= 5; // 5 degrees tolerance
   }
 
-  List<dynamic> _buildCompassView(
-    bool aligned,
-    Brightness brightness,
-    bool isDarkMode,
-    Color contentSurface,
-    Color accentColor,
-    Color textColorPrimary,
-    Color textColorSecondary,
-  ) {
+  List<dynamic> _buildCompassView(bool aligned, UIColors colors) {
     final magneticAngleForDial =
         _magneticHeading != null ? -_degreesToRadians(_magneticHeading!) : 0.0;
 
-    Color qiblaArrowColor = AppColors.error(
-      brightness,
-    ); // Default to error color
+    Color qiblaArrowColor = colors.errorColor; // Default to error color
     if (_magneticHeading != null && _qiblaDirection != null) {
       final diff = (_magneticHeading! - _qiblaDirection!).abs() % 360;
       final err = diff > 180 ? 360 - diff : diff;
       qiblaArrowColor =
           err <= 5
-              ? accentColor // Aligned color
+              ? colors
+                  .accentColor // Aligned color
               : err <= 20
               ? Colors
                   .amber // Close color
-              : AppColors.error(brightness); // Far off color
+              : colors.errorColor; // Far off color
     }
 
     final stack = Stack(
@@ -445,47 +276,23 @@ class _QiblaViewState extends State<QiblaView>
           // Compass Dial Background
           width: 300,
           height: 300,
-          decoration: BoxDecoration(
-            color: contentSurface, // Use contentSurface for dial background
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.shadowColor(
-                  brightness,
-                ).withAlpha(isDarkMode ? 30 : 50),
-                blurRadius: 8,
-                spreadRadius: 1,
-                offset: const Offset(0, 3),
-              ),
-            ],
-            border:
-                aligned
-                    ? Border.all(color: accentColor, width: 3)
-                    : Border.all(
-                      color: AppColors.borderColor(
-                        brightness,
-                      ).withAlpha(isDarkMode ? 100 : 150),
-                      width: 1,
-                    ),
+          decoration: CommonContainerStyles.circularDecoration(
+            colors,
+            isAligned: aligned,
           ),
         ),
         Transform.rotate(
           angle: magneticAngleForDial,
-          child: _buildCompassDirections(
-            brightness,
-            accentColor,
-            textColorSecondary,
-          ),
+          child: _buildCompassDirections(colors),
         ),
         if (_magneticHeading != null && _qiblaDirection != null)
           CustomPaint(
-            size: const Size(240, 240), // Painter area
-            painter: QiblaDirectionPainter(
+            size: const Size(240, 240),
+            painter: _QiblaDirectionPainter(
               qiblaAngleFromTrueNorth: _qiblaDirection!,
               magneticDeviceHeading: _magneticHeading!,
-              magneticDeclination:
-                  0.0, // Assuming 0.0 as flutter_compass might provide true heading or declination calculation is not implemented.
-              arrowColor: qiblaArrowColor, // Pass the calculated arrow color
+              magneticDeclination: 0.0,
+              arrowColor: qiblaArrowColor,
             ),
           ),
         Container(
@@ -507,29 +314,26 @@ class _QiblaViewState extends State<QiblaView>
               "No compass data",
               textAlign: TextAlign.center,
               style: AppTextStyles.label(
-                brightness,
-              ).copyWith(color: textColorSecondary, fontSize: 16),
+                colors.brightness,
+              ).copyWith(color: colors.textColorSecondary, fontSize: 16),
             ),
           ),
       ],
     );
-    return [
-      stack,
-      qiblaArrowColor,
-    ]; // Return the arrow color for the mosque icon
+    return [stack, qiblaArrowColor];
   }
 
-  Widget _buildCompassDirections(
-    Brightness brightness,
-    Color accentColor,
-    Color textColorSecondary,
-  ) {
+  Widget _buildCompassDirections(UIColors colors) {
     final TextStyle directionStyle = AppTextStyles.label(
-      brightness,
-    ).copyWith(color: textColorSecondary, fontSize: 16);
+      colors.brightness,
+    ).copyWith(color: colors.textColorSecondary, fontSize: 16);
     final TextStyle northStyle = AppTextStyles.label(
-      brightness,
-    ).copyWith(color: accentColor, fontWeight: FontWeight.bold, fontSize: 18);
+      colors.brightness,
+    ).copyWith(
+      color: colors.accentColor,
+      fontWeight: FontWeight.bold,
+      fontSize: 18,
+    );
 
     return SizedBox(
       width: 300,
@@ -546,34 +350,11 @@ class _QiblaViewState extends State<QiblaView>
     );
   }
 
-  Widget _buildLocationInfo(
-    Brightness brightness,
-    bool isDarkMode,
-    Color contentSurface,
-    Color textColorPrimary,
-    Color textColorSecondary,
-  ) {
+  Widget _buildLocationInfo(UIColors colors) {
     return Container(
       margin: const EdgeInsets.only(top: 16),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-      decoration: BoxDecoration(
-        color: contentSurface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: AppColors.borderColor(
-            brightness,
-          ).withAlpha(isDarkMode ? 70 : 100),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowColor(
-              brightness,
-            ).withAlpha(isDarkMode ? 20 : 30),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
+      decoration: CommonContainerStyles.infoPanelDecoration(colors),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -584,8 +365,8 @@ class _QiblaViewState extends State<QiblaView>
                 Text(
                   "Current Direction",
                   style: AppTextStyles.label(
-                    brightness,
-                  ).copyWith(color: textColorSecondary, fontSize: 13),
+                    colors.brightness,
+                  ).copyWith(color: colors.textColorSecondary, fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 2),
@@ -594,8 +375,8 @@ class _QiblaViewState extends State<QiblaView>
                       ? '${_magneticHeading!.toInt()}° (M)'
                       : "N/A",
                   textAlign: TextAlign.center,
-                  style: AppTextStyles.prayerTime(brightness).copyWith(
-                    color: textColorPrimary,
+                  style: AppTextStyles.prayerTime(colors.brightness).copyWith(
+                    color: colors.textColorPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
@@ -603,13 +384,7 @@ class _QiblaViewState extends State<QiblaView>
               ],
             ),
           ),
-          Container(
-            height: 30,
-            width: 1,
-            color: AppColors.borderColor(
-              brightness,
-            ).withAlpha(isDarkMode ? 70 : 100),
-          ),
+          CommonContainerStyles.divider(colors),
           Flexible(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -617,8 +392,8 @@ class _QiblaViewState extends State<QiblaView>
                 Text(
                   "Qibla Direction",
                   style: AppTextStyles.label(
-                    brightness,
-                  ).copyWith(color: textColorSecondary, fontSize: 13),
+                    colors.brightness,
+                  ).copyWith(color: colors.textColorSecondary, fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 2),
@@ -627,22 +402,16 @@ class _QiblaViewState extends State<QiblaView>
                       ? '${_qiblaDirection!.toInt()}°'
                       : "N/A",
                   textAlign: TextAlign.center,
-                  style: AppTextStyles.prayerTime(brightness).copyWith(
-                    color: AppColors.accentGreen(brightness),
+                  style: AppTextStyles.prayerTime(colors.brightness).copyWith(
+                    color: colors.accentColor,
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
-                  ), // Highlight Qibla
+                  ),
                 ),
               ],
             ),
           ),
-          Container(
-            height: 30,
-            width: 1,
-            color: AppColors.borderColor(
-              brightness,
-            ).withAlpha(isDarkMode ? 70 : 100),
-          ),
+          CommonContainerStyles.divider(colors),
           Flexible(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -650,17 +419,16 @@ class _QiblaViewState extends State<QiblaView>
                 Text(
                   "Current Location",
                   style: AppTextStyles.label(
-                    brightness,
-                  ).copyWith(color: textColorSecondary, fontSize: 13),
+                    colors.brightness,
+                  ).copyWith(color: colors.textColorSecondary, fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _currentCity ??
-                      "N/A", // Use qiblaNotAvailable if city is null
+                  _currentCity ?? "N/A",
                   textAlign: TextAlign.center,
-                  style: AppTextStyles.prayerTime(brightness).copyWith(
-                    color: textColorPrimary,
+                  style: AppTextStyles.prayerTime(colors.brightness).copyWith(
+                    color: colors.textColorPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
@@ -676,11 +444,9 @@ class _QiblaViewState extends State<QiblaView>
   }
 
   String _getAlignmentHelpText() {
-    // Use trueHeading for alignment help text
     if (_magneticHeading == null || _qiblaDirection == null) return '';
     if (_isQiblaAligned()) return "Qibla aligned!";
 
-    // Calculate difference: how much to turn the device (magnetic heading) to align with True Qibla.
     double diff = _qiblaDirection! - _magneticHeading!;
     while (diff <= -180) {
       diff += 360;
@@ -689,33 +455,29 @@ class _QiblaViewState extends State<QiblaView>
       diff -= 360;
     }
 
-    // More descriptive turn instructions
     final int diffInt = diff.round();
     if (diffInt > 5) {
-      // Adjusted threshold for more practical advice
       return 'Turn right (~$diffInt°)';
     }
     if (diffInt < -5) {
-      // Adjusted threshold
       return 'Turn left (~${diffInt.abs()}°)';
     }
-    // Very close but not aligned
     if (diffInt.abs() > 0 && diffInt.abs() <= 5) {
       return "Almost there!";
     }
-    return ''; // Should ideally be covered by _isQiblaAligned
+    return '';
   }
 
   double _degreesToRadians(double degrees) => degrees * (math.pi / 180);
 }
 
-class QiblaDirectionPainter extends CustomPainter {
+class _QiblaDirectionPainter extends CustomPainter {
   final double qiblaAngleFromTrueNorth;
   final double magneticDeviceHeading;
   final double magneticDeclination;
   final Color arrowColor;
 
-  QiblaDirectionPainter({
+  _QiblaDirectionPainter({
     required this.qiblaAngleFromTrueNorth,
     required this.magneticDeviceHeading,
     required this.magneticDeclination,
@@ -773,7 +535,7 @@ class QiblaDirectionPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant QiblaDirectionPainter old) =>
+  bool shouldRepaint(covariant _QiblaDirectionPainter old) =>
       old.qiblaAngleFromTrueNorth != qiblaAngleFromTrueNorth ||
       old.magneticDeviceHeading != magneticDeviceHeading ||
       old.magneticDeclination != magneticDeclination ||

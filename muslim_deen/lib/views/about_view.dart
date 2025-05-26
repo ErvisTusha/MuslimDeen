@@ -1,11 +1,9 @@
-// Standard library imports
-
-// Third-party package imports
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Added for SystemUiOverlayStyle
 
-// Local application imports
-import '../styles/app_styles.dart';
+import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/styles/ui_theme_helper.dart';
+import 'package:muslim_deen/widgets/common_container_styles.dart';
+import 'package:muslim_deen/widgets/custom_app_bar.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -13,54 +11,16 @@ class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
-    final bool isDarkMode = brightness == Brightness.dark;
-
-    // Define colors similar to TesbihView
-    final Color scaffoldBg =
-        isDarkMode
-            ? AppColors.surface(brightness)
-            : AppColors.background(brightness);
-    final Color contentSurface =
-        isDarkMode
-            ? const Color(0xFF2C2C2C)
-            : AppColors.primaryVariant(brightness);
-    final Color textColor = AppColors.textPrimary(brightness);
+    final colors = UIThemeHelper.getThemeColors(brightness);
 
     return Scaffold(
-      backgroundColor: scaffoldBg,
-      appBar: AppBar(
-        title: Text(
-          "About", // Replaced localizations.aboutTitle
-          style: AppTextStyles.appTitle(brightness),
-        ),
-        backgroundColor: AppColors.primary(brightness),
-        elevation: 2.0,
-        shadowColor: AppColors.shadowColor(brightness),
-        centerTitle: true,
-        systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: AppColors.primary(brightness),
-          statusBarIconBrightness:
-              isDarkMode ? Brightness.light : Brightness.light,
-        ),
-      ),
+      backgroundColor: AppColors.getScaffoldBackground(brightness),
+      appBar: CustomAppBar(title: "About", brightness: brightness),
       body: Center(
         child: Container(
           margin: const EdgeInsets.all(16.0),
           padding: const EdgeInsets.all(24.0),
-          decoration: BoxDecoration(
-            color: contentSurface,
-            borderRadius: BorderRadius.circular(12.0),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.shadowColor(
-                  brightness,
-                ).withAlpha(isDarkMode ? 30 : 50),
-                spreadRadius: 1,
-                blurRadius: 5,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
+          decoration: CommonContainerStyles.cardDecoration(colors),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -69,23 +29,23 @@ class AboutScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: AppTextStyles.sectionTitle(
                   brightness,
-                ).copyWith(color: textColor),
+                ).copyWith(color: colors.textColorPrimary),
               ),
               const SizedBox(height: 8),
               Text(
-                'Version 1.0.0', // Consider localizing if needed
+                'Version 1.0.0',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.label(
                   brightness,
-                ).copyWith(color: textColor.withAlpha(200)),
+                ).copyWith(color: colors.textColorPrimary.withAlpha(200)),
               ),
               const SizedBox(height: 24),
               Text(
-                'Developed with Flutter.', // Consider localizing
+                'Developed with Flutter.',
                 textAlign: TextAlign.center,
-                style: AppTextStyles.label(brightness).copyWith(
-                  color: textColor,
-                ), // Changed to label as bodyText is not defined
+                style: AppTextStyles.label(
+                  brightness,
+                ).copyWith(color: colors.textColorPrimary),
               ),
             ],
           ),

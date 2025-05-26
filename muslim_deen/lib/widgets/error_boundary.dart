@@ -24,12 +24,10 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
     // In a real implementation, you'd listen to global errors
     // This is simplified for analysis
 
-    // If there's an error and we have a custom error builder, use it
     if (_error != null && widget.errorBuilder != null) {
       return widget.errorBuilder!(context, _error!);
     }
 
-    // If there's an error but no custom builder, show a default error UI
     if (_error != null) {
       return Material(
         child: SafeArea(
@@ -70,7 +68,6 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
       );
     }
 
-    // If no error, just render the child widget
     return widget.child;
   }
 }

@@ -1,47 +1,20 @@
 import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:muslim_deen/services/logger_service.dart';
+
 import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/logger_service.dart';
 
 class CacheService {
   final SharedPreferences _prefs;
   final LoggerService _logger = locator<LoggerService>();
 
-  static const int _defaultExpirationMinutes = 60; // 1 hour
-  static const int qiblaExpirationMinutes = 1440; // 24 hours
-  static const int mosquesExpirationMinutes = 720; // 12 hours
-  // static const int oneDayInMinutes = 24 * 60; // 24 hours // Unused
+  static const int _defaultExpirationMinutes = 60;
+  static const int qiblaExpirationMinutes =
+      1440; // 24 hours, for Qibla direction
+  static const int mosquesExpirationMinutes = 720; // 12 hours, for mosque data
 
   CacheService(this._prefs);
-
-  Future<bool> setCache(
-    String key,
-    dynamic data, {
-    int expirationMinutes = _defaultExpirationMinutes,
-  }) async {
-    try {
-      final String jsonData = jsonEncode(data);
-      final int timestamp =
-          DateTime.now()
-              .add(Duration(minutes: expirationMinutes))
-              .millisecondsSinceEpoch;
-
-      await _prefs.setString('${key}_data', jsonData);
-      await _prefs.setInt('${key}_expiration', timestamp);
-
-      _logger.info(
-        'Data cached for key: $key',
-        data: {'expirationMinutes': expirationMinutes},
-      );
-      return true;
-    } catch (e, s) {
-      _logger.error(
-        'Failed to cache data for key: $key',
-        data: {'error': e.toString(), 'stackTrace': s.toString()},
-      );
-      return false;
-    }
-  }
 
   T? getCache<T>(String key) {
     try {
@@ -71,17 +44,80 @@ class CacheService {
     }
   }
 
-  Future<bool> removeCache(String key) async {
+  Future<bool> setCache<T>(String key, T data, {int? expirationMinutes}) async {
     try {
-      await _prefs.remove('${key}_data');
-      await _prefs.remove('${key}_expiration');
-      _logger.info('Cache removed for key: $key');
+      final String jsonData = jsonEncode(data);
+      await _prefs.setString('${key}_data', jsonData);
+
+      final int cacheDurationMinutes =
+          expirationMinutes ?? _defaultExpirationMinutes;
+      final int expirationTimestamp =
+          DateTime.now()
+              .add(Duration(minutes: cacheDurationMinutes))
+              .millisecondsSinceEpoch;
+      await _prefs.setInt('${key}_expiration', expirationTimestamp);
+
+      _logger.info('Cache set for key: $key');
       return true;
     } catch (e, s) {
       _logger.error(
-        'Error removing cache for key: $key',
-        data: {'error': e.toString(), 'stackTrace': s.toString()},
+        'Error setting cache for key: $key',
+        error: e,
+        stackTrace: s,
+        data: {'data_type': T.toString()},
       );
+      return false;
+    }
+  }
+
+  Future<bool> saveData(String key, dynamic value) async {
+    try {
+      if (value is String) {
+        return await _prefs.setString(key, value);
+      } else if (value is int) {
+        return await _prefs.setInt(key, value);
+      } else if (value is double) {
+        return await _prefs.setDouble(key, value);
+      } else if (value is bool) {
+        return await _prefs.setBool(key, value);
+      } else if (value is List<String>) {
+        return await _prefs.setStringList(key, value);
+      } else {
+        // For complex types not directly supported by SharedPreferences,
+        // they should be encoded to a String (e.g., JSON) before calling saveData.
+        _logger.warning(
+          'Unsupported type for saveData. Key: $key, Type: ${value.runtimeType}. Value must be String, int, double, bool, or List<String>.',
+        );
+        return false;
+      }
+    } catch (e, s) {
+      _logger.error('Error saving data for key: $key', error: e, stackTrace: s);
+      return false;
+    }
+  }
+
+  dynamic getData(String key) {
+    try {
+      final dynamic value = _prefs.get(key);
+      _logger.info('Data retrieved for key: $key');
+      return value;
+    } catch (e, s) {
+      _logger.error('Error getting data for key: $key', error: e, stackTrace: s);
+      return null;
+    }
+  }
+
+  Future<bool> removeData(String key) async {
+    try {
+      final success = await _prefs.remove(key);
+      if (success) {
+        _logger.info('Data removed for key: $key');
+      } else {
+        _logger.warning('Failed to remove data for key: $key (key might not exist)');
+      }
+      return success;
+    } catch (e, s) {
+      _logger.error('Error removing data for key: $key', error: e, stackTrace: s);
       return false;
     }
   }
@@ -103,21 +139,6 @@ class CacheService {
       );
       return false;
     }
-  }
-
-  Set<String> getAllBaseKeys() {
-    final allStoredKeys = _prefs.getKeys();
-    final baseKeys = <String>{};
-    for (final key in allStoredKeys) {
-      if (key.endsWith('_data')) {
-        baseKeys.add(key.substring(0, key.length - '_data'.length));
-      }
-    }
-    _logger.info(
-      'Retrieved all base keys from cache.',
-      data: {'count': baseKeys.length},
-    );
-    return baseKeys;
   }
 
   String generateLocationCacheKey(

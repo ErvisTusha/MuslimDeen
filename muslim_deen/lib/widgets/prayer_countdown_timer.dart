@@ -33,11 +33,13 @@ class PrayerCountdownTimer extends StatefulWidget {
 class _PrayerCountdownTimerState extends State<PrayerCountdownTimer> {
   late Duration _currentDuration;
   Timer? _timer;
+  late String _displayText;
 
   @override
   void initState() {
     super.initState();
     _currentDuration = widget.initialDuration;
+    _updateDisplayText();
     _startInternalTimer();
   }
 
@@ -47,6 +49,7 @@ class _PrayerCountdownTimerState extends State<PrayerCountdownTimer> {
     if (widget.initialDuration != oldWidget.initialDuration) {
       _timer?.cancel();
       _currentDuration = widget.initialDuration;
+      _updateDisplayText();
       _startInternalTimer();
     }
   }
@@ -57,21 +60,45 @@ class _PrayerCountdownTimerState extends State<PrayerCountdownTimer> {
     super.dispose();
   }
 
+  void _updateDisplayText() {
+    _displayText =
+        _currentDuration.isNegative
+            ? "Now"
+            : "In ${_formatDuration(_currentDuration)}";
+  }
+
   void _startInternalTimer() {
     if (_currentDuration.isNegative) {
       if (mounted) setState(() {});
       return;
     }
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    // Optimize: Use a more efficient timer strategy
+    // For durations > 1 hour, update every minute
+    // For durations > 1 minute, update every second
+    // For durations < 1 minute, update every second
+    Duration updateInterval = const Duration(seconds: 1);
+    if (_currentDuration.inHours > 1) {
+      updateInterval = const Duration(minutes: 1);
+    }
+
+    _timer = Timer.periodic(updateInterval, (timer) {
       if (!mounted) {
         timer.cancel();
         return;
       }
+
       setState(() {
-        _currentDuration = _currentDuration - const Duration(seconds: 1);
+        _currentDuration = _currentDuration - updateInterval;
+        _updateDisplayText();
+
         if (_currentDuration.isNegative) {
           timer.cancel();
+        } else if (_currentDuration.inHours <= 1 &&
+            updateInterval.inMinutes > 0) {
+          // Switch to second-based updates when we get close
+          timer.cancel();
+          _startInternalTimer();
         }
       });
     });
@@ -79,19 +106,10 @@ class _PrayerCountdownTimerState extends State<PrayerCountdownTimer> {
 
   @override
   Widget build(BuildContext context) {
-    final String displayText =
-        _currentDuration.isNegative
-            ? "Now"
-            : "In ${_formatDuration(_currentDuration)}";
-
     return Text(
-      displayText,
+      _displayText,
       style:
-          widget.textStyle ??
-          const TextStyle(
-            fontSize: 14,
-            color: Colors.grey,
-          ),
+          widget.textStyle ?? const TextStyle(fontSize: 14, color: Colors.grey),
     );
   }
 }
