@@ -23,7 +23,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   Timer? _saveSettingsDebounceTimer;
   static const Duration _saveSettingsDebounceDuration = Duration(
     milliseconds: 750,
-  ); // Increased debounce time
+  );
 
   SettingsNotifier(
     this._storage,
@@ -136,13 +136,33 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     await _recalculateAndRescheduleNotifications();
   }
 
-  // Removed updateCalculationMethod as it's unused
-  // Removed updateAzanSoundForStandardPrayers as it's unused
-  // Other methods like updateMadhab, updateThemeMode, updateLanguage, updateTimeFormat,
-  // updateDateFormatOption, setPrayerNotification, checkNotificationPermissionStatus,
-  // and all individual offset update methods were already removed in a previous refactoring pass
-  // or were not present in the version of the file read for this operation.
-  // The method loadSettings() is already private (_loadSettings) and correctly called.
+  Future<void> updatePrayerOffset(
+    PrayerNotification prayer,
+    int offsetInMinutes,
+  ) async {
+    switch (prayer) {
+      case PrayerNotification.fajr:
+        state = state.copyWith(fajrOffset: offsetInMinutes);
+        break;
+      case PrayerNotification.sunrise:
+        state = state.copyWith(sunriseOffset: offsetInMinutes);
+        break;
+      case PrayerNotification.dhuhr:
+        state = state.copyWith(dhuhrOffset: offsetInMinutes);
+        break;
+      case PrayerNotification.asr:
+        state = state.copyWith(asrOffset: offsetInMinutes);
+        break;
+      case PrayerNotification.maghrib:
+        state = state.copyWith(maghribOffset: offsetInMinutes);
+        break;
+      case PrayerNotification.isha:
+        state = state.copyWith(ishaOffset: offsetInMinutes);
+        break;
+    }
+    _debouncedSaveSettings();
+    await _recalculateAndRescheduleNotifications();
+  }
 
   Future<void> _recalculateAndRescheduleNotifications() async {
     try {

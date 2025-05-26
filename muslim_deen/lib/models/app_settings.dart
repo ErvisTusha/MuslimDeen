@@ -12,7 +12,6 @@ class AppSettings {
   final String calculationMethod;
   final String madhab;
   final ThemeMode themeMode;
-  final String language;
   final Map<PrayerNotification, bool> notifications;
   final NotificationPermissionStatus notificationPermissionStatus;
   final TimeFormat timeFormat;
@@ -29,7 +28,6 @@ class AppSettings {
     this.calculationMethod = 'MuslimWorldLeague',
     this.madhab = 'hanafi',
     this.themeMode = ThemeMode.system,
-    this.language = 'en',
     Map<PrayerNotification, bool>? notifications,
     this.notificationPermissionStatus =
         NotificationPermissionStatus.notDetermined,
@@ -50,7 +48,6 @@ class AppSettings {
     String? calculationMethod,
     String? madhab,
     ThemeMode? themeMode,
-    String? language,
     Map<PrayerNotification, bool>? notifications,
     NotificationPermissionStatus? notificationPermissionStatus,
     TimeFormat? timeFormat,
@@ -67,7 +64,6 @@ class AppSettings {
       calculationMethod: calculationMethod ?? this.calculationMethod,
       madhab: madhab ?? this.madhab,
       themeMode: themeMode ?? this.themeMode,
-      language: language ?? this.language,
       notifications: notifications ?? Map.from(this.notifications),
       notificationPermissionStatus:
           notificationPermissionStatus ?? this.notificationPermissionStatus,
@@ -89,7 +85,6 @@ class AppSettings {
       'calculationMethod': calculationMethod,
       'madhab': madhab,
       'themeMode': themeMode.index,
-      'language': language,
       'notificationPermissionStatus': notificationPermissionStatus.index,
       'notifications': notifications.map(
         (key, value) => MapEntry(key.name, value),
@@ -122,7 +117,6 @@ class AppSettings {
         }
         return ThemeMode.system;
       }(),
-      language: json['language'] as String,
       notificationPermissionStatus: () {
         final index = json['notificationPermissionStatus'] as int?;
         if (index != null &&

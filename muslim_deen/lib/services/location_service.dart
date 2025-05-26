@@ -7,9 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
-
+import 'package:muslim_deen/constants/app_constants.dart';
 import 'package:muslim_deen/models/custom_exceptions.dart';
-// LocationServiceException class removed
 
 /// A service that handles location-related functionality including device location,
 /// manual location settings, and location streaming.
@@ -24,21 +23,15 @@ enum PermissionRequestState {
 
 class LocationService {
   final LoggerService _logger = locator<LoggerService>();
-  PermissionRequestState _permissionState = PermissionRequestState.notStarted;
-  final _permissionStateController =
-      StreamController<PermissionRequestState>.broadcast();
-
-  // permissionState getter removed
   SharedPreferences? _prefs;
-  StreamSubscription<Position>? _locationSubscription;
   Position? _lastKnownPosition; // For persistent storage fallback
   bool _isInitialized = false;
   bool _isLocationPermissionBlocked = false;
-  Timer? _locationCheckTimer;
   StreamController<bool>? _locationStatusController;
   bool _disposed = false;
   // Debounce timestamp for permission checks
   DateTime? _lastLocationCheck;
+  PermissionRequestState _permissionState = PermissionRequestState.notStarted;
 
   // In-memory cache for SharedPreferences values
   bool? _useManualLocationCached;
@@ -59,7 +52,6 @@ class LocationService {
   static const String _manualLngKey = 'manual_longitude';
   static const String _locationNameKey = 'location_name';
   static const String _useManualLocationKey = 'use_manual_location';
-  // static const String _lastKnownPositionKey = 'last_known_position'; // Replaced by direct use in methods
 
   LocationService();
 
@@ -111,12 +103,6 @@ class LocationService {
 
     _disposed = true;
     _logger.info('Disposing LocationService.');
-    _locationCheckTimer?.cancel();
-    _locationSubscription?.cancel();
-
-    if (!_permissionStateController.isClosed) {
-      _permissionStateController.close();
-    }
 
     if (_locationStatusController != null &&
         !_locationStatusController!.isClosed) {
@@ -137,12 +123,12 @@ class LocationService {
     // Show explanation dialog first
     final explanationAccepted = await _showPermissionExplanationDialog();
     if (!explanationAccepted) {
-      _updatePermissionState(PermissionRequestState.denied);
+      _permissionState = PermissionRequestState.denied;
       _logger.info('Permission explanation not accepted.');
       await _handlePermissionDenied();
       return;
     }
-    _updatePermissionState(PermissionRequestState.explanationShown);
+    _permissionState = PermissionRequestState.explanationShown;
 
     // Request notification permission
     final notificationService = locator<NotificationService>();
@@ -158,18 +144,18 @@ class LocationService {
       // DO NOT return; here. Allow the flow to continue to request location permissions.
     }
 
-    _updatePermissionState(PermissionRequestState.notificationRequested);
+    _permissionState = PermissionRequestState.notificationRequested;
 
     // Request location permission
     final locationPermission = await _requestLocationWithDialog();
     if (!locationPermission) {
-      _updatePermissionState(PermissionRequestState.denied);
+      _permissionState = PermissionRequestState.denied;
       _logger.info('Location permission denied via dialog.');
       await _handlePermissionDenied();
       return;
     }
 
-    _updatePermissionState(PermissionRequestState.completed);
+    _permissionState = PermissionRequestState.completed;
     await _checkLocationPermission();
     _logger.info('Permission flow completed.');
   }
@@ -246,13 +232,6 @@ class LocationService {
     }
   }
 
-  void _updatePermissionState(PermissionRequestState state) {
-    _permissionState = state;
-    if (!_permissionStateController.isClosed) {
-      _permissionStateController.add(state);
-    }
-  }
-
   Future<void> _checkLocationPermission() async {
     if (_disposed) return;
 
@@ -281,8 +260,6 @@ class LocationService {
       }
     }
   }
-
-  // isLocationPermissionGranted method removed
 
   Future<bool> _hasLocationPermission() async {
     final permission = await Geolocator.checkPermission();
@@ -483,11 +460,6 @@ class LocationService {
     return _prefs?.getString(_locationNameKey);
   }
 
-  // updateLocationName method removed
-  // getLocationStream method removed
-  // openLocationSettings method removed
-  // openAppSettings method removed
-
   /// Sets device location as default if no location preference exists
   Future<void> _setDefaultToDeviceLocation() async {
     try {
@@ -548,33 +520,11 @@ class LocationService {
       }
 
       _logger.info('Using default Mecca coordinates as fallback');
-      return Position(
-        latitude: 21.422487,
-        longitude: 39.826206,
-        timestamp: DateTime.now(),
-        accuracy: 0,
-        altitude: 0,
-        heading: 0,
-        speed: 0,
-        speedAccuracy: 0,
-        altitudeAccuracy: 0,
-        headingAccuracy: 0,
-      );
+      return AppConstants.meccaPosition;
     } catch (e) {
       _logger.error('Error getting fallback location', error: e);
       // Ultimate fallback to Mecca coordinates
-      return Position(
-        latitude: 21.422487,
-        longitude: 39.826206,
-        timestamp: DateTime.now(),
-        accuracy: 0,
-        altitude: 0,
-        heading: 0,
-        speed: 0,
-        speedAccuracy: 0,
-        altitudeAccuracy: 0,
-        headingAccuracy: 0,
-      );
+      return AppConstants.meccaPosition;
     }
   }
 

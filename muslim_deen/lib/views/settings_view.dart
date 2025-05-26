@@ -257,7 +257,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final settingsNotifier = ref.read(settingsProvider.notifier);
-    // final appLocalizations = AppLocalizations.of(context)!;
 
     final brightness = Theme.of(context).brightness;
 
@@ -269,24 +268,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
           const SettingsSectionHeader(title: "Appearance"),
-
-          SettingsListItem(
-            icon: Icons.language,
-            title: "Language",
-            subtitle: "English",
-            onTap: () {
-              _logger.logInteraction(
-                'SettingsView',
-                'Change language',
-                data: {'current': "English"},
-              );
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Language selection is temporarily disabled."),
-                ),
-              );
-            },
-          ),
 
           SettingsListItem(
             icon: Icons.color_lens_outlined,
@@ -385,6 +366,46 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               _showMadhabPicker(context, settings.madhab, settingsNotifier);
             },
           ),
+
+          const SettingsSectionHeader(title: "Prayer Time Adjustments"),
+          ...PrayerNotification.values // Removed .where filter to include Sunrise
+              .map((prayer) {
+            int currentOffset = 0;
+            // Determine the current offset for the prayer
+            switch (prayer) {
+              case PrayerNotification.fajr:
+                currentOffset = settings.fajrOffset;
+                break;
+              case PrayerNotification.sunrise:
+                currentOffset = settings.sunriseOffset;
+                break;
+              case PrayerNotification.dhuhr:
+                currentOffset = settings.dhuhrOffset;
+                break;
+              case PrayerNotification.asr:
+                currentOffset = settings.asrOffset;
+                break;
+              case PrayerNotification.maghrib:
+                currentOffset = settings.maghribOffset;
+                break;
+              case PrayerNotification.isha:
+                currentOffset = settings.ishaOffset;
+                break;
+            }
+            return SettingsListItem(
+              icon: Icons.timer_outlined,
+              title: "${_getPrayerName(prayer)} Offset",
+              subtitle: _getPrayerOffsetSubtitle(currentOffset),
+              onTap: () {
+                _showPrayerOffsetDialog(
+                  context,
+                  prayer,
+                  currentOffset,
+                  settingsNotifier,
+                );
+              },
+            );
+          }).toList(),
 
           Container(
             key: _locationKey,
@@ -1010,7 +1031,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       onSettingChanged: (String? value) {
         if (value != null) {
           notifier.updateCalculationMethod(value);
-          _recalculatePrayerTimes(newMethod: value);
+          // _recalculatePrayerTimes call removed
         }
       },
     );
@@ -1032,19 +1053,88 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       onSettingChanged: (String? value) {
         if (value != null) {
           notifier.updateMadhab(value);
-          _recalculatePrayerTimes(newMadhab: value);
+          // _recalculatePrayerTimes call removed
         }
       },
     );
   }
 
-  Future<void> _recalculatePrayerTimes({
-    String? newMethod,
-    String? newMadhab,
-  }) async {
-    _logger.info(
-      'RecalculatePrayerTimes called (placeholder)',
-      data: {'newMethod': newMethod, 'newMadhab': newMadhab},
+  void _showPrayerOffsetDialog(
+    BuildContext context,
+    PrayerNotification prayer,
+    int currentOffset,
+    SettingsNotifier notifier,
+  ) {
+    final brightness = Theme.of(context).brightness;
+    double tempOffset = currentOffset.toDouble();
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setStateDialog) {
+            return AlertDialog(
+              backgroundColor: AppColors.background(brightness),
+              title: Text(
+                "Set Offset for ${_getPrayerName(prayer)}",
+                style: AppTextStyles.sectionTitle(brightness),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "${tempOffset.round()} minutes",
+                    style: AppTextStyles.prayerName(brightness),
+                  ),
+                  Slider(
+                    value: tempOffset,
+                    min: -60,
+                    max: 60,
+                    divisions: 120,
+                    label: "${tempOffset.round()} min",
+                    activeColor: AppColors.primary(brightness),
+                    inactiveColor: AppColors.borderColor(brightness),
+                    onChanged: (double value) {
+                      setStateDialog(() {
+                        tempOffset = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary(brightness),
+                  ),
+                  child: Text("Cancel"),
+                ),
+                TextButton(
+                  onPressed: () {
+                    notifier.updatePrayerOffset(prayer, tempOffset.round());
+                    Navigator.pop(dialogContext);
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary(brightness),
+                  ),
+                  child: Text("Confirm"),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
+  }
+
+  String _getPrayerOffsetSubtitle(int offset) {
+    if (offset == 0) {
+      return "No offset";
+    } else if (offset > 0) {
+      return "+$offset minutes";
+    } else {
+      return "$offset minutes";
+    }
   }
 }

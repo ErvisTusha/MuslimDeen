@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:adhan_dart/adhan_dart.dart' as adhan;
 import 'package:geolocator/geolocator.dart';
 
@@ -8,6 +6,7 @@ import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/prayer_times_cache.dart';
+import 'package:muslim_deen/constants/app_constants.dart';
 import 'package:muslim_deen/models/prayer_times_model.dart';
 
 /// Service responsible for calculating and providing prayer times.
@@ -315,37 +314,13 @@ class PrayerService {
   ) async {
     // This method now correctly calls the updated calculatePrayerTimesForDate
     return calculatePrayerTimesForDate(DateTime.now(), settings);
-    // The logging and state update for _currentPrayerTimes will be handled within calculatePrayerTimesForDate
-    // or _calculateAndPersistPrayerTimes. We can add a specific log here if needed.
-    // _logger.info(
-    //   'Successfully calculated and updated prayer times for today via main pathway.',
-    //   data: {
-    //     'lat': _currentPrayerTimes?.coordinates.latitude, // Assuming _currentPrayerTimes is updated
-    //     'lon': _currentPrayerTimes?.coordinates.longitude,
-    //     'method': settings?.calculationMethod ?? AppSettings.defaults.calculationMethod,
-    //     'madhab': settings?.madhab ?? AppSettings.defaults.madhab,
-    //     'fajr': _currentPrayerTimes!.fajr?.toIso8601String(),
-    //   },
-    // );
-    // return _currentPrayerTimes!; // This will be returned by calculatePrayerTimesForDate
   }
 
   /// Provides a fallback position (Mecca) when location services fail or are unavailable.
   /// This ensures that prayer time calculations can still proceed with a default location.
   Position _getFallbackPosition() {
     _logger.warning('Using fallback position (Mecca) for prayer calculations.');
-    return Position(
-      latitude: 21.4225,
-      longitude: 39.8262,
-      timestamp: DateTime.now(),
-      accuracy: 0,
-      altitude: 0,
-      heading: 0,
-      speed: 0,
-      speedAccuracy: 0,
-      altitudeAccuracy: 0,
-      headingAccuracy: 0,
-    );
+    return AppConstants.meccaPosition;
   }
 
   /// Determines the current prayer based on the current time and cached prayer times.
