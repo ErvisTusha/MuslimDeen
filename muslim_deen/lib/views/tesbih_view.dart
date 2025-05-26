@@ -26,7 +26,7 @@ class TesbihView extends ConsumerStatefulWidget {
 }
 
 class _TesbihViewState extends ConsumerState<TesbihView>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, AutomaticKeepAliveClientMixin {
   int _count = 0;
   String _currentDhikr = 'Subhanallah';
   bool _vibrationEnabled = true;
@@ -37,9 +37,6 @@ class _TesbihViewState extends ConsumerState<TesbihView>
       GetIt.I<NotificationService>();
   late final StorageService _storageService = GetIt.I<StorageService>();
   final LoggerService _logger = locator<LoggerService>();
-
-  // Cache reminder state to avoid accessing ref after disposal
-  bool _reminderEnabledCache = false;
 
   static final Map<String, String> _dhikrArabic = {
     'Subhanallah': 'سُبْحَانَ اللهِ',
@@ -83,13 +80,13 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   final Map<String, int> _customDhikrTargets = {};
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _logger.info('TesbihView initialized');
-
-    // Initialize reminder cache
-    _reminderEnabledCache = false;
 
     _loadPreferences();
   }
@@ -118,10 +115,9 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     _logger.debug('TesbihView disposed');
     WidgetsBinding.instance.removeObserver(this);
 
-    // Use cached value instead of ref.read() to avoid "ref after disposal" error
-    if (mounted && _reminderEnabledCache) {
-      _notificationService.cancelNotification(9876);
-    }
+    // NOTE: Removed cancelNotification(9876) call to prevent Tasbih reminder
+    // from being canceled when switching between views. Tasbih reminders should
+    // persist independently of view state, just like prayer notifications.
 
     _dhikrPlayer?.dispose();
     _counterPlayer?.dispose();
@@ -190,9 +186,6 @@ class _TesbihViewState extends ConsumerState<TesbihView>
           ref
               .read(tesbihReminderProvider.notifier)
               .toggleReminder(enabled ?? false);
-
-          // Cache the reminder enabled state
-          _reminderEnabledCache = enabled ?? false;
         });
 
         if (ref.read(tesbihReminderProvider).reminderEnabled && mounted) {
@@ -252,7 +245,6 @@ class _TesbihViewState extends ConsumerState<TesbihView>
       _logger.error('Failed to schedule reminder', error: e, stackTrace: s);
       if (mounted) {
         ref.read(tesbihReminderProvider.notifier).toggleReminder(false);
-        _reminderEnabledCache = false;
         await _saveReminderSettings();
 
         _showErrorSnackBar(
@@ -783,6 +775,8 @@ class _TesbihViewState extends ConsumerState<TesbihView>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+
     final brightness = Theme.of(context).brightness;
     final colors = UIThemeHelper.getThemeColors(brightness);
     final tesbihColors = _getTesbihColors(colors);
@@ -1165,13 +1159,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
           Icons.notifications_active_rounded,
           ref.watch(tesbihReminderProvider).reminderEnabled,
           (value) async {
-            if (!value) {
-              ref.read(tesbihReminderProvider.notifier).toggleReminder(false);
-              _reminderEnabledCache = false;
-            } else {
-              ref.read(tesbihReminderProvider.notifier).toggleReminder(true);
-              _reminderEnabledCache = true;
-            }
+            ref.read(tesbihReminderProvider.notifier).toggleReminder(value);
           },
           colors.brightness,
           trailing:

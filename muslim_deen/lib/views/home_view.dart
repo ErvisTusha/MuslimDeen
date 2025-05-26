@@ -20,6 +20,7 @@ import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
+import 'package:muslim_deen/services/widget_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/styles/ui_theme_helper.dart';
 import 'package:muslim_deen/views/settings_view.dart';
@@ -29,6 +30,12 @@ import 'package:muslim_deen/widgets/loading_error_state_builder.dart';
 import 'package:muslim_deen/widgets/prayer_countdown_timer.dart';
 import 'package:muslim_deen/widgets/prayer_list_item.dart';
 
+/// HomeView displays prayer times and manages prayer notifications.
+///
+/// This view uses AutomaticKeepAliveClientMixin to ensure it stays alive
+/// when not visible, preventing notifications from being canceled during
+/// view switches. Notifications are managed independently of view lifecycle
+/// and persist across navigation changes.
 class HomeView extends ConsumerStatefulWidget {
   const HomeView({super.key});
 
@@ -37,15 +44,15 @@ class HomeView extends ConsumerStatefulWidget {
 }
 
 class _HomeViewState extends ConsumerState<HomeView>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, AutomaticKeepAliveClientMixin {
   final LocationService _locationService = locator<LocationService>();
   final PrayerService _prayerService = locator<PrayerService>();
   final NotificationService _notificationService =
       locator<NotificationService>();
+  final WidgetService _widgetService = locator<WidgetService>();
   final LoggerService _logger = locator<LoggerService>();
   final ScrollController _scrollController = ScrollController();
   static const double _prayerItemHeight = 80.0;
-  Timer? _dailyRefreshTimer;
   ProviderSubscription? _settingsListenerSubscription; // Added for listenManual
   String? _lastKnownCity; // Store last known location details for loading state
   String?
@@ -65,6 +72,13 @@ class _HomeViewState extends ConsumerState<HomeView>
   PrayerNotification? _currentPrayerEnum;
   DateTime? _nextPrayerDateTime; // Stores the time of the next prayer
   late Future<Map<String, dynamic>> _dataLoadingFuture;
+
+  // Timer variables for periodic refreshes
+  Timer? _dailyRefreshTimer;
+  Timer? _periodicRefreshTimer;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -95,6 +109,9 @@ class _HomeViewState extends ConsumerState<HomeView>
 
     // Start daily refresh timer
     _startDailyRefreshTimer();
+
+    // Start periodic refresh timer for prayer updates
+    _startPeriodicRefreshTimer();
   }
 
   void _initOrUpdateDateFormatters(AppSettings settings, Locale locale) {
@@ -135,22 +152,18 @@ class _HomeViewState extends ConsumerState<HomeView>
 
   @override
   void dispose() {
-    _logger.debug('HomeView dispose started');
-    WidgetsBinding.instance.removeObserver(this); // Remove observer
-
-    // First, stop any active timers to prevent new location/notification requests
+    _logger.info('HomeView dispose started');
     _dailyRefreshTimer?.cancel();
+    _periodicRefreshTimer?.cancel();
     _settingsListenerSubscription?.close(); // Dispose of the settings listener
 
     // Clear UI-related state immediately
     _prayerTimes = null;
     _nextPrayerDateTime = null;
 
-    // Cancel notifications before cleaning up services
-    // This ensures no new notifications are scheduled during cleanup
-    _notificationService.cancelAllNotifications().then((_) {
-      _logger.debug('Notifications cancelled during dispose');
-    });
+    // NOTE: Removed cancelAllNotifications() call to prevent notifications
+    // from being canceled when switching between views. Notifications should
+    // persist independently of view state.
 
     // Clean up location service first to stop any active location streams
     // This addresses the Geolocator foreground service issue
@@ -183,7 +196,6 @@ class _HomeViewState extends ConsumerState<HomeView>
   /// Starts a timer to refresh prayer times daily around midnight.
   void _startDailyRefreshTimer() {
     _dailyRefreshTimer?.cancel();
-
     final now = DateTime.now();
     final nextMidnight = DateTime(now.year, now.month, now.day + 1);
     final durationUntilMidnight = nextMidnight.difference(now);
@@ -207,10 +219,69 @@ class _HomeViewState extends ConsumerState<HomeView>
         });
       }
     });
+
     _logger.info(
       "Scheduled next daily refresh",
       data: {'durationUntilMidnight': durationUntilMidnight.toString()},
     );
+  }
+
+  /// Starts a periodic timer to refresh prayer times more frequently
+  /// to ensure widgets stay updated when prayer times change
+  void _startPeriodicRefreshTimer() {
+    _periodicRefreshTimer?.cancel();
+
+    // Refresh every minute to check for prayer time changes
+    _periodicRefreshTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      _logger.info("Periodic refresh triggered.");
+      if (mounted) {
+        // Get fresh prayer times for widget updates
+        final appSettings = ref.read(settingsProvider);
+
+        // First, force a check to ensure we have current prayer times
+        _prayerService
+            .recalculatePrayerTimesIfNeeded(appSettings)
+            .then((_) {
+              if (mounted) {
+                // Update UI display first
+                _updatePrayerTimingsDisplay();
+
+                // Then force a fresh calculation for widget updates to ensure accuracy
+                _prayerService
+                    .calculatePrayerTimesForToday(appSettings)
+                    .then((freshPrayerTimes) {
+                      if (mounted) {
+                        // Update widgets with fresh prayer times
+                        _updateWidgets(freshPrayerTimes, null);
+                        _logger.debug(
+                          'Widget updated with fresh prayer times in periodic refresh',
+                        );
+                      }
+                    })
+                    .catchError((Object e) {
+                      _logger.warning(
+                        'Error calculating fresh prayer times for widget: $e',
+                      );
+                      // Fallback to cached times if fresh calculation fails
+                      if (mounted && _prayerTimes != null) {
+                        _updateWidgets(_prayerTimes!, null);
+                      }
+                    });
+              }
+            })
+            .catchError((Object e) {
+              _logger.warning('Error during periodic prayer recalculation: $e');
+              // Fallback: still try to update widgets with cached data
+              if (mounted && _prayerTimes != null) {
+                _updateWidgets(_prayerTimes!, null);
+              }
+            });
+      } else {
+        timer.cancel();
+      }
+    });
+
+    _logger.info("Started periodic refresh timer (every minute)");
   }
 
   /// Handles changes detected by the SettingsProvider listener.
@@ -230,6 +301,7 @@ class _HomeViewState extends ConsumerState<HomeView>
 
     bool needsReschedule = false;
     bool needsReload = false;
+    bool needsWidgetUpdate = false;
 
     // Check relevant settings for changes that require reloading prayer times
     if (newSettings.calculationMethod != oldSettings.calculationMethod ||
@@ -262,6 +334,31 @@ class _HomeViewState extends ConsumerState<HomeView>
       );
     }
 
+    // Check for changes that require widget updates (theme, time format, date format, prayer offsets)
+    if (newSettings.themeMode != oldSettings.themeMode ||
+        newSettings.timeFormat != oldSettings.timeFormat ||
+        newSettings.dateFormatOption != oldSettings.dateFormatOption ||
+        newSettings.fajrOffset != oldSettings.fajrOffset ||
+        newSettings.dhuhrOffset != oldSettings.dhuhrOffset ||
+        newSettings.asrOffset != oldSettings.asrOffset ||
+        newSettings.maghribOffset != oldSettings.maghribOffset ||
+        newSettings.ishaOffset != oldSettings.ishaOffset ||
+        newSettings.sunriseOffset != oldSettings.sunriseOffset) {
+      needsWidgetUpdate = true;
+      _logger.info(
+        "Widget-affecting settings change detected, updating widgets...",
+        data: {
+          'oldTheme': oldSettings.themeMode.name,
+          'newTheme': newSettings.themeMode.name,
+          'oldTimeFormat': oldSettings.timeFormat.name,
+          'newTimeFormat': newSettings.timeFormat.name,
+          'oldDateFormat': oldSettings.dateFormatOption.name,
+          'newDateFormat': newSettings.dateFormatOption.name,
+          'offsetsChanged': 'Prayer time offsets may have changed',
+        },
+      );
+    }
+
     if (needsReload) {
       // Trigger data reload, which will then reschedule notifications upon completion
       setState(() {
@@ -271,6 +368,11 @@ class _HomeViewState extends ConsumerState<HomeView>
       // Only reschedule if prayer times are available
       // Only notification toggles changed, just reschedule with current prayer times
       _scheduleAllPrayerNotifications(context, _prayerTimes!);
+    }
+
+    // Update widgets if needed (theme, format changes)
+    if (needsWidgetUpdate && _prayerTimes != null) {
+      _updateWidgets(_prayerTimes!, null);
     }
   }
 
@@ -309,44 +411,34 @@ class _HomeViewState extends ConsumerState<HomeView>
       final appSettings = ref.read(settingsProvider);
 
       String currentPrayerDisplayName = '---';
-      if (newCurrentPrayerEnum != null && _prayerTimes != null) {
+      if (newCurrentPrayerEnum != null) {
         currentPrayerDisplayName =
             _getPrayerDisplayInfo(
               newCurrentPrayerEnum,
-              _prayerTimes!,
+              currentPrayerTimes,
               appSettings,
             ).name;
-      } else if (newCurrentPrayerEnum != null) {
-        currentPrayerDisplayName =
-            newCurrentPrayerEnum.toString().split('.').last;
-        _logger.warning(
-          "_prayerTimes was null in _updatePrayerTimingsDisplay for current prayer, using enum name.",
-        );
       }
 
       String nextPrayerDisplayName = '---';
-      if (newNextPrayerEnum != null && _prayerTimes != null) {
-        nextPrayerDisplayName =
-            _getPrayerDisplayInfo(
-              newNextPrayerEnum,
-              _prayerTimes!,
-              appSettings,
-            ).name;
-      } else if (newNextPrayerEnum != null) {
-        nextPrayerDisplayName = newNextPrayerEnum.toString().split('.').last;
-        _logger.warning(
-          "_prayerTimes was null in _updatePrayerTimingsDisplay for next prayer, using enum name.",
+      DateTime? nextPrayerTime;
+      if (newNextPrayerEnum != null) {
+        final nextPrayerInfo = _getPrayerDisplayInfo(
+          newNextPrayerEnum,
+          currentPrayerTimes,
+          appSettings,
         );
+        nextPrayerDisplayName = nextPrayerInfo.name;
+        nextPrayerTime = nextPrayerInfo.time;
       }
-
       if (mounted) {
         final bool currentPrayerChanged =
             _currentPrayerEnum != newCurrentPrayerEnum;
-
         setState(() {
           _currentPrayerEnum = newCurrentPrayerEnum;
           _currentPrayerName = currentPrayerDisplayName;
           _nextPrayerName = nextPrayerDisplayName;
+          _nextPrayerDateTime = nextPrayerTime;
         });
 
         if (currentPrayerChanged && _currentPrayerEnum != null) {
@@ -627,8 +719,8 @@ class _HomeViewState extends ConsumerState<HomeView>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _scheduleAllPrayerNotifications(context, calculatedPrayerTimes);
+          _updateWidgets(calculatedPrayerTimes, locationNameToUse);
           _updatePrayerTimingsDisplay();
-
           if (_currentPrayerEnum != null) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) _scrollToPrayer(_currentPrayerEnum);
@@ -686,6 +778,27 @@ class _HomeViewState extends ConsumerState<HomeView>
       specificError = 'An unexpected error occurred: ${error.toString()}';
     }
     return specificError;
+  }
+
+  /// Updates OS widgets with current prayer data
+  Future<void> _updateWidgets(
+    adhan.PrayerTimes prayerTimes,
+    String? locationName,
+  ) async {
+    try {
+      final appSettings = ref.read(settingsProvider);
+      await _widgetService.updateAllWidgets(
+        appSettings: appSettings,
+        prayerTimes: prayerTimes,
+        locationName: locationName,
+      );
+      _logger.info('Widgets updated successfully');
+    } catch (e, s) {
+      _logger.error(
+        'Failed to update widgets',
+        data: {'error': e.toString(), 'stackTrace': s.toString()},
+      );
+    }
   }
 
   /// Schedules notifications for all prayer times based on current settings.
@@ -845,6 +958,8 @@ class _HomeViewState extends ConsumerState<HomeView>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+
     // Use watch to rebuild on any settings change
     final appSettings = ref.watch(settingsProvider);
     final locale = Localizations.localeOf(context);
@@ -1062,7 +1177,7 @@ class _HomeViewState extends ConsumerState<HomeView>
                   isLoading ? '...' : _currentPrayerName,
                   style: AppTextStyles.currentPrayer(
                     colors.brightness,
-                  ).copyWith(color: colors.textColorPrimary),
+                  ).copyWith(color: colors.textColorPrimary, fontSize: 26),
                 ),
               ],
             ),
@@ -1082,7 +1197,7 @@ class _HomeViewState extends ConsumerState<HomeView>
                   isLoading ? '...' : _nextPrayerName,
                   style: AppTextStyles.nextPrayer(
                     colors.brightness,
-                  ).copyWith(color: colors.accentColor),
+                  ).copyWith(color: colors.accentColor, fontSize: 26),
                 ),
                 Builder(
                   builder: (context) {
@@ -1241,4 +1356,16 @@ class _HomeViewState extends ConsumerState<HomeView>
       }
     });
   }
+}
+
+class PrayerItemColors {
+  final Color currentPrayerBg;
+  final Color currentPrayerBorder;
+  final Color currentPrayerText;
+
+  PrayerItemColors({
+    required this.currentPrayerBg,
+    required this.currentPrayerBorder,
+    required this.currentPrayerText,
+  });
 }

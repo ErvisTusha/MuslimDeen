@@ -336,12 +336,21 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    // Optimized: Only create widget if not cached
-    final Widget currentView =
-        _cachedWidgets[_selectedIndex] ??= _widgetBuilders[_selectedIndex]();
-
     return Scaffold(
-      body: currentView,
+      body: IndexedStack(
+        // IndexedStack keeps all widgets alive but only shows the selected one.
+        // This prevents dispose() calls when switching tabs, ensuring that
+        // notifications and other background processes continue running.
+        index: _selectedIndex,
+        children: [
+          // Create all widgets once and keep them alive
+          _cachedWidgets[0] ??= _widgetBuilders[0](),
+          _cachedWidgets[1] ??= _widgetBuilders[1](),
+          _cachedWidgets[2] ??= _widgetBuilders[2](),
+          _cachedWidgets[3] ??= _widgetBuilders[3](),
+          _cachedWidgets[4] ??= _widgetBuilders[4](),
+        ],
+      ),
       bottomNavigationBar: _buildBottomNavigationBar(context),
     );
   }

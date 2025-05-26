@@ -132,7 +132,7 @@ class AppTextStyles {
   );
 
   static TextStyle currentPrayer(Brightness brightness) => TextStyle(
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: FontWeight.w500,
     color: AppColors.accentGreen(
       brightness,
@@ -140,7 +140,7 @@ class AppTextStyles {
   );
 
   static TextStyle nextPrayer(Brightness brightness) => TextStyle(
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: FontWeight.bold,
     color: AppColors.textPrimary(brightness),
   );

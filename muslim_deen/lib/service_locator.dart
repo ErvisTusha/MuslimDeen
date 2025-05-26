@@ -12,6 +12,7 @@ import 'package:muslim_deen/services/notification_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
 import 'package:muslim_deen/services/prayer_times_cache.dart';
 import 'package:muslim_deen/services/storage_service.dart';
+import 'package:muslim_deen/services/widget_service.dart';
 
 final GetIt locator = GetIt.instance;
 
@@ -74,6 +75,12 @@ void _registerServices(bool testing) {
     final cacheService = await locator.getAsync<CacheService>();
     return MapService(cacheService: cacheService);
   });
+
+  /// WidgetService depends on async PrayerService
+  locator.registerLazySingletonAsync<WidgetService>(() async {
+    await locator.isReady<PrayerService>();
+    return WidgetService();
+  });
 }
 
 /// Initialize critical services required for app to start
@@ -105,11 +112,16 @@ Future<void> _initializeHighPriorityServicesBatch(bool testing) async {
   // Services that depend on PrayerTimesCache
   await locator.isReady<PrayerService>();
 
+  // Initialize WidgetService
+  await locator.isReady<WidgetService>();
+
   // Initialize platform services
   final initFutures = <Future<void>>[];
 
   if (!testing) {
     initFutures.add(locator<NotificationService>().init());
+    // Initialize WidgetService
+    initFutures.add(locator<WidgetService>().initialize());
   }
   initFutures.add(locator<LocationService>().init());
 

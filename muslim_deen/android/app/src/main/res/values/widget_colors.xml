@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget Colors - Light Theme -->
+    <color name="widget_background_light">#F0F8F0</color>        <!-- Light green tint background -->
+    <color name="widget_surface_light">#FFFFFF</color>           <!-- White cards/surfaces -->
+    <color name="widget_text_primary_light">#000000</color>      <!-- Black primary text -->
+    <color name="widget_text_secondary_light">#757575</color>    <!-- Gray secondary text -->
+    <color name="widget_accent_light">#4CAF50</color>           <!-- Green accent -->
+    <color name="widget_current_prayer_light">#4CAF50</color>   <!-- Green for current prayer -->
+    <color name="widget_divider_light">#E0E0E0</color>          <!-- Light gray divider -->
+    <color name="widget_border_light">#EEEEEE</color>           <!-- Light border -->
+    
+    <!-- Widget Colors - Dark Theme -->
+    <color name="widget_background_dark">#1E1E1E</color>        <!-- Dark background -->
+    <color name="widget_surface_dark">#2D2D2D</color>           <!-- Dark gray cards/surfaces -->
+    <color name="widget_text_primary_dark">#FFFFFF</color>      <!-- White primary text -->
+    <color name="widget_text_secondary_dark">#B0B0B0</color>    <!-- Light gray secondary text -->
+    <color name="widget_accent_dark">#66BB6A</color>           <!-- Lighter green accent for dark theme -->
+    <color name="widget_current_prayer_dark">#66BB6A</color>   <!-- Lighter green for current prayer -->
+    <color name="widget_divider_dark">#3D3D3D</color>          <!-- Dark gray divider -->
+    <color name="widget_border_dark">#3D3D3D</color>           <!-- Dark border -->
+    
+        <!-- Default/Light Theme - will be overridden by values-night for dark theme -->    <color name="widget_text_primary">#000000</color>    <color name="widget_text_secondary">#757575</color>    <color name="widget_accent">#4CAF50</color>    <color name="current_prayer_color">#4CAF50</color>    <color name="normal_prayer_color">#000000</color>    <color name="widget_background">#F0F8F0</color>
+</resources> 
