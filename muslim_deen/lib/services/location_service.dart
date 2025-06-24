@@ -4,12 +4,12 @@ import 'dart:convert';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:muslim_deen/constants/app_constants.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
 
 import 'package:muslim_deen/models/custom_exceptions.dart';
-// LocationServiceException class removed
 
 /// A service that handles location-related functionality including device location,
 /// manual location settings, and location streaming.
@@ -28,9 +28,7 @@ class LocationService {
   final _permissionStateController =
       StreamController<PermissionRequestState>.broadcast();
 
-  // permissionState getter removed
   SharedPreferences? _prefs;
-  StreamSubscription<Position>? _locationSubscription;
   Position? _lastKnownPosition; // For persistent storage fallback
   bool _isInitialized = false;
   bool _isLocationPermissionBlocked = false;
@@ -59,7 +57,7 @@ class LocationService {
   static const String _manualLngKey = 'manual_longitude';
   static const String _locationNameKey = 'location_name';
   static const String _useManualLocationKey = 'use_manual_location';
-  // static const String _lastKnownPositionKey = 'last_known_position'; // Replaced by direct use in methods
+  static const String _lastKnownPositionKey = 'last_known_position';
 
   LocationService();
 
@@ -150,7 +148,6 @@ class LocationService {
         await notificationService.requestPermission();
 
     if (!hasNotificationPermission) {
-      // _updatePermissionState(PermissionRequestState.denied); // Consider if this state update is still appropriate here for notifications, or if it should only apply to location denial.
       _logger.info(
         'Notification permission denied. Proceeding to request location permission.',
       );
@@ -282,8 +279,6 @@ class LocationService {
     }
   }
 
-  // isLocationPermissionGranted method removed
-
   Future<bool> _hasLocationPermission() async {
     final permission = await Geolocator.checkPermission();
     return permission == LocationPermission.whileInUse ||
@@ -293,9 +288,7 @@ class LocationService {
   Future<void> _loadLastPosition() async {
     if (_disposed) return;
     try {
-      final String? lastPosJson = _prefs?.getString(
-        'last_known_position',
-      ); // Direct string usage
+      final String? lastPosJson = _prefs?.getString(_lastKnownPositionKey);
       if (lastPosJson != null) {
         _lastKnownPosition = Position.fromMap(jsonDecode(lastPosJson));
         _logger.info(
@@ -318,7 +311,7 @@ class LocationService {
     try {
       _lastKnownPosition = position;
       await _prefs?.setString(
-        'last_known_position', // Direct string usage
+        _lastKnownPositionKey,
         jsonEncode(position.toJson()),
       );
       _logger.info(
@@ -483,11 +476,6 @@ class LocationService {
     return _prefs?.getString(_locationNameKey);
   }
 
-  // updateLocationName method removed
-  // getLocationStream method removed
-  // openLocationSettings method removed
-  // openAppSettings method removed
-
   /// Sets device location as default if no location preference exists
   Future<void> _setDefaultToDeviceLocation() async {
     try {
@@ -548,33 +536,11 @@ class LocationService {
       }
 
       _logger.info('Using default Mecca coordinates as fallback');
-      return Position(
-        latitude: 21.422487,
-        longitude: 39.826206,
-        timestamp: DateTime.now(),
-        accuracy: 0,
-        altitude: 0,
-        heading: 0,
-        speed: 0,
-        speedAccuracy: 0,
-        altitudeAccuracy: 0,
-        headingAccuracy: 0,
-      );
+      return AppConstants.meccaPosition.copyWith(timestamp: DateTime.now());
     } catch (e) {
       _logger.error('Error getting fallback location', error: e);
       // Ultimate fallback to Mecca coordinates
-      return Position(
-        latitude: 21.422487,
-        longitude: 39.826206,
-        timestamp: DateTime.now(),
-        accuracy: 0,
-        altitude: 0,
-        heading: 0,
-        speed: 0,
-        speedAccuracy: 0,
-        altitudeAccuracy: 0,
-        headingAccuracy: 0,
-      );
+      return AppConstants.meccaPosition.copyWith(timestamp: DateTime.now());
     }
   }
 

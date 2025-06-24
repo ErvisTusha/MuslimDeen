@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:muslim_deen/services/error_handler_service.dart';
 import '../styles/app_styles.dart';
 import '../styles/ui_theme_helper.dart';
 
@@ -58,7 +59,7 @@ class LoadingErrorStateBuilder extends StatelessWidget {
               Icon(Icons.error_outline, color: colors.errorColor, size: 48),
               const SizedBox(height: 16),
               Text(
-                _getProcessedErrorMessage(errorMessage!),
+                processDisplayErrorMessage(errorMessage!),
                 style: AppTextStyles.label(
                   brightness,
                 ).copyWith(color: colors.errorColor, fontSize: 16),
@@ -80,20 +81,6 @@ class LoadingErrorStateBuilder extends StatelessWidget {
     }
 
     return child;
-  }
-
-  String _getProcessedErrorMessage(String errorMessage) {
-    if (errorMessage ==
-        'Location permission denied. Please enable it in settings.') {
-      return errorMessage;
-    } else if (errorMessage.contains('permission')) {
-      return "Location permission error. Please check settings.";
-    } else if (errorMessage.contains('service is disabled')) {
-      return "Location service is disabled. Please enable it.";
-    } else if (errorMessage.contains('Compass sensor error')) {
-      return "Compass sensor error. Please try again.";
-    }
-    return errorMessage;
   }
 
   List<Widget> _buildActionButtons(String errorMessage) {

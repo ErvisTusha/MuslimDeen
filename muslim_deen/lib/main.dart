@@ -247,7 +247,6 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     SettingsView.new,
   ];
 
-  // Optimized: Weak reference caching to prevent memory leaks
   final Map<int, Widget> _cachedWidgets = <int, Widget>{};
 
   static const Map<int, String> _tabNames = <int, String>{

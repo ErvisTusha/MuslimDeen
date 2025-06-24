@@ -136,14 +136,6 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     await _recalculateAndRescheduleNotifications();
   }
 
-  // Removed updateCalculationMethod as it's unused
-  // Removed updateAzanSoundForStandardPrayers as it's unused
-  // Other methods like updateMadhab, updateThemeMode, updateLanguage, updateTimeFormat,
-  // updateDateFormatOption, setPrayerNotification, checkNotificationPermissionStatus,
-  // and all individual offset update methods were already removed in a previous refactoring pass
-  // or were not present in the version of the file read for this operation.
-  // The method loadSettings() is already private (_loadSettings) and correctly called.
-
   Future<void> _recalculateAndRescheduleNotifications() async {
     try {
       final adhan.PrayerTimes? prayerTimesToday = await _prayerService

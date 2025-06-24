@@ -44,6 +44,54 @@ class AppError {
   }
 }
 
+String processDisplayErrorMessage(Object? error) {
+  if (error == null) return 'An unknown error occurred. Please try again.';
+
+  String errorMessageString;
+  if (error is String) {
+    errorMessageString = error;
+  } else if (error is AppError) {
+    errorMessageString = error.details ?? error.message;
+  } else {
+    errorMessageString = error.toString();
+  }
+
+  if (errorMessageString.contains('Location permission denied. Please enable it in settings.')) {
+    return 'Location permission denied. Please enable it in settings.';
+  } else if (errorMessageString.contains('Location permissions are denied')) {
+    return 'Location permissions are denied. Please grant permission.';
+  } else if (errorMessageString.contains('permanently denied')) {
+    return 'Location permission permanently denied. Please enable it in app settings.';
+  } else if (errorMessageString.contains('Location services are disabled') || errorMessageString.contains('service is disabled')) {
+    return 'Location services are disabled. Please enable them in your device settings.';
+  } else if (errorMessageString.contains('Could not determine location')) {
+    return 'Could not determine your location. Please ensure location services are enabled and permissions granted.';
+  } else if (errorMessageString.contains('Compass sensor error')) {
+    return "Compass sensor error. Please try again.";
+  } else if (errorMessageString.contains('StorageService not initialized')) {
+    return 'Initialization error. Please restart the app.';
+  } else if (errorMessageString.contains('Failed to calculate prayer times')) {
+    return 'Failed to calculate prayer times. Please check your connection or location settings.';
+  }
+
+  // Generic fallbacks for common error types or messages
+  if (errorMessageString.toLowerCase().contains('network') || errorMessageString.toLowerCase().contains('socketexception')) {
+    return 'Network error. Please check your internet connection and try again.';
+  }
+  if (errorMessageString.toLowerCase().contains('timeout') || errorMessageString.toLowerCase().contains('timed out')) {
+    return 'The request timed out. Please try again.';
+  }
+
+  // If no specific message is matched, return a generic one or a cleaned up version of the original
+  // For now, let's return a generic one for unknown technical errors.
+  // More sophisticated parsing could be added if needed.
+  if (errorMessageString.length > 150 || errorMessageString.contains(RegExp(r'[a-zA-Z]+\.[a-zA-Z]+:'))) { // Heuristic for technical error messages
+    return 'An unexpected error occurred. Please try again.';
+  }
+
+  return errorMessageString; // Return original if not specifically handled and not overly technical
+}
+
 /// Error handler service to centralize error handling
 class ErrorHandlerService {
   final LoggerService _logger = locator<LoggerService>();

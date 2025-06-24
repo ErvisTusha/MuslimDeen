@@ -112,7 +112,6 @@ Future<void> _initializeHighPriorityServicesBatch(bool testing) async {
   // Services that depend on PrayerTimesCache
   await locator.isReady<PrayerService>();
 
-  // Initialize WidgetService
   await locator.isReady<WidgetService>();
 
   // Initialize platform services
@@ -120,7 +119,6 @@ Future<void> _initializeHighPriorityServicesBatch(bool testing) async {
 
   if (!testing) {
     initFutures.add(locator<NotificationService>().init());
-    // Initialize WidgetService
     initFutures.add(locator<WidgetService>().initialize());
   }
   initFutures.add(locator<LocationService>().init());
@@ -141,8 +139,6 @@ void _scheduleRemainingServiceInitialization() {
     final stopwatch = Stopwatch()..start();
 
     try {
-      // Any additional background initialization can go here
-
       stopwatch.stop();
       locator<LoggerService>().info(
         'Background services initialized in ${stopwatch.elapsedMilliseconds}ms',

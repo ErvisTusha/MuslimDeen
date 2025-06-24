@@ -7,6 +7,7 @@ import 'package:muslim_deen/models/app_settings.dart';
 import 'package:muslim_deen/models/prayer_display_info_data.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
+import 'package:muslim_deen/utils/prayer_display_utils.dart' as pdu;
 import 'package:muslim_deen/services/prayer_service.dart';
 
 class WidgetService {
@@ -194,72 +195,11 @@ class WidgetService {
     adhan.PrayerTimes prayerTimes,
     AppSettings appSettings,
   ) {
-    DateTime? time;
-    String name;
-    IconData icon;
-
-    switch (prayerEnum) {
-      case PrayerNotification.fajr:
-        name = "Fajr";
-        icon = Icons.wb_sunny_outlined;
-        time = _prayerService.getOffsettedPrayerTime(
-          "fajr",
-          prayerTimes,
-          appSettings,
-        );
-        break;
-      case PrayerNotification.sunrise:
-        name = "Sunrise";
-        icon = Icons.wb_twilight_outlined;
-        time = _prayerService.getOffsettedPrayerTime(
-          "sunrise",
-          prayerTimes,
-          appSettings,
-        );
-        break;
-      case PrayerNotification.dhuhr:
-        name = "Dhuhr";
-        icon = Icons.wb_sunny;
-        time = _prayerService.getOffsettedPrayerTime(
-          "dhuhr",
-          prayerTimes,
-          appSettings,
-        );
-        break;
-      case PrayerNotification.asr:
-        name = "Asr";
-        icon = Icons.wb_twilight;
-        time = _prayerService.getOffsettedPrayerTime(
-          "asr",
-          prayerTimes,
-          appSettings,
-        );
-        break;
-      case PrayerNotification.maghrib:
-        name = "Maghrib";
-        icon = Icons.brightness_4_outlined;
-        time = _prayerService.getOffsettedPrayerTime(
-          "maghrib",
-          prayerTimes,
-          appSettings,
-        );
-        break;
-      case PrayerNotification.isha:
-        name = "Isha";
-        icon = Icons.nights_stay;
-        time = _prayerService.getOffsettedPrayerTime(
-          "isha",
-          prayerTimes,
-          appSettings,
-        );
-        break;
-    }
-
-    return PrayerDisplayInfoData(
-      name: name,
-      time: time,
+    return pdu.getPrayerDisplayInfo(
       prayerEnum: prayerEnum,
-      iconData: icon,
+      prayerTimes: prayerTimes,
+      appSettings: appSettings,
+      getOffsettedTime: _prayerService.getOffsettedPrayerTime,
     );
   }
 
@@ -274,18 +214,5 @@ class WidgetService {
     if (adhanPrayer == adhan.Prayer.maghrib) return PrayerNotification.maghrib;
     if (adhanPrayer == adhan.Prayer.isha) return PrayerNotification.isha;
     return null;
-  }
-
-  /// Clear all widget data
-  Future<void> clearWidgetData() async {
-    try {
-      // You can implement specific data clearing if needed
-      _logger.info('Widget data cleared');
-    } catch (e, s) {
-      _logger.error(
-        'Failed to clear widget data',
-        data: {'error': e.toString(), 'stackTrace': s.toString()},
-      );
-    }
   }
 }

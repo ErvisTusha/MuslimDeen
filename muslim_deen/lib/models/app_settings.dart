@@ -8,6 +8,25 @@ enum TimeFormat { twelveHour, twentyFourHour }
 
 enum DateFormatOption { dayMonthYear, monthDayYear, yearMonthDay }
 
+extension PrayerNotificationExtension on PrayerNotification {
+  String get displayName {
+    switch (this) {
+      case PrayerNotification.fajr:
+        return "Fajr";
+      case PrayerNotification.sunrise:
+        return "Sunrise";
+      case PrayerNotification.dhuhr:
+        return "Dhuhr";
+      case PrayerNotification.asr:
+        return "Asr";
+      case PrayerNotification.maghrib:
+        return "Maghrib";
+      case PrayerNotification.isha:
+        return "Isha";
+    }
+  }
+}
+
 class AppSettings {
   final String calculationMethod;
   final String madhab;

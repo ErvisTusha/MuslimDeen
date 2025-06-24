@@ -15,8 +15,6 @@ import 'package:muslim_deen/services/logger_service.dart';
 /// Represents the current status of notification permissions
 enum NotificationPermissionStatus { granted, denied, notDetermined, restricted }
 
-// Removed class NotificationConfig
-
 /// Represents different notification channels with their specific settings
 enum NotificationChannel {
   prayer(
@@ -49,8 +47,6 @@ enum NotificationChannel {
   });
 }
 
-// Removed class NotificationException
-
 /// Service responsible for managing local notifications in the application
 class NotificationService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
@@ -73,8 +69,6 @@ class NotificationService {
   bool get isBlocked =>
       _permissionStatus == NotificationPermissionStatus.denied ||
       _permissionStatus == NotificationPermissionStatus.restricted;
-
-  // Removed getter canRequestPermission
 
   Future<void> init() async {
     if (_isInitialized || _disposed) return;
@@ -170,9 +164,6 @@ class NotificationService {
       return false;
     }
   }
-
-  // Removed method dispose()
-  // Removed method checkPermissionStatus()
 
   void _updatePermissionStatus(NotificationPermissionStatus status) {
     if (_permissionStatus != status && !_disposed) {
@@ -360,8 +351,6 @@ class NotificationService {
       return false;
     }
   }
-
-  // Removed method displayInstantNotification()
 
   Future<void> schedulePrayerNotification({
     required int id,
@@ -664,11 +653,6 @@ class NotificationService {
       _logger.error('Error cleaning up notifications', error: e);
     }
   }
-
-  // Removed method requestExactAlarmPermission()
-  // Removed getter permissionStatus
-  // Removed getter isInitialized
-  // Removed getter hasExactAlarmPermission
 
   Future<void> _checkInitialPermissions() async {
     if (defaultTargetPlatform == TargetPlatform.android) {

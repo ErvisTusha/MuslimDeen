@@ -257,7 +257,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final settingsNotifier = ref.read(settingsProvider.notifier);
-    // final appLocalizations = AppLocalizations.of(context)!;
 
     final brightness = Theme.of(context).brightness;
 
@@ -345,7 +344,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 _logger.logInteraction(
                   'SettingsView',
                   'Toggle prayer notification',
-                  data: {'prayer': prayer.toString(), 'enabled': value},
+                  data: {'prayer': prayer.displayName, 'enabled': value},
                 );
                 settingsNotifier.updatePrayerNotification(prayer, value);
               },
@@ -485,13 +484,13 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
         children: [
           SwitchListTile(
             title: Text(
-              _getPrayerName(prayer),
+              prayer.displayName,
               style: AppTextStyles.prayerName(
                 brightness,
               ).copyWith(color: isBlocked ? colors.iconInactive : null),
             ),
             subtitle: Text(
-              "Receive notification for ${_getPrayerName(prayer)} prayer",
+              "Receive notification for ${prayer.displayName} prayer",
               style: AppTextStyles.label(
                 brightness,
               ).copyWith(color: isBlocked ? colors.iconInactive : null),
@@ -904,23 +903,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     if (madhab.toLowerCase() == 'shafi') return "Shafi";
     if (madhab.toLowerCase() == 'hanafi') return "Hanafi";
     return madhab;
-  }
-
-  String _getPrayerName(PrayerNotification prayer) {
-    switch (prayer) {
-      case PrayerNotification.fajr:
-        return "Fajr";
-      case PrayerNotification.sunrise:
-        return "Sunrise";
-      case PrayerNotification.dhuhr:
-        return "Dhuhr";
-      case PrayerNotification.asr:
-        return "Asr";
-      case PrayerNotification.maghrib:
-        return "Maghrib";
-      case PrayerNotification.isha:
-        return "Isha";
-    }
   }
 
   String _getDateFormatName(DateFormatOption option) {

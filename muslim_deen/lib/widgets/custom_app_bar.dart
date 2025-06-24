@@ -17,7 +17,6 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     // Determine if dark mode is active, to ensure correct status bar icon brightness
-    // final bool isDarkMode = brightness == Brightness.dark; // This was simplified
 
     return AppBar(
       title: Text(
