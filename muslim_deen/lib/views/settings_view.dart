@@ -1,8 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-
 import 'package:muslim_deen/models/app_settings.dart';
 import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/providers/settings_notifier.dart';

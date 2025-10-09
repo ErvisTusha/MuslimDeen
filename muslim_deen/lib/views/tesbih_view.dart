@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get_it/get_it.dart';
-
 import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/providers/tesbih_reminder_provider.dart';
 import 'package:muslim_deen/service_locator.dart';
