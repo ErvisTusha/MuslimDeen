@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 
