@@ -280,9 +280,14 @@ class PrayerService {
         _lastCalculationDate!.month == dateUtc.month &&
         _lastCalculationDate!.day == dateUtc.day;
 
+    final settingsMadhab = settings.madhab.toLowerCase();
+    final lastMadhab = _lastParamsUsed?.madhab;
+    final isSameMadhab = (settingsMadhab == 'hanafi' && lastMadhab == adhan.Madhab.hanafi) ||
+                         (settingsMadhab == 'shafi' && lastMadhab == adhan.Madhab.shafi) ||
+                         (settingsMadhab != 'hanafi' && settingsMadhab != 'shafi' && lastMadhab == adhan.Madhab.shafi);
+    
     final isSameSettings =
-        _lastCalculationMethodString == settings.calculationMethod &&
-        _lastParamsUsed?.madhab.toString() == settings.madhab;
+        _lastCalculationMethodString == settings.calculationMethod && isSameMadhab;
 
     const positionTolerance = 0.001; // About 100m
     final isSameLocation =
