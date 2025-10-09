@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:adhan_dart/adhan_dart.dart' as adhan;
 import 'package:geolocator/geolocator.dart';
 import 'package:muslim_deen/models/app_settings.dart';
