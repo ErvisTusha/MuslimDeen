@@ -8,7 +8,7 @@ import 'package:muslim_deen/services/logger_service.dart';
 /// Specialized cache for prayer times to reduce API calls and calculations
 class PrayerTimesCache {
   static const String _cacheKeyPrefix = 'prayer_times_';
-  static const int _cacheDurationDays = 30; // Cache prayer times for 30 days
+  static const int _cacheDurationDays = 30;
 
   final CacheService _cacheService;
   final LoggerService _logger;
