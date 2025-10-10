@@ -8,6 +8,7 @@ import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/error_handler_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
+import 'package:muslim_deen/services/notification_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/views/home_view.dart';
 import 'package:muslim_deen/views/mosque_view.dart';
@@ -23,6 +24,11 @@ Future<void> main() async {
   final List<Future<void>> startupFutures = [
     _requestPermissions(),
     Future<void>(() async => tz.initializeTimeZones()),
+    Future<void>(() async {
+      final notificationService = locator<NotificationService>();
+      await notificationService.init();
+      await notificationService.rescheduleAllNotifications();
+    }),
   ];
 
   try {

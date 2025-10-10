@@ -8,6 +8,7 @@ import 'package:timezone/timezone.dart';
 import 'package:muslim_deen/models/app_settings.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
+import 'package:muslim_deen/services/notification_rescheduler_service.dart';
 
 /// Service responsible for managing local notifications in the application
 class NotificationService {
@@ -51,6 +52,9 @@ class NotificationService {
 
       _isInitialized = true;
       _logger.info('NotificationService initialized successfully.');
+
+      // Initialize background rescheduling
+      await _initBackgroundRescheduling();
     } catch (e, s) {
       _isInitialized = false;
       _logger.error(
@@ -103,6 +107,21 @@ class NotificationService {
     }
   }
 
+  /// Initialize background rescheduling service
+  Future<void> _initBackgroundRescheduling() async {
+    try {
+      final rescheduler = NotificationReschedulerService();
+      await rescheduler.init();
+      _logger.info('Background notification rescheduling initialized');
+    } catch (e, s) {
+      _logger.error(
+        'Failed to initialize background rescheduling',
+        error: e,
+        stackTrace: s,
+      );
+    }
+  }
+
   /// Cancels all notifications
   Future<void> cancelAllNotifications() async {
     if (!_isInitialized) return;
@@ -112,6 +131,21 @@ class NotificationService {
     } catch (e, s) {
       _logger.error(
         'Error cancelling all notifications',
+        error: e,
+        stackTrace: s,
+      );
+    }
+  }
+
+  /// Reschedule all notifications (called on app start and boot)
+  Future<void> rescheduleAllNotifications() async {
+    try {
+      final rescheduler = NotificationReschedulerService();
+      await rescheduler.rescheduleAllNotifications();
+      _logger.info('All notifications rescheduled on app start');
+    } catch (e, s) {
+      _logger.error(
+        'Failed to reschedule notifications on app start',
         error: e,
         stackTrace: s,
       );
