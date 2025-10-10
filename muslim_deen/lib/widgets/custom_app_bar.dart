@@ -20,10 +20,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     // final bool isDarkMode = brightness == Brightness.dark; // This was simplified
 
     return AppBar(
-      title: Text(
-        title,
-        style: AppTextStyles.appTitle(brightness),
-      ),
+      title: Text(title, style: AppTextStyles.appTitle(brightness)),
       backgroundColor: AppColors.primary(brightness),
       elevation: 2.0,
       shadowColor: AppColors.shadowColor(brightness),
@@ -32,7 +29,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       systemOverlayStyle: SystemUiOverlayStyle(
         statusBarColor: AppColors.primary(brightness),
         // Simplified from isDarkMode ? Brightness.light : Brightness.light
-        statusBarIconBrightness: Brightness.light, 
+        statusBarIconBrightness: Brightness.light,
       ),
     );
   }

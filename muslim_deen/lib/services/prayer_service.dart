@@ -3,12 +3,13 @@ import 'dart:async';
 import 'package:adhan_dart/adhan_dart.dart' as adhan;
 import 'package:geolocator/geolocator.dart';
 
+import 'package:muslim_deen/models/app_constants.dart';
 import 'package:muslim_deen/models/app_settings.dart';
+import 'package:muslim_deen/models/prayer_times_model.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/prayer_times_cache.dart';
-import 'package:muslim_deen/models/prayer_times_model.dart';
 
 /// Service responsible for calculating and providing prayer times.
 ///
@@ -33,7 +34,9 @@ class PrayerService {
   // Performance optimization: Cache position for short periods
   Position? _cachedPosition;
   DateTime? _positionCacheTime;
-  static const Duration _positionCacheDuration = Duration(minutes: 5);
+  static const Duration _positionCacheDuration = Duration(
+    minutes: AppConstants.positionCacheDurationMinutes,
+  );
 
   PrayerService(this._locationService, this._prayerTimesCache);
 

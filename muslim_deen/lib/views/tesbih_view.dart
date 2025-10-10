@@ -8,6 +8,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get_it/get_it.dart';
 
+import 'package:muslim_deen/models/app_constants.dart';
 import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/providers/tesbih_reminder_provider.dart';
 import 'package:muslim_deen/service_locator.dart';
@@ -16,6 +17,7 @@ import 'package:muslim_deen/services/notification_service.dart'
     show NotificationService;
 import 'package:muslim_deen/services/storage_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/styles/theme_utils.dart';
 import 'package:muslim_deen/styles/ui_theme_helper.dart';
 
 class TesbihView extends ConsumerStatefulWidget {
@@ -38,33 +40,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   late final StorageService _storageService = GetIt.I<StorageService>();
   final LoggerService _logger = locator<LoggerService>();
 
-  static final Map<String, String> _dhikrArabic = {
-    'Subhanallah': 'سُبْحَانَ اللهِ',
-    'Alhamdulillah': 'الْحَمْدُ لِلَّهِ',
-    'Astaghfirullah': 'أَسْتَغْفِرُ اللهَ',
-    'Allahu Akbar': 'اللهُ أَكْبَر',
-  };
-
-  static final Map<String, int> _defaultDhikrTargets = {
-    'Subhanallah': 33,
-    'Alhamdulillah': 33,
-    'Astaghfirullah': 33,
-    'Allahu Akbar': 34, // Often 34 after prayer
-  };
-
-  final List<String> _dhikrOrder = [
-    'Subhanallah',
-    'Alhamdulillah',
-    'Astaghfirullah',
-    'Allahu Akbar',
-  ];
-
-  static final Map<String, String> _dhikrAudioFiles = {
-    'Subhanallah': 'audio/SubhanAllah.mp3',
-    'Alhamdulillah': 'audio/Alhamdulillah.mp3',
-    'Astaghfirullah': 'audio/Astaghfirullah.mp3',
-    'Allahu Akbar': 'audio/AllahuAkbar.mp3',
-  };
+  final List<String> _dhikrOrder = AppConstants.dhikrOrder;
 
   AudioPlayer? _dhikrPlayer;
   AudioPlayer? _counterPlayer;
@@ -72,7 +48,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   bool _isAudioPlaying = false;
   bool _isResetting = false;
   bool _isInDhikrTransition = false;
-  int _dhikrTransitionDelay = 1500;
+  int _dhikrTransitionDelay = AppConstants.defaultDhikrTransitionDelay;
 
   bool _preferencesChanged = false;
   bool? _notificationsBlocked;
@@ -200,7 +176,9 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   Future<void> _scheduleReminder() async {
     try {
       if (!ref.read(tesbihReminderProvider).reminderEnabled) {
-        await _notificationService.cancelNotification(9876);
+        await _notificationService.cancelNotification(
+          AppConstants.tesbihReminderId,
+        );
         _logger.info('Tesbih reminder cancelled');
         return;
       }
@@ -233,7 +211,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
           "🤲 Time for your dhikr. Remember Allah with a peaceful heart.";
 
       await _notificationService.schedulePrayerNotification(
-        id: 9876,
+        id: AppConstants.tesbihReminderId,
         localizedTitle: "",
         localizedBody: notificationBody,
         prayerTime: scheduledDateTime,
@@ -292,13 +270,11 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                         Theme.of(context).brightness,
                       ),
                     ),
-            dialogTheme: DialogTheme(
+            dialogTheme: DialogThemeData(
               backgroundColor:
                   Theme.of(context).brightness == Brightness.dark
-                      ? AppColors.surface(
-                        Theme.of(context).brightness,
-                      ) // Dark surface for dialog
-                      : AppColors.background(Theme.of(context).brightness),
+                      ? AppColors.surface(Brightness.dark)
+                      : AppColors.surface(Brightness.light),
             ),
           ),
           child: child!,
@@ -379,7 +355,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
       }
 
       if (storedTarget == null || storedTarget <= 0) {
-        storedTarget = _defaultDhikrTargets[storedDhikr]!;
+        storedTarget = AppConstants.defaultDhikrTargets[storedDhikr]!;
         _logger.warning(
           'Invalid stored target: $storedTarget, using default: $storedTarget',
         );
@@ -402,7 +378,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
           _target =
               (storedTarget != null && storedTarget > 0)
                   ? storedTarget
-                  : _defaultDhikrTargets[_currentDhikr]!;
+                  : AppConstants.defaultDhikrTargets[_currentDhikr]!;
         }
 
         _count =
@@ -427,7 +403,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
 
       if (!mounted) return;
       setState(() {
-        _target = _defaultDhikrTargets[_currentDhikr]!;
+        _target = AppConstants.defaultDhikrTargets[_currentDhikr]!;
       });
     }
   }
@@ -565,25 +541,19 @@ class _TesbihViewState extends ConsumerState<TesbihView>
           _count = previousCount;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "Failed to save reset. Your count has been restored.",
-              style: AppTextStyles.snackBarText(Theme.of(context).brightness),
-            ),
-            backgroundColor: AppColors.error(Theme.of(context).brightness),
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 3),
-            action: SnackBarAction(
-              label: 'Reset Again',
-              textColor: AppColors.background(Theme.of(context).brightness),
-              onPressed: () {
-                Future.delayed(const Duration(milliseconds: 500), () {
-                  _isResetting = false;
-                  _resetCount();
-                });
-              },
-            ),
+        ThemeUtils.showSnackBar(
+          context: context,
+          message: "Failed to save reset. Your count has been restored.",
+          backgroundColor: AppColors.error(Theme.of(context).brightness),
+          action: SnackBarAction(
+            label: 'Reset Again',
+            textColor: AppColors.background(Theme.of(context).brightness),
+            onPressed: () {
+              Future.delayed(const Duration(milliseconds: 500), () {
+                _isResetting = false;
+                _resetCount();
+              });
+            },
           ),
         );
       }
@@ -651,7 +621,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     if (_isCustomTarget && _customDhikrTargets.containsKey(dhikr)) {
       newTarget = _customDhikrTargets[dhikr]!;
     } else {
-      newTarget = _defaultDhikrTargets[dhikr]!;
+      newTarget = AppConstants.defaultDhikrTargets[dhikr]!;
     }
 
     setState(() {
@@ -692,7 +662,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     _initializeAudioPlayers();
 
     try {
-      final audioFile = _dhikrAudioFiles[dhikr];
+      final audioFile = AppConstants.dhikrAudioFiles[dhikr];
       if (audioFile != null) {
         _isAudioPlaying = true;
         _logger.info('Playing dhikr sound: $audioFile');
@@ -725,16 +695,10 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   }
 
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: AppTextStyles.snackBarText(Theme.of(context).brightness),
-        ),
-        backgroundColor: AppColors.error(Theme.of(context).brightness),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
-      ),
+    ThemeUtils.showSnackBar(
+      context: context,
+      message: message,
+      backgroundColor: AppColors.error(Theme.of(context).brightness),
     );
   }
 
@@ -849,7 +813,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
       child: Column(
         children: [
           Text(
-            _dhikrArabic[_currentDhikr] ?? '',
+            AppConstants.dhikrArabic[_currentDhikr] ?? '',
             style: AppTextStyles.appTitle(colors.brightness).copyWith(
               fontSize: 40,
               height: 1.4,
@@ -1198,15 +1162,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
           isDisabled
               ? null
               : () {
-                if (isNotificationToggle) {
-                  if (value) {
-                    onChanged(!value);
-                  } else {
-                    onChanged(!value);
-                  }
-                } else {
-                  onChanged(!value);
-                }
+                onChanged(!value);
               },
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -1229,25 +1185,19 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                   isDisabled
                       ? null
                       : (newValue) async {
-                        if (isNotificationToggle) {
-                          if (newValue) {
-                            await _checkAndUpdateNotificationStatus();
-                            if (_notificationsBlocked == true) {
-                              _showErrorSnackBar(
-                                "Notifications are blocked. Enable them in system settings.",
-                              );
-                              return;
-                            }
-                            onChanged(newValue);
-                            _showReminderSettingsDialog();
-                          } else {
-                            onChanged(newValue);
+                        if (isNotificationToggle && newValue) {
+                          await _checkAndUpdateNotificationStatus();
+                          if (_notificationsBlocked == true) {
+                            _showErrorSnackBar(
+                              "Notifications are blocked. Enable them in system settings.",
+                            );
+                            return;
                           }
-                        } else {
-                          onChanged(newValue);
+                          _showReminderSettingsDialog();
                         }
+                        onChanged(newValue);
                       },
-              activeColor: AppColors.primary(brightness),
+              activeThumbColor: AppColors.primary(brightness),
               activeTrackColor:
                   isDisabled
                       ? AppColors.switchTrackActive(brightness).withAlpha(77)

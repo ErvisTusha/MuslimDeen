@@ -47,12 +47,13 @@ class CitySearchResultsList extends StatelessWidget {
         child: ListView.separated(
           padding: EdgeInsets.zero,
           itemCount: searchResults.length,
-          separatorBuilder: (context, index) => Divider(
-            color: borderColor.withAlpha(isDarkMode ? 70 : 100),
-            height: 1,
-            indent: 16,
-            endIndent: 16,
-          ),
+          separatorBuilder:
+              (context, index) => Divider(
+                color: borderColor.withAlpha(isDarkMode ? 70 : 100),
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+              ),
           itemBuilder: (context, index) {
             final result = searchResults[index];
             return Material(
@@ -74,27 +75,21 @@ class CitySearchResultsList extends StatelessWidget {
                           children: [
                             Text(
                               result['name'] as String,
-                              style: AppTextStyles.prayerName(brightness).copyWith(
-                                color: textColor,
-                                fontSize: 16,
-                              ),
+                              style: AppTextStyles.prayerName(
+                                brightness,
+                              ).copyWith(color: textColor, fontSize: 16),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               '${result['latitude'].toStringAsFixed(4)}, ${result['longitude'].toStringAsFixed(4)}',
-                              style: AppTextStyles.label(brightness).copyWith(
-                                color: hintColor,
-                                fontSize: 13,
-                              ),
+                              style: AppTextStyles.label(
+                                brightness,
+                              ).copyWith(color: hintColor, fontSize: 13),
                             ),
                           ],
                         ),
                       ),
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        size: 18,
-                        color: iconColor,
-                      ),
+                      Icon(Icons.arrow_forward_ios, size: 18, color: iconColor),
                     ],
                   ),
                 ),

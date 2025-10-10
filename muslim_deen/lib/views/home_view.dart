@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:adhan_dart/adhan_dart.dart' as adhan;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -235,53 +235,46 @@ class _HomeViewState extends ConsumerState<HomeView>
     _periodicRefreshTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
       _logger.info("Periodic refresh triggered.");
       if (mounted) {
-        // Get fresh prayer times for widget updates
-        final appSettings = ref.read(settingsProvider);
-
-        // First, force a check to ensure we have current prayer times
-        _prayerService
-            .recalculatePrayerTimesIfNeeded(appSettings)
-            .then((_) {
-              if (mounted) {
-                // Update UI display first
-                _updatePrayerTimingsDisplay();
-
-                // Then force a fresh calculation for widget updates to ensure accuracy
-                _prayerService
-                    .calculatePrayerTimesForToday(appSettings)
-                    .then((freshPrayerTimes) {
-                      if (mounted) {
-                        // Update widgets with fresh prayer times
-                        _updateWidgets(freshPrayerTimes, null);
-                        _logger.debug(
-                          'Widget updated with fresh prayer times in periodic refresh',
-                        );
-                      }
-                    })
-                    .catchError((Object e) {
-                      _logger.warning(
-                        'Error calculating fresh prayer times for widget: $e',
-                      );
-                      // Fallback to cached times if fresh calculation fails
-                      if (mounted && _prayerTimes != null) {
-                        _updateWidgets(_prayerTimes!, null);
-                      }
-                    });
-              }
-            })
-            .catchError((Object e) {
-              _logger.warning('Error during periodic prayer recalculation: $e');
-              // Fallback: still try to update widgets with cached data
-              if (mounted && _prayerTimes != null) {
-                _updateWidgets(_prayerTimes!, null);
-              }
-            });
+        _performPeriodicRefresh();
       } else {
         timer.cancel();
       }
     });
 
     _logger.info("Started periodic refresh timer (every minute)");
+  }
+
+  /// Performs the periodic refresh logic with error handling
+  Future<void> _performPeriodicRefresh() async {
+    try {
+      // Get fresh prayer times for widget updates
+      final appSettings = ref.read(settingsProvider);
+
+      // First, force a check to ensure we have current prayer times
+      await _prayerService.recalculatePrayerTimesIfNeeded(appSettings);
+
+      if (!mounted) return;
+
+      // Update UI display first
+      _updatePrayerTimingsDisplay();
+
+      // Then force a fresh calculation for widget updates to ensure accuracy
+      final freshPrayerTimes = await _prayerService.calculatePrayerTimesForToday(appSettings);
+      
+      if (mounted) {
+        // Update widgets with fresh prayer times
+        _updateWidgets(freshPrayerTimes, null);
+        _logger.debug(
+          'Widget updated with fresh prayer times in periodic refresh',
+        );
+      }
+    } catch (e) {
+      _logger.warning('Error during periodic prayer recalculation: $e');
+      // Fallback: still try to update widgets with cached data
+      if (mounted && _prayerTimes != null) {
+        _updateWidgets(_prayerTimes!, null);
+      }
+    }
   }
 
   /// Handles changes detected by the SettingsProvider listener.
@@ -511,9 +504,6 @@ class _HomeViewState extends ConsumerState<HomeView>
   /// Attempts to parse a location string into city and country components.
   /// Handles formats like "City, Country", "City", "Lat, Lon".
   Map<String, String?> _parseLocationName(String? locationName) {
-    String? city;
-    String? country;
-
     if (locationName == null || locationName.trim().isEmpty) {
       return {'city': 'Unknown', 'country': null};
     }
@@ -523,25 +513,22 @@ class _HomeViewState extends ConsumerState<HomeView>
     final coordRegex = RegExp(r'^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$');
     if (coordRegex.hasMatch(locationName)) {
       return {'city': 'Current Location', 'country': null};
-    } else if (locationName.contains(',')) {
+    }
+
+    if (locationName.contains(',')) {
       final parts = locationName.split(',');
-      city = parts[0].trim();
-      country = parts.length > 1 ? parts.sublist(1).join(',').trim() : null;
+      String city = parts[0].trim();
+      String? country = parts.length > 1 ? parts.sublist(1).join(',').trim() : null;
 
       if (city.isEmpty) {
         city = country ?? 'Unknown';
         country = null;
       }
-    } else {
-      city = locationName;
-      country = null;
+
+      return {'city': city, 'country': country};
     }
 
-    if (city.isEmpty) {
-      city = 'Unknown';
-    }
-
-    return {'city': city, 'country': country};
+    return {'city': locationName, 'country': null};
   }
 
   /// Fetches location, calculates prayer times, and schedules notifications.
@@ -603,12 +590,6 @@ class _HomeViewState extends ConsumerState<HomeView>
                 locationNameToUse =
                     '${position.latitude.toStringAsFixed(3)}, ${position.longitude.toStringAsFixed(3)}';
               }
-              // Removed direct StorageService.saveLocation call
-              // locator<StorageService>().saveLocation(
-              //   position.latitude,
-              //   position.longitude,
-              //   locationName: locationNameToUse,
-              // );
               _logger.info(
                 "Device location geocoded", // Updated log message
                 data: {'locationName': locationNameToUse},
@@ -617,12 +598,6 @@ class _HomeViewState extends ConsumerState<HomeView>
               locationNameToUse =
                   '${position.latitude.toStringAsFixed(3)}, ${position.longitude.toStringAsFixed(3)}';
             }
-            // Removed direct StorageService.saveLocation call
-            // locator<StorageService>().saveLocation(
-            //   position.latitude,
-            //   position.longitude,
-            //   locationName: locationNameToUse,
-            // );
           } catch (e, s) {
             _logger.warning(
               'Geocoding error, falling back to coordinates',
@@ -630,12 +605,6 @@ class _HomeViewState extends ConsumerState<HomeView>
             );
             locationNameToUse =
                 '${position.latitude.toStringAsFixed(3)}, ${position.longitude.toStringAsFixed(3)}';
-            // Removed direct StorageService.saveLocation call
-            // locator<StorageService>().saveLocation(
-            //   position.latitude,
-            //   position.longitude,
-            //   locationName: locationNameToUse,
-            // );
           }
         } catch (e, s) {
           _logger.error(
@@ -843,10 +812,6 @@ class _HomeViewState extends ConsumerState<HomeView>
     adhan.PrayerTimes? prayerTimes,
     AppSettings appSettings, // Added appSettings parameter
   ) {
-    DateTime? time;
-    String name;
-    IconData icon;
-
     // Ensure prayerTimes is not null before calling getOffsettedPrayerTime
     if (prayerTimes == null) {
       _logger.debug(
@@ -864,68 +829,64 @@ class _HomeViewState extends ConsumerState<HomeView>
       );
     }
 
-    switch (prayerEnum) {
-      case PrayerNotification.fajr:
-        name = "Fajr";
-        icon = Icons.wb_sunny_outlined; // Dawn/Sunrise icon
-        time = _prayerService.getOffsettedPrayerTime(
-          "fajr",
-          prayerTimes,
-          appSettings,
-        );
-        break;
-      case PrayerNotification.sunrise:
-        name = "Sunrise";
-        icon = Icons.wb_twilight_outlined; // Sunrise icon
-        time = _prayerService.getOffsettedPrayerTime(
-          "sunrise",
-          prayerTimes,
-          appSettings,
-        );
-        break;
-      case PrayerNotification.dhuhr:
-        name = "Dhuhr";
-        icon = Icons.wb_sunny; // Midday sun
-        time = _prayerService.getOffsettedPrayerTime(
-          "dhuhr",
-          prayerTimes,
-          appSettings,
-        );
-        break;
-      case PrayerNotification.asr:
-        name = "Asr";
-        icon = Icons.wb_twilight; // Afternoon/twilight
-        time = _prayerService.getOffsettedPrayerTime(
-          "asr",
-          prayerTimes,
-          appSettings,
-        );
-        break;
-      case PrayerNotification.maghrib:
-        name = "Maghrib";
-        icon = Icons.brightness_4_outlined; // Sunset icon
-        time = _prayerService.getOffsettedPrayerTime(
-          "maghrib",
-          prayerTimes,
-          appSettings,
-        );
-        break;
-      case PrayerNotification.isha:
-        name = "Isha";
-        icon = Icons.nights_stay; // Moon/night icon
-        time = _prayerService.getOffsettedPrayerTime(
-          "isha",
-          prayerTimes,
-          appSettings,
-        );
-        break;
-    }
+    // Get prayer details from helper method
+    final prayerDetails = _getPrayerDetails(prayerEnum);
+    
+    // Get offsetted time
+    final time = _prayerService.getOffsettedPrayerTime(
+      prayerDetails.prayerName,
+      prayerTimes,
+      appSettings,
+    );
+
     return PrayerDisplayInfoData(
-      name: name,
+      name: prayerDetails.displayName,
       time: time,
       prayerEnum: prayerEnum,
-      iconData: icon,
+      iconData: prayerDetails.icon,
     );
+  }
+
+  /// Returns prayer details for the given prayer enum
+  _PrayerDetails _getPrayerDetails(PrayerNotification prayerEnum) {
+    switch (prayerEnum) {
+      case PrayerNotification.fajr:
+        return const _PrayerDetails(
+          prayerName: "fajr",
+          displayName: "Fajr",
+          icon: Icons.wb_sunny_outlined,
+        );
+      case PrayerNotification.sunrise:
+        return const _PrayerDetails(
+          prayerName: "sunrise",
+          displayName: "Sunrise",
+          icon: Icons.wb_twilight_outlined,
+        );
+      case PrayerNotification.dhuhr:
+        return const _PrayerDetails(
+          prayerName: "dhuhr",
+          displayName: "Dhuhr",
+          icon: Icons.wb_sunny,
+        );
+      case PrayerNotification.asr:
+        return const _PrayerDetails(
+          prayerName: "asr",
+          displayName: "Asr",
+          icon: Icons.wb_twilight,
+        );
+      case PrayerNotification.maghrib:
+        return const _PrayerDetails(
+          prayerName: "maghrib",
+          displayName: "Maghrib",
+          icon: Icons.brightness_4_outlined,
+        );
+      case PrayerNotification.isha:
+        return const _PrayerDetails(
+          prayerName: "isha",
+          displayName: "Isha",
+          icon: Icons.nights_stay,
+        );
+    }
   }
 
   /// Handles the logic for refreshing UI data, typically after returning from settings.
@@ -1356,6 +1317,19 @@ class _HomeViewState extends ConsumerState<HomeView>
       }
     });
   }
+}
+
+/// Helper class to store prayer details
+class _PrayerDetails {
+  final String prayerName;
+  final String displayName;
+  final IconData icon;
+
+  const _PrayerDetails({
+    required this.prayerName,
+    required this.displayName,
+    required this.icon,
+  });
 }
 
 class PrayerItemColors {

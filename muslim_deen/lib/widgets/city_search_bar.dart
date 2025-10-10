@@ -63,12 +63,13 @@ class CitySearchBar extends StatelessWidget {
             vertical: 14.0,
             horizontal: 16.0,
           ),
-          suffixIcon: controller.text.isNotEmpty
-              ? IconButton(
-                  icon: Icon(Icons.clear, color: iconColor),
-                  onPressed: onClear,
-                )
-              : null,
+          suffixIcon:
+              controller.text.isNotEmpty
+                  ? IconButton(
+                    icon: Icon(Icons.clear, color: iconColor),
+                    onPressed: onClear,
+                  )
+                  : null,
         ),
         style: AppTextStyles.prayerTime(brightness).copyWith(color: textColor),
         autofocus: true,

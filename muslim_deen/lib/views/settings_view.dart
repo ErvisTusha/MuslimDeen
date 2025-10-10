@@ -257,7 +257,6 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final settingsNotifier = ref.read(settingsProvider.notifier);
-    // final appLocalizations = AppLocalizations.of(context)!;
 
     final brightness = Theme.of(context).brightness;
 
@@ -498,7 +497,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             ),
             value: value,
             onChanged: isBlocked ? null : onChanged,
-            activeColor: colors.accentColor,
+            activeThumbColor: colors.accentColor,
             inactiveThumbColor: colors.iconInactive,
             inactiveTrackColor: colors.borderColor,
             secondary: Icon(
@@ -712,28 +711,32 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             ).copyWith(color: textColor),
           ),
           content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children:
-                  options.map((option) {
-                    return RadioListTile<T>(
-                      title: Text(
-                        optionTitleBuilder(option),
-                        style: AppTextStyles.label(
-                          brightness,
-                        ).copyWith(color: textColor),
-                      ),
-                      value: option,
-                      groupValue: currentValue,
-                      activeColor: activeColor,
-                      onChanged: (T? value) {
-                        if (value != null) {
-                          onSettingChanged(value);
-                          Navigator.of(dialogContext).pop();
-                        }
-                      },
-                    );
-                  }).toList(),
+            child: RadioGroup<T>(
+              groupValue: currentValue,
+              onChanged: (T? value) {
+                if (value != null) {
+                  onSettingChanged(value);
+                  Navigator.of(dialogContext).pop();
+                }
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children:
+                    options.map((option) {
+                      return ListTile(
+                        title: Text(
+                          optionTitleBuilder(option),
+                          style: AppTextStyles.label(
+                            brightness,
+                          ).copyWith(color: textColor),
+                        ),
+                        leading: Radio<T>(
+                          value: option,
+                          activeColor: activeColor,
+                        ),
+                      );
+                    }).toList(),
+              ),
             ),
           ),
         );
@@ -788,41 +791,43 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               ),
               content: SizedBox(
                 width: double.maxFinite,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: azanSounds.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    final soundFile = azanSounds[index];
-                    return RadioListTile<String>(
-                      title: Text(
-                        _getAzanSoundDisplayName(soundFile),
-                        style: AppTextStyles.prayerName(brightness),
-                      ),
-                      value: soundFile,
-                      groupValue: tempSelectedAzan,
-                      activeColor: AppColors.primary(brightness),
-                      onChanged: (value) async {
-                        if (value != null) {
-                          setStateDialog(() {
-                            tempSelectedAzan = value;
-                          });
-                          await _audioPlayer.stop();
-                          try {
-                            await _audioPlayer.play(
-                              AssetSource('audio/$value'),
-                            );
-                            _logger.info('Playing Azan preview: $value');
-                          } catch (e, s) {
-                            _logger.error(
-                              'Error playing Azan preview',
-                              error: e.toString(),
-                              stackTrace: s,
-                            );
-                          }
-                        }
-                      },
-                    );
+                child: RadioGroup<String>(
+                  groupValue: tempSelectedAzan,
+                  onChanged: (value) async {
+                    if (value != null) {
+                      setStateDialog(() {
+                        tempSelectedAzan = value;
+                      });
+                      await _audioPlayer.stop();
+                      try {
+                        await _audioPlayer.play(AssetSource('audio/$value'));
+                        _logger.info('Playing Azan preview: $value');
+                      } catch (e, s) {
+                        _logger.error(
+                          'Error playing Azan preview',
+                          error: e.toString(),
+                          stackTrace: s,
+                        );
+                      }
+                    }
                   },
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: azanSounds.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final soundFile = azanSounds[index];
+                      return ListTile(
+                        title: Text(
+                          _getAzanSoundDisplayName(soundFile),
+                          style: AppTextStyles.prayerName(brightness),
+                        ),
+                        leading: Radio<String>(
+                          value: soundFile,
+                          activeColor: AppColors.primary(brightness),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
               actions: [

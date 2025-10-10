@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geolocator/geolocator.dart';
 
+import 'package:muslim_deen/models/app_constants.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/cache_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
@@ -11,11 +12,13 @@ import 'package:muslim_deen/services/logger_service.dart';
 /// Service to handle compass functionality and Qibla direction calculations
 class CompassService {
   final LoggerService _logger = locator<LoggerService>();
-  static const double _kaabaLatDeg = 21.422487;
-  static const double _kaabaLngDeg = 39.826206;
 
-  static final double _kaabaLatRad = _degreesToRadians(_kaabaLatDeg);
-  static final double _kaabaLngRad = _degreesToRadians(_kaabaLngDeg);
+  static final double _kaabaLatRad = _degreesToRadians(
+    AppConstants.kaabaLatitude,
+  );
+  static final double _kaabaLngRad = _degreesToRadians(
+    AppConstants.kaabaLongitude,
+  );
 
   // Pre-calculated sin/cos of Kaaba latitude for optimization
   static final double _sinKaabaLatRad = math.sin(_kaabaLatRad);
@@ -77,7 +80,7 @@ class CompassService {
     cacheService?.setCache(
       cacheKey,
       result,
-      expirationMinutes: CacheService.qiblaExpirationMinutes,
+      expirationMinutes: AppConstants.qiblaExpirationMinutes,
     );
     return result;
   }

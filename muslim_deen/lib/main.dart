@@ -93,9 +93,44 @@ class MuslimDeenApp extends StatelessWidget {
 
   // Extracted theme building methods for better performance
   ThemeData _buildLightTheme() {
-    return ThemeData(
-      primarySwatch: Colors.green,
+    const brightness = Brightness.light;
+    return ThemeData.light().copyWith(
+      primaryColor: AppColors.primary(brightness),
+      scaffoldBackgroundColor: AppColors.background(brightness),
+      colorScheme: ColorScheme.light(
+        primary: AppColors.primary(brightness),
+        secondary: AppColors.accentGreen(brightness),
+        surface: AppColors.surface(brightness),
+        error: AppColors.error(brightness),
+        onPrimary: AppColors.textPrimary(brightness),
+        onSecondary: AppColors.textPrimary(brightness),
+        onSurface: AppColors.textPrimary(brightness),
+        onError: AppColors.textPrimary(brightness),
+        brightness: brightness,
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: AppColors.surface(brightness),
+        elevation: 1,
+        iconTheme: IconThemeData(color: AppColors.textPrimary(brightness)),
+        toolbarTextStyle: AppTextStyles.appTitle(brightness),
+        titleTextStyle: AppTextStyles.appTitle(brightness),
+      ),
+      cardColor: AppColors.surface(brightness),
+      dividerColor: AppColors.divider(brightness),
+      iconTheme: IconThemeData(color: AppColors.iconInactive(brightness)),
+      primaryIconTheme: IconThemeData(color: AppColors.accentGreen(brightness)),
+      textTheme: _buildTextTheme(brightness),
+      switchTheme: _buildSwitchTheme(brightness),
       visualDensity: VisualDensity.adaptivePlatformDensity,
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: AppColors.surface(brightness),
+        selectedItemColor: AppColors.accentGreen(brightness),
+        unselectedItemColor: AppColors.iconInactive(brightness),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: AppColors.accentGreen(brightness),
+        foregroundColor: AppColors.textPrimary(brightness),
+      ),
     );
   }
 
@@ -136,10 +171,6 @@ class MuslimDeenApp extends StatelessWidget {
       buttonTheme: ButtonThemeData(
         buttonColor: AppColors.accentGreen(brightness),
         textTheme: ButtonTextTheme.primary,
-        colorScheme: ColorScheme.dark(
-          primary: AppColors.accentGreen(brightness),
-          onPrimary: AppColors.textPrimary(brightness),
-        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -338,17 +369,10 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(
-        // IndexedStack keeps all widgets alive but only shows the selected one.
-        // This prevents dispose() calls when switching tabs, ensuring that
-        // notifications and other background processes continue running.
         index: _selectedIndex,
         children: [
-          // Create all widgets once and keep them alive
-          _cachedWidgets[0] ??= _widgetBuilders[0](),
-          _cachedWidgets[1] ??= _widgetBuilders[1](),
-          _cachedWidgets[2] ??= _widgetBuilders[2](),
-          _cachedWidgets[3] ??= _widgetBuilders[3](),
-          _cachedWidgets[4] ??= _widgetBuilders[4](),
+          for (int i = 0; i < _widgetBuilders.length; i++)
+            _cachedWidgets[i] ??= _widgetBuilders[i](),
         ],
       ),
       bottomNavigationBar: _buildBottomNavigationBar(context),

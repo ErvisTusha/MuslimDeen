@@ -8,31 +8,33 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:muslim_deen/models/app_settings.dart';
+import 'package:muslim_deen/providers/service_providers.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
 import 'package:muslim_deen/services/storage_service.dart';
 
-class SettingsNotifier extends StateNotifier<AppSettings> {
+class SettingsNotifier extends Notifier<AppSettings> {
   static const String _settingsKey = 'app_settings';
-  final StorageService _storage;
-  final NotificationService _notificationService;
-  final LoggerService _logger;
-  final PrayerService _prayerService;
+  late final StorageService _storage;
+  late final NotificationService _notificationService;
+  late final LoggerService _logger;
+  late final PrayerService _prayerService;
   StreamSubscription<NotificationPermissionStatus>? _permissionSubscription;
   Timer? _saveSettingsDebounceTimer;
   static const Duration _saveSettingsDebounceDuration = Duration(
     milliseconds: 750,
   ); // Increased debounce time
 
-  SettingsNotifier(
-    this._storage,
-    this._notificationService,
-    this._logger,
-    this._prayerService,
-  ) : super(AppSettings.defaults) {
+  @override
+  AppSettings build() {
+    _storage = ref.read(storageServiceProvider);
+    _notificationService = ref.read(notificationServiceProvider);
+    _logger = ref.read(loggerServiceProvider);
+    _prayerService = ref.read(prayerServiceProvider);
     _loadSettings();
     _initializePermissionListener();
+    return AppSettings.defaults;
   }
 
   bool get areNotificationsBlocked => _notificationService.isBlocked;
@@ -290,10 +292,8 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     }
   }
 
-  @override
   void dispose() {
     _permissionSubscription?.cancel();
     _saveSettingsDebounceTimer?.cancel();
-    super.dispose();
   }
 }

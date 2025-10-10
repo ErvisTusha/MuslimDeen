@@ -60,22 +60,42 @@ class StorageService {
   /// Generic method to save data of various types
   Future<void> saveData(String key, dynamic value) async {
     final prefs = _getPrefs();
-    if (value is String) {
-      await prefs.setString(key, value);
-    } else if (value is int) {
-      await prefs.setInt(key, value);
-    } else if (value is double) {
-      await prefs.setDouble(key, value);
-    } else if (value is bool) {
-      await prefs.setBool(key, value);
-    } else if (value is List<String>) {
-      await prefs.setStringList(key, value);
-    } else {
-      locator<LoggerService>().warning(
-        'StorageService: Unsupported data type for key',
-        data: {'key': key, 'type': value.runtimeType.toString()},
+    try {
+      final success = await _saveValueByType(prefs, key, value);
+      if (!success) {
+        locator<LoggerService>().warning(
+          'StorageService: Unsupported data type for key',
+          data: {'key': key, 'type': value.runtimeType.toString()},
+        );
+      }
+    } catch (e, s) {
+      locator<LoggerService>().error(
+        'Error saving data for key: $key',
+        error: e,
+        stackTrace: s,
       );
     }
+  }
+
+  /// Helper method to save different value types to SharedPreferences
+  Future<bool> _saveValueByType(SharedPreferences prefs, String key, dynamic value) async {
+    if (value is String) {
+      await prefs.setString(key, value);
+      return true;
+    } else if (value is int) {
+      await prefs.setInt(key, value);
+      return true;
+    } else if (value is double) {
+      await prefs.setDouble(key, value);
+      return true;
+    } else if (value is bool) {
+      await prefs.setBool(key, value);
+      return true;
+    } else if (value is List<String>) {
+      await prefs.setStringList(key, value);
+      return true;
+    }
+    return false;
   }
 
   /// Generic method to retrieve data

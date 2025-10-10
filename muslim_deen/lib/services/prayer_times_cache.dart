@@ -60,12 +60,23 @@ class PrayerTimesCache {
 
       final Map<String, dynamic> prayerTimesJson = prayerTimes.toJson();
       // Manually handle expiration like the old CacheService.setCache
-      final int expirationTimestamp = DateTime.now().add(Duration(days: _cacheDurationDays)).millisecondsSinceEpoch;
-      
-      await _cacheService.saveData(cacheKey, jsonEncode(prayerTimesJson)); // Save data
-      await _cacheService.saveData('${cacheKey}_expiration', expirationTimestamp); // Save expiration
+      final int expirationTimestamp =
+          DateTime.now()
+              .add(Duration(days: _cacheDurationDays))
+              .millisecondsSinceEpoch;
 
-      _logger.debug('Cached prayer times for ${prayerTimes.date} with key $cacheKey until ${DateTime.fromMillisecondsSinceEpoch(expirationTimestamp)}');
+      await _cacheService.saveData(
+        cacheKey,
+        jsonEncode(prayerTimesJson),
+      ); // Save data
+      await _cacheService.saveData(
+        '${cacheKey}_expiration',
+        expirationTimestamp,
+      ); // Save expiration
+
+      _logger.debug(
+        'Cached prayer times for ${prayerTimes.date} with key $cacheKey until ${DateTime.fromMillisecondsSinceEpoch(expirationTimestamp)}',
+      );
 
       // Clean up old cached entries
       await _cleanupOldCache();
@@ -81,13 +92,19 @@ class PrayerTimesCache {
   ) async {
     try {
       final cacheKey = _generateCacheKey(date, coordinates);
-      
+
       // Manually handle expiration like the old CacheService.getCache
-      final int? expirationTimestamp = _cacheService.getData('${cacheKey}_expiration') as int?;
-      if (expirationTimestamp == null || expirationTimestamp < DateTime.now().millisecondsSinceEpoch) {
+      final int? expirationTimestamp =
+          _cacheService.getData('${cacheKey}_expiration') as int?;
+      if (expirationTimestamp == null ||
+          expirationTimestamp < DateTime.now().millisecondsSinceEpoch) {
         await _cacheService.removeData(cacheKey); // Remove data
-        await _cacheService.removeData('${cacheKey}_expiration'); // Remove expiration
-        _logger.debug('Cached prayer times for $date with key $cacheKey expired or not found.');
+        await _cacheService.removeData(
+          '${cacheKey}_expiration',
+        ); // Remove expiration
+        _logger.debug(
+          'Cached prayer times for $date with key $cacheKey expired or not found.',
+        );
         return null;
       }
 
@@ -95,9 +112,12 @@ class PrayerTimesCache {
       if (jsonData == null) {
         return null;
       }
-      
-      final Map<String, dynamic> prayerTimesJson = jsonDecode(jsonData) as Map<String, dynamic>;
-      _logger.debug('Retrieved cached prayer times for $date with key $cacheKey');
+
+      final Map<String, dynamic> prayerTimesJson =
+          jsonDecode(jsonData) as Map<String, dynamic>;
+      _logger.debug(
+        'Retrieved cached prayer times for $date with key $cacheKey',
+      );
       return PrayerTimesModel.fromJson(prayerTimesJson);
     } catch (e, s) {
       _logger.error(
@@ -151,8 +171,4 @@ class PrayerTimesCache {
       );
     }
   }
-
 }
-
-
-

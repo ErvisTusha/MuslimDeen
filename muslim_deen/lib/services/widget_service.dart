@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:intl/intl.dart';
 import 'package:adhan_dart/adhan_dart.dart' as adhan;
@@ -21,6 +22,12 @@ class WidgetService {
     try {
       await HomeWidget.setAppGroupId(_groupId);
       _logger.info('Widget service initialized');
+    } on MissingPluginException catch (e) {
+      _logger.warning(
+        'Widget plugin not available on this platform',
+        data: {'error': e.toString()},
+      );
+      // Continue without widget functionality
     } catch (e, s) {
       _logger.error(
         'Failed to initialize widget service',
@@ -44,6 +51,12 @@ class WidgetService {
       );
 
       _logger.info('Widget updated successfully');
+    } on MissingPluginException catch (e) {
+      _logger.warning(
+        'Widget plugin not available on this platform',
+        data: {'error': e.toString()},
+      );
+      // Continue without widget functionality
     } catch (e, s) {
       _logger.error(
         'Failed to update widget',
@@ -168,6 +181,12 @@ class WidgetService {
       );
 
       _logger.debug('Current/Next prayer widget updated', data: widgetData);
+    } on MissingPluginException catch (e) {
+      _logger.warning(
+        'Widget plugin not available on this platform',
+        data: {'error': e.toString()},
+      );
+      // Continue without widget functionality
     } catch (e, s) {
       _logger.error(
         'Failed to update current/next prayer widget',
@@ -281,6 +300,12 @@ class WidgetService {
     try {
       // You can implement specific data clearing if needed
       _logger.info('Widget data cleared');
+    } on MissingPluginException catch (e) {
+      _logger.warning(
+        'Widget plugin not available on this platform',
+        data: {'error': e.toString()},
+      );
+      // Continue without widget functionality
     } catch (e, s) {
       _logger.error(
         'Failed to clear widget data',

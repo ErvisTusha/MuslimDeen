@@ -72,26 +72,35 @@ class CacheService {
 
   Future<bool> saveData(String key, dynamic value) async {
     try {
-      if (value is String) {
-        return await _prefs.setString(key, value);
-      } else if (value is int) {
-        return await _prefs.setInt(key, value);
-      } else if (value is double) {
-        return await _prefs.setDouble(key, value);
-      } else if (value is bool) {
-        return await _prefs.setBool(key, value);
-      } else if (value is List<String>) {
-        return await _prefs.setStringList(key, value);
-      } else {
-        // For complex types not directly supported by SharedPreferences,
-        // they should be encoded to a String (e.g., JSON) before calling saveData.
-        _logger.warning(
-          'Unsupported type for saveData. Key: $key, Type: ${value.runtimeType}. Value must be String, int, double, bool, or List<String>.',
-        );
-        return false;
+      final success = await _saveValueByType(_prefs, key, value);
+      if (success) {
+        _logger.info('Data saved for key: $key');
       }
+      return success;
     } catch (e, s) {
       _logger.error('Error saving data for key: $key', error: e, stackTrace: s);
+      return false;
+    }
+  }
+
+  /// Helper method to save different value types to SharedPreferences
+  Future<bool> _saveValueByType(SharedPreferences prefs, String key, dynamic value) async {
+    if (value is String) {
+      return await prefs.setString(key, value);
+    } else if (value is int) {
+      return await prefs.setInt(key, value);
+    } else if (value is double) {
+      return await prefs.setDouble(key, value);
+    } else if (value is bool) {
+      return await prefs.setBool(key, value);
+    } else if (value is List<String>) {
+      return await prefs.setStringList(key, value);
+    } else {
+      // For complex types not directly supported by SharedPreferences,
+      // they should be encoded to a String (e.g., JSON) before calling saveData.
+      _logger.warning(
+        'Unsupported type for saveData. Key: $key, Type: ${value.runtimeType}. Value must be String, int, double, bool, or List<String>.',
+      );
       return false;
     }
   }
@@ -102,7 +111,11 @@ class CacheService {
       _logger.info('Data retrieved for key: $key');
       return value;
     } catch (e, s) {
-      _logger.error('Error getting data for key: $key', error: e, stackTrace: s);
+      _logger.error(
+        'Error getting data for key: $key',
+        error: e,
+        stackTrace: s,
+      );
       return null;
     }
   }
@@ -113,11 +126,17 @@ class CacheService {
       if (success) {
         _logger.info('Data removed for key: $key');
       } else {
-        _logger.warning('Failed to remove data for key: $key (key might not exist)');
+        _logger.warning(
+          'Failed to remove data for key: $key (key might not exist)',
+        );
       }
       return success;
     } catch (e, s) {
-      _logger.error('Error removing data for key: $key', error: e, stackTrace: s);
+      _logger.error(
+        'Error removing data for key: $key',
+        error: e,
+        stackTrace: s,
+      );
       return false;
     }
   }

@@ -5,6 +5,7 @@ class PrayerDataException implements Exception {
   @override
   String toString() => 'PrayerDataException: $message';
 }
+
 class LocationServiceException implements Exception {
   final String message;
   final dynamic originalException;

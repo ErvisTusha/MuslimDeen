@@ -24,9 +24,9 @@ class SettingsSectionHeader extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: AppTextStyles.sectionTitle(brightness).copyWith(
-                color: AppColors.primary(brightness),
-              ),
+              style: AppTextStyles.sectionTitle(
+                brightness,
+              ).copyWith(color: AppColors.primary(brightness)),
             ),
           ),
           if (trailing != null) trailing!,

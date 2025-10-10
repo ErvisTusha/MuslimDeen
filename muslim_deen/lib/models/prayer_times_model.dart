@@ -20,7 +20,7 @@ class PrayerTimesModel {
   final String hijriMonthName;
 
   // Added field for caching timestamp, useful for debugging cache
-  final DateTime? cachedAt; 
+  final DateTime? cachedAt;
 
   PrayerTimesModel({
     required this.fajr,
@@ -74,7 +74,9 @@ class PrayerTimesModel {
       'hijriMonth': hijriMonth,
       'hijriYear': hijriYear,
       'hijriMonthName': hijriMonthName,
-      'cachedAt': cachedAt?.toIso8601String() ?? DateTime.now().toIso8601String(), // Store current time if not set
+      'cachedAt':
+          cachedAt?.toIso8601String() ??
+          DateTime.now().toIso8601String(), // Store current time if not set
     };
   }
 
@@ -83,6 +85,7 @@ class PrayerTimesModel {
     DateTime? safeParseDateTime(String? dateString) {
       return dateString == null ? null : DateTime.tryParse(dateString);
     }
+
     return PrayerTimesModel(
       fajr: safeParseDateTime(json['fajr'] as String?),
       sunrise: safeParseDateTime(json['sunrise'] as String?),

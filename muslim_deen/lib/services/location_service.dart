@@ -54,7 +54,6 @@ class LocationService {
       _locationStatusController?.stream ?? Stream.value(false);
   bool get isLocationBlocked => _isLocationPermissionBlocked;
 
-
   static const String _manualLatKey = 'manual_latitude';
   static const String _manualLngKey = 'manual_longitude';
   static const String _locationNameKey = 'location_name';
@@ -362,7 +361,7 @@ class LocationService {
     if (name != null && name.isNotEmpty) {
       // Added check for empty name
       await _prefs?.setString(_locationNameKey, name);
-// Update cache
+      // Update cache
     } else {
       await _prefs?.remove(_locationNameKey); // Remove if name is null or empty
     }
@@ -462,18 +461,7 @@ class LocationService {
     _logger.debug(
       "Returning manual location - Lat: $lat, Lng: $lng from cache/prefs.",
     );
-    return Position(
-      latitude: lat,
-      longitude: lng,
-      timestamp: DateTime.now(), // Timestamp is always current for this call
-      accuracy: 0,
-      altitude: 0,
-      heading: 0,
-      speed: 0,
-      speedAccuracy: 0,
-      altitudeAccuracy: 0,
-      headingAccuracy: 0,
-    );
+    return _createPosition(lat, lng);
   }
 
   /// Get the stored location name, if any.
@@ -532,49 +520,16 @@ class LocationService {
           _logger.info(
             'Using manual location as fallback because it is active and set.',
           );
-          return Position(
-            latitude: manualLat,
-            longitude: manualLng,
-            timestamp: DateTime.now(),
-            accuracy: 0,
-            altitude: 0,
-            heading: 0,
-            speed: 0,
-            speedAccuracy: 0,
-            altitudeAccuracy: 0,
-            headingAccuracy: 0,
-          );
+          return _createPosition(manualLat, manualLng);
         }
       }
 
       _logger.info('Using default Mecca coordinates as fallback');
-      return Position(
-        latitude: 21.422487,
-        longitude: 39.826206,
-        timestamp: DateTime.now(),
-        accuracy: 0,
-        altitude: 0,
-        heading: 0,
-        speed: 0,
-        speedAccuracy: 0,
-        altitudeAccuracy: 0,
-        headingAccuracy: 0,
-      );
+      return _createMeccaPosition();
     } catch (e) {
       _logger.error('Error getting fallback location', error: e);
       // Ultimate fallback to Mecca coordinates
-      return Position(
-        latitude: 21.422487,
-        longitude: 39.826206,
-        timestamp: DateTime.now(),
-        accuracy: 0,
-        altitude: 0,
-        heading: 0,
-        speed: 0,
-        speedAccuracy: 0,
-        altitudeAccuracy: 0,
-        headingAccuracy: 0,
-      );
+      return _createMeccaPosition();
     }
   }
 
@@ -596,5 +551,37 @@ class LocationService {
         stackTrace: s,
       );
     }
+  }
+
+  /// Creates a Position object with the given coordinates
+  Position _createPosition(double latitude, double longitude) {
+    return Position(
+      latitude: latitude,
+      longitude: longitude,
+      timestamp: DateTime.now(),
+      accuracy: 0,
+      altitude: 0,
+      heading: 0,
+      speed: 0,
+      speedAccuracy: 0,
+      altitudeAccuracy: 0,
+      headingAccuracy: 0,
+    );
+  }
+
+  /// Creates a Position object for Mecca (the default fallback location)
+  Position _createMeccaPosition() {
+    return Position(
+      latitude: 21.422487,
+      longitude: 39.826206,
+      timestamp: DateTime.now(),
+      accuracy: 0,
+      altitude: 0,
+      heading: 0,
+      speed: 0,
+      speedAccuracy: 0,
+      altitudeAccuracy: 0,
+      headingAccuracy: 0,
+    );
   }
 }
