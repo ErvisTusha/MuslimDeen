@@ -92,29 +92,29 @@ class SettingsNotifier extends Notifier<AppSettings> {
 
   Future<void> updateTimeFormat(TimeFormat format) async {
     state = state.copyWith(timeFormat: format);
-    _debouncedSaveSettings();
+    await _saveSettings();
   }
 
   Future<void> updateCalculationMethod(String method) async {
     state = state.copyWith(calculationMethod: method);
-    _debouncedSaveSettings();
+    await _saveSettings();
     await _recalculateAndRescheduleNotifications();
   }
 
   Future<void> updateMadhab(String madhab) async {
     state = state.copyWith(madhab: madhab);
-    _debouncedSaveSettings();
+    await _saveSettings();
     await _recalculateAndRescheduleNotifications();
   }
 
   Future<void> updateThemeMode(ThemeMode mode) async {
     state = state.copyWith(themeMode: mode);
-    _debouncedSaveSettings();
+    await _saveSettings();
   }
 
   Future<void> updateDateFormatOption(DateFormatOption option) async {
     state = state.copyWith(dateFormatOption: option);
-    _debouncedSaveSettings();
+    await _saveSettings();
   }
 
   Future<void> updatePrayerNotification(
@@ -126,14 +126,14 @@ class SettingsNotifier extends Notifier<AppSettings> {
     );
     newNotifications[prayer] = isEnabled;
     state = state.copyWith(notifications: newNotifications);
-    _debouncedSaveSettings();
+    await _saveSettings();
     // No need to call _recalculateAndRescheduleNotifications here as it's handled by HomeView's listener
     // when notification settings change. HomeView will call _scheduleAllPrayerNotifications.
   }
 
   Future<void> updateAzanSound(String soundFileName) async {
     state = state.copyWith(azanSoundForStandardPrayers: soundFileName);
-    _debouncedSaveSettings();
+    await _saveSettings();
     // Reschedule notifications if sound changed, as it's part of the notification content/payload
     await _recalculateAndRescheduleNotifications();
   }

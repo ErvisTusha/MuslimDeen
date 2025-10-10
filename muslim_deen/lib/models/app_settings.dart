@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import 'package:muslim_deen/services/notification_service.dart';
-
 enum PrayerNotification { fajr, sunrise, dhuhr, asr, maghrib, isha }
 
 enum TimeFormat { twelveHour, twentyFourHour }
 
 enum DateFormatOption { dayMonthYear, monthDayYear, yearMonthDay }
+
+enum NotificationPermissionStatus { notDetermined, granted, denied, restricted }
 
 class AppSettings {
   final String calculationMethod;

@@ -1,6 +1,7 @@
 import Flutter
 import UIKit
 import UserNotifications
+import AVFoundation
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -21,6 +22,24 @@ import UserNotifications
     }
     
     GeneratedPluginRegistrant.register(with: self)
+
+    let controller = window?.rootViewController as! FlutterViewController
+    let audioChannel = FlutterMethodChannel(name: "com.ervis.muslimdeen/audio", binaryMessenger: controller.binaryMessenger)
+    audioChannel.setMethodCallHandler { (call, result) in
+      if call.method == "isSilentMode" {
+        let audioSession = AVAudioSession.sharedInstance()
+        do {
+          try audioSession.setActive(true)
+          let isMuted = audioSession.outputVolume == 0.0
+          result(isMuted)
+        } catch {
+          result(false)
+        }
+      } else {
+        result(FlutterMethodNotImplemented)
+      }
+    }
+
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

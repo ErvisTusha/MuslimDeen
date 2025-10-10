@@ -216,6 +216,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
         localizedBody: notificationBody,
         prayerTime: scheduledDateTime,
         isEnabled: ref.read(tesbihReminderProvider).reminderEnabled,
+        appSettings: ref.read(settingsProvider),
       );
 
       _logger.info('Reminder scheduled successfully');

@@ -132,13 +132,13 @@ class TesbihReminderNotifier extends Notifier<TesbihReminderState> {
         scheduledDateTime = scheduledDateTime.add(const Duration(days: 1));
       }
 
-      await _notificationService.schedulePrayerNotification(
+      await _notificationService.scheduleTesbihNotification(
         id: 9876,
         localizedTitle:
             "Tasbih Reminder", // Provide localization in implementation
         localizedBody:
             "🤲 Time for your dhikr. Remember Allah with a peaceful heart.",
-        prayerTime: scheduledDateTime,
+        scheduledTime: scheduledDateTime,
         isEnabled: true,
       );
 
