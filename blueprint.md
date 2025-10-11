@@ -16,12 +16,12 @@
 
 #### 1. Settings Management
 - **Provider**: `settingsProvider` (NotifierProvider<SettingsNotifier, AppSettings>)
-- **Persistence**: Immediate save to SharedPreferences (no debouncing)
-- **Decision**: Changed from 750ms debounced save to immediate persistence to prevent data loss on app close
+- **Persistence**: Debounced save to SharedPreferences (750ms) for most changes, immediate save for critical updates
+- **Decision**: Uses debounced saving to balance performance with data safety
 - **Data Flow**:
   ```
-  UI Change → SettingsNotifier.updateX() → _saveSettings() → SharedPreferences
-  App Start → SettingsNotifier.build() → _loadSettings() → State Update → UI Rebuild
+  UI Change → SettingsNotifier.updateX() → _forceSaveSettings() → SharedPreferences
+  App Start → SettingsNotifier.build() → _initializeSettings() → State Update → UI Rebuild
   ```
 
 #### 2. Notification Service
@@ -57,7 +57,7 @@ flowchart TD
     D --> E[runApp()]
     E --> F[ProviderScope]
     F --> G[SettingsNotifier.build()]
-    G --> H[_loadSettings()]
+    G --> H[_initializeSettings()]
     H --> I[State = loaded settings]
     I --> J[MaterialApp with themeMode from state]
 ```
@@ -99,6 +99,12 @@ flowchart TD
 - **Solution**: Updated Android notification channel configuration to rely on standard notification audio attributes and vibration defaults so the OS enforces silent/vibrate behaviour.
 - **Impact**: Both azan and tesbih reminders now follow the device sound profile—vibrating on vibrate mode and remaining quiet when muted.
 - **Files Changed**: `lib/services/notification_service.dart`
+
+#### 7. Tasbih Vibration Enhancement (October 2025)
+- **Problem**: Tasbih counter vibration feedback failed on certain devices due to inconsistent HapticFeedback support across platforms.
+- **Solution**: Integrated vibration package for robust device vibration detection and control, with HapticFeedback as fallback.
+- **Impact**: Improved vibration reliability across Android and iOS devices, ensuring consistent haptic feedback when counting dhikr.
+- **Files Changed**: `lib/views/tesbih_view.dart`, `pubspec.yaml`
 
 ### Key Design Patterns
 

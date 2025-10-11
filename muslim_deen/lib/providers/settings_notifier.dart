@@ -74,29 +74,6 @@ class SettingsNotifier extends Notifier<AppSettings> {
         .listen(_updateNotificationPermissionStatus);
   }
 
-  Future<void> _loadSettings() async {
-    if (_isInitialized) return;
-
-    try {
-      final String? storedSettings = _storage.getData(_settingsKey) as String?;
-      if (storedSettings != null) {
-        state = AppSettings.fromJson(
-          jsonDecode(storedSettings) as Map<String, dynamic>,
-        );
-        _logger.info("Settings loaded successfully");
-      } else {
-        _logger.info("No stored settings found, using defaults");
-        // Save defaults if no settings exist
-        await _saveSettings();
-      }
-    } catch (e) {
-      _logger.error('Error loading settings', error: e);
-      // Save defaults if loading fails
-      await _saveSettings();
-    }
-    _isInitialized = true;
-  }
-
   Future<void> _saveSettings() async {
     try {
       await _storage.saveData(_settingsKey, jsonEncode(state.toJson()));

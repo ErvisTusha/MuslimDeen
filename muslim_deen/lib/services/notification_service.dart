@@ -315,7 +315,7 @@ class NotificationService {
         sound: null,
       );
       const darwinDetails = DarwinNotificationDetails();
-      const platformDetails = NotificationDetails(
+      final platformDetails = NotificationDetails(
         android: androidDetails,
         iOS: darwinDetails,
         macOS: darwinDetails,

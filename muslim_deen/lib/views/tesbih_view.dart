@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:vibration/vibration.dart';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -468,12 +469,21 @@ class _TesbihViewState extends ConsumerState<TesbihView>
 
     if (_vibrationEnabled) {
       try {
-        for (int i = 0; i < 3; i++) {
-          HapticFeedback.heavyImpact();
-          await Future<void>.delayed(const Duration(milliseconds: 100));
+        // Use vibration package for multiple vibrations
+        if (await Vibration.hasVibrator()) {
+          for (int i = 0; i < 3; i++) {
+            Vibration.vibrate(duration: 100);
+            await Future<void>.delayed(const Duration(milliseconds: 150));
+          }
+        } else {
+          // Fallback to HapticFeedback
+          for (int i = 0; i < 3; i++) {
+            HapticFeedback.heavyImpact();
+            await Future<void>.delayed(const Duration(milliseconds: 100));
+          }
         }
       } catch (e) {
-        _logger.warning('Failed to trigger haptic feedback');
+        _logger.warning('Failed to trigger haptic feedback: $e');
       }
     }
 
@@ -562,11 +572,17 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     }
   }
 
-  void _triggerHapticFeedback() {
+  void _triggerHapticFeedback() async {
     try {
-      HapticFeedback.heavyImpact();
+      // First try vibration package for better device support
+      if (await Vibration.hasVibrator()) {
+        Vibration.vibrate(duration: 50);
+      } else {
+        // Fallback to HapticFeedback
+        HapticFeedback.heavyImpact();
+      }
     } catch (e) {
-      _logger.warning('Failed to trigger haptic feedback');
+      _logger.warning('Failed to trigger haptic feedback: $e');
     }
   }
 
