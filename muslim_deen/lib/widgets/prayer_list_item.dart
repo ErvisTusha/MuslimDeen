@@ -58,7 +58,26 @@ class _PrayerListItemState extends State<PrayerListItem> {
     }
   }
 
+  /// Check if this prayer has already passed (time is in the past)
+  bool _hasPrayerPassed() {
+    if (widget.prayerInfo.time == null) return false;
+    return DateTime.now().isAfter(widget.prayerInfo.time!);
+  }
+
   Future<void> _toggleCompletion() async {
+    // Prevent marking upcoming prayers as done
+    if (!_isCompleted && !_hasPrayerPassed()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Cannot mark ${widget.prayerInfo.name} as done - prayer time has not arrived yet',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -153,7 +172,10 @@ class _PrayerListItemState extends State<PrayerListItem> {
                   )
                   : Checkbox(
                     value: _isCompleted,
-                    onChanged: (bool? value) => _toggleCompletion(),
+                    onChanged:
+                        (_isCompleted || _hasPrayerPassed())
+                            ? (bool? value) => _toggleCompletion()
+                            : null, // Disable checkbox for upcoming prayers
                     activeColor: itemColors.icon,
                     checkColor: itemColors.background,
                   ),

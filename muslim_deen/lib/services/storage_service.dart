@@ -17,9 +17,17 @@ class StorageService {
   Future<void> init() async {
     if (_prefs == null) {
       _prefs = await SharedPreferences.getInstance();
-      locator<LoggerService>().info("StorageService initialized.");
+      // Log only if locator is available (for production)
+      try {
+        locator<LoggerService>().info("StorageService initialized.");
+      } catch (_) {
+        // Ignore if logger not available (e.g., in tests)
+      }
     }
   }
+
+  /// Check if the service is initialized
+  bool get isInitialized => _prefs != null;
 
   /// Helper to ensure prefs is initialized
   SharedPreferences _getPrefs() {
@@ -47,14 +55,18 @@ class StorageService {
       await prefs.remove(_keyLocationName);
     }
 
-    locator<LoggerService>().info(
-      "User location data (lat, lon, name) saved to SharedPreferences.",
-      data: {
-        'latitude': latitude,
-        'longitude': longitude,
-        'locationName': locationName ?? 'N/A',
-      },
-    );
+    try {
+      locator<LoggerService>().info(
+        "User location data (lat, lon, name) saved to SharedPreferences.",
+        data: {
+          'latitude': latitude,
+          'longitude': longitude,
+          'locationName': locationName ?? 'N/A',
+        },
+      );
+    } catch (_) {
+      // Ignore if logger not available
+    }
   }
 
   /// Generic method to save data of various types
@@ -63,17 +75,25 @@ class StorageService {
     try {
       final success = await _saveValueByType(prefs, key, value);
       if (!success) {
-        locator<LoggerService>().warning(
-          'StorageService: Unsupported data type for key',
-          data: {'key': key, 'type': value.runtimeType.toString()},
-        );
+        try {
+          locator<LoggerService>().warning(
+            'StorageService: Unsupported data type for key',
+            data: {'key': key, 'type': value.runtimeType.toString()},
+          );
+        } catch (_) {
+          // Ignore if logger not available
+        }
       }
     } catch (e, s) {
-      locator<LoggerService>().error(
-        'Error saving data for key: $key',
-        error: e,
-        stackTrace: s,
-      );
+      try {
+        locator<LoggerService>().error(
+          'Error saving data for key: $key',
+          error: e,
+          stackTrace: s,
+        );
+      } catch (_) {
+        // Ignore if logger not available
+      }
     }
   }
 
@@ -112,13 +132,21 @@ class StorageService {
     final prefs = _getPrefs();
     try {
       await prefs.remove(key);
-      locator<LoggerService>().debug('Data removed for key: $key');
+      try {
+        locator<LoggerService>().debug('Data removed for key: $key');
+      } catch (_) {
+        // Ignore if logger not available
+      }
     } catch (e, s) {
-      locator<LoggerService>().error(
-        'Error removing data for key: $key',
-        error: e,
-        stackTrace: s,
-      );
+      try {
+        locator<LoggerService>().error(
+          'Error removing data for key: $key',
+          error: e,
+          stackTrace: s,
+        );
+      } catch (_) {
+        // Ignore if logger not available
+      }
     }
   }
 }

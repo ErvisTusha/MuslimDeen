@@ -174,7 +174,7 @@ class PrayerHistoryService {
   ) async {
     final grid = <String, Map<String, bool>>{};
     final now = DateTime.now();
-    const prayers = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+    const prayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
 
     try {
       for (int i = 0; i < days; i++) {
@@ -225,11 +225,47 @@ class PrayerHistoryService {
           break;
         }
       }
+
+      // Update personal record if current streak is higher
+      await _updatePrayerStreakRecord(streak);
+
       _logger.debug('Current prayer streak: $streak days');
     } catch (e) {
       _logger.warning('Error calculating streak', error: e);
     }
 
     return streak;
+  }
+
+  /// Get personal record for prayer streak
+  Future<int> getPrayerStreakRecord() async {
+    try {
+      final record = await _database.getSettings('prayer_streak_record');
+      return record != null ? int.parse(record) : 0;
+    } catch (e) {
+      _logger.warning('Error getting prayer streak record', error: e);
+      return 0;
+    }
+  }
+
+  /// Update personal record for prayer streak if current streak is higher
+  Future<void> _updatePrayerStreakRecord(int currentStreak) async {
+    try {
+      final currentRecord = await getPrayerStreakRecord();
+      if (currentStreak > currentRecord) {
+        await _database.saveSettings(
+          'prayer_streak_record',
+          currentStreak.toString(),
+        );
+        _logger.info('New prayer streak record: $currentStreak days');
+      }
+    } catch (e) {
+      _logger.warning('Error updating prayer streak record', error: e);
+    }
+  }
+
+  /// Get personal record for prayer streak
+  Future<int> getBestStreak() async {
+    return getPrayerStreakRecord();
   }
 }

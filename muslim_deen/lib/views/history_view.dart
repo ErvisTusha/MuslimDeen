@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
-import 'package:muslim_deen/services/prayer_history_service.dart';
 import 'package:muslim_deen/services/tasbih_history_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/widgets/custom_app_bar.dart';
@@ -15,24 +14,18 @@ class HistoryView extends StatefulWidget {
 
 class _HistoryViewState extends State<HistoryView>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  final PrayerHistoryService _prayerHistoryService =
-      locator<PrayerHistoryService>();
   final TasbihHistoryService _tasbihHistoryService =
       locator<TasbihHistoryService>();
   final LoggerService _logger = locator<LoggerService>();
 
   late TabController _tabController;
 
-  // Prayer data
-  Map<String, int> _weeklyPrayerStats = {};
-  Map<String, int> _monthlyPrayerStats = {};
-  Map<String, Map<String, bool>> _prayerCompletionGrid = {};
-  int _currentPrayerStreak = 0;
-
   // Tasbih data
   Map<String, int> _weeklyTasbihStats = {};
   Map<String, int> _monthlyTasbihStats = {};
   Map<String, Map<String, int>> _tasbihDailyGrid = {};
+  int _currentTasbihStreak = 0;
+  int _bestTasbihStreak = 0;
 
   bool _isLoading = true;
   Future<void>? _activeLoad;
@@ -40,7 +33,7 @@ class _HistoryViewState extends State<HistoryView>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 1, vsync: this);
     WidgetsBinding.instance.addObserver(this);
     _loadData();
   }
@@ -70,53 +63,32 @@ class _HistoryViewState extends State<HistoryView>
       if (!mounted) return;
       setState(() => _isLoading = true);
 
-      final prayerResults = await Future.wait([
-        _prayerHistoryService.getWeeklyStats(),
-        _prayerHistoryService.getMonthlyStats(),
-        _prayerHistoryService.getDailyCompletionGrid(30),
-        _prayerHistoryService.getCurrentStreak(),
+      // Get current dhikr targets from TasbihView settings
+      final dhikrTargets = await _tasbihHistoryService.getCurrentDhikrTargets();
+
+      final tasbihResults = await Future.wait([
+        _tasbihHistoryService.getWeeklyTasbihStats(),
+        _tasbihHistoryService.getMonthlyTasbihStats(),
+        _tasbihHistoryService.getDailyTasbihGrid(30),
+        _tasbihHistoryService.getCurrentTasbihStreak(
+          customTargets: dhikrTargets,
+        ),
+        _tasbihHistoryService.getBestTasbihStreak(),
       ]);
-
-      Map<String, int> weeklyTasbihStats = {};
-      Map<String, int> monthlyTasbihStats = {};
-      Map<String, Map<String, int>> tasbihDailyGrid = {};
-
-      try {
-        final tasbihResults = await Future.wait([
-          _tasbihHistoryService.getWeeklyTasbihStats(),
-          _tasbihHistoryService.getMonthlyTasbihStats(),
-          _tasbihHistoryService.getDailyTasbihGrid(30),
-        ]);
-
-        weeklyTasbihStats = tasbihResults[0] as Map<String, int>;
-        monthlyTasbihStats = tasbihResults[1] as Map<String, int>;
-        tasbihDailyGrid = tasbihResults[2] as Map<String, Map<String, int>>;
-      } catch (e, stackTrace) {
-        _logger.error(
-          'Error loading tasbih data',
-          error: e,
-          stackTrace: stackTrace,
-        );
-      }
 
       if (!mounted) return;
 
       setState(() {
-        _weeklyPrayerStats = prayerResults[0] as Map<String, int>;
-        _monthlyPrayerStats = prayerResults[1] as Map<String, int>;
-        _prayerCompletionGrid =
-            prayerResults[2] as Map<String, Map<String, bool>>;
-        _currentPrayerStreak = prayerResults[3] as int;
-
-        _weeklyTasbihStats = weeklyTasbihStats;
-        _monthlyTasbihStats = monthlyTasbihStats;
-        _tasbihDailyGrid = tasbihDailyGrid;
-
+        _weeklyTasbihStats = tasbihResults[0] as Map<String, int>;
+        _monthlyTasbihStats = tasbihResults[1] as Map<String, int>;
+        _tasbihDailyGrid = tasbihResults[2] as Map<String, Map<String, int>>;
+        _currentTasbihStreak = tasbihResults[3] as int;
+        _bestTasbihStreak = tasbihResults[4] as int;
         _isLoading = false;
       });
     } catch (e, stackTrace) {
       _logger.error(
-        'Failed to load history data',
+        'Failed to load tasbih history data',
         error: e,
         stackTrace: stackTrace,
       );
@@ -132,101 +104,45 @@ class _HistoryViewState extends State<HistoryView>
     final brightness = Theme.of(context).brightness;
 
     return Scaffold(
-      appBar: CustomAppBar(title: 'Historical Data', brightness: brightness),
+      appBar: CustomAppBar(title: 'Tasbih History', brightness: brightness),
       body:
           _isLoading
               ? const Center(child: CircularProgressIndicator())
-              : Column(
-                children: [
-                  Material(
-                    color: AppColors.surface(brightness).withAlpha(240),
-                    elevation: 2,
-                    child: TabBar(
-                      controller: _tabController,
-                      tabs: const [Tab(text: 'Prayers'), Tab(text: 'Tasbih')],
-                      labelColor: AppColors.primary(brightness),
-                      unselectedLabelColor: AppColors.textSecondary(brightness),
-                      indicatorColor: AppColors.primary(brightness),
-                      indicatorWeight: 3,
-                      labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-                      unselectedLabelStyle: const TextStyle(
-                        fontWeight: FontWeight.normal,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildPrayerHistoryTab(brightness),
-                        _buildTasbihHistoryTab(brightness),
-                      ],
-                    ),
-                  ),
-                ],
+              : RefreshIndicator(
+                onRefresh: _loadData,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16.0),
+                  child: _buildTasbihHistoryTab(brightness),
+                ),
               ),
     );
   }
 
-  Widget _buildPrayerHistoryTab(Brightness brightness) {
-    return RefreshIndicator(
-      onRefresh: _loadData,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildPrayerStreakCard(brightness),
-            const SizedBox(height: 16),
-            _buildPrayerStatsCard(
-              'Weekly Prayer Stats',
-              _weeklyPrayerStats,
-              brightness,
-            ),
-            const SizedBox(height: 16),
-            _buildPrayerStatsCard(
-              'Monthly Prayer Stats',
-              _monthlyPrayerStats,
-              brightness,
-            ),
-            const SizedBox(height: 16),
-            _buildPrayerCompletionGrid(brightness),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildTasbihHistoryTab(Brightness brightness) {
-    return RefreshIndicator(
-      onRefresh: _loadData,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildTasbihStatsCard(
-              'Weekly Tasbih Stats',
-              _weeklyTasbihStats,
-              brightness,
-            ),
-            const SizedBox(height: 16),
-            _buildTasbihStatsCard(
-              'Monthly Tasbih Stats',
-              _monthlyTasbihStats,
-              brightness,
-            ),
-            const SizedBox(height: 16),
-            _buildTasbihDailyGrid(brightness),
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTasbihStreakCard(brightness),
+        const SizedBox(height: 16),
+        _buildTasbihStatsCard(
+          'Weekly Tasbih Stats',
+          _weeklyTasbihStats,
+          brightness,
         ),
-      ),
+        const SizedBox(height: 16),
+        _buildTasbihStatsCard(
+          'Monthly Tasbih Stats',
+          _monthlyTasbihStats,
+          brightness,
+        ),
+        const SizedBox(height: 16),
+        _buildTasbihDailyGrid(brightness),
+      ],
     );
   }
 
-  Widget _buildPrayerStreakCard(Brightness brightness) {
+  Widget _buildTasbihStreakCard(Brightness brightness) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -267,7 +183,7 @@ class _HistoryViewState extends State<HistoryView>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Current Prayer Streak',
+                  'Current Tasbih Streak',
                   style: AppTextStyles.dateSecondary(brightness).copyWith(
                     color: Colors.white70,
                     fontWeight: FontWeight.w500,
@@ -275,111 +191,25 @@ class _HistoryViewState extends State<HistoryView>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$_currentPrayerStreak ${_currentPrayerStreak == 1 ? 'day' : 'days'}',
+                  '$_currentTasbihStreak ${_currentTasbihStreak == 1 ? 'day' : 'days'}',
                   style: AppTextStyles.sectionTitle(brightness).copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 32,
                   ),
                 ),
+                if (_bestTasbihStreak > 0) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Best: $_bestTasbihStreak ${_bestTasbihStreak == 1 ? 'day' : 'days'}',
+                    style: AppTextStyles.dateSecondary(
+                      brightness,
+                    ).copyWith(color: Colors.white70, fontSize: 14),
+                  ),
+                ],
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPrayerStatsCard(
-    String title,
-    Map<String, int> stats,
-    Brightness brightness,
-  ) {
-    final prayers = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surface(brightness),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(25),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: AppTextStyles.prayerName(
-              brightness,
-            ).copyWith(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          const SizedBox(height: 16),
-          if (stats.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Center(
-                child: Text(
-                  'No prayer data yet.',
-                  style: AppTextStyles.dateSecondary(
-                    brightness,
-                  ).copyWith(color: Colors.grey),
-                ),
-              ),
-            )
-          else
-            ...prayers.map((prayer) {
-              final count = stats[prayer] ?? 0;
-              final maxCount = title.contains('Weekly') ? 7 : 30;
-              final percentage = count / maxCount;
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          prayer,
-                          style: AppTextStyles.prayerName(brightness),
-                        ),
-                        Text(
-                          '$count/$maxCount',
-                          style: AppTextStyles.dateSecondary(
-                            brightness,
-                          ).copyWith(
-                            color: AppColors.accentGreen(brightness),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: percentage,
-                        minHeight: 6,
-                        backgroundColor:
-                            brightness == Brightness.dark
-                                ? Colors.grey[800]
-                                : Colors.grey[300],
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          _getColorForPercentage(percentage),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
         ],
       ),
     );
@@ -447,119 +277,6 @@ class _HistoryViewState extends State<HistoryView>
                 ),
               );
             }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPrayerCompletionGrid(Brightness brightness) {
-    if (_prayerCompletionGrid.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.surface(brightness),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Center(
-          child: Text(
-            'No prayer completion data yet.',
-            style: AppTextStyles.dateSecondary(
-              brightness,
-            ).copyWith(color: Colors.grey),
-          ),
-        ),
-      );
-    }
-
-    final sortedDates =
-        _prayerCompletionGrid.keys.toList()
-          ..sort((a, b) => b.compareTo(a)); // Most recent first
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surface(brightness),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(25),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Daily Prayer Completion (Last 30 Days)',
-            style: AppTextStyles.prayerName(
-              brightness,
-            ).copyWith(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          const SizedBox(height: 16),
-          ...sortedDates.take(10).map((date) {
-            // Show last 10 days
-            final completion = _prayerCompletionGrid[date]!;
-            final completedCount = completion.values.where((v) => v).length;
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 80,
-                    child: Text(
-                      _formatDate(date),
-                      style: AppTextStyles.dateSecondary(brightness),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Row(
-                      children:
-                          ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'].map((
-                            prayer,
-                          ) {
-                            final isCompleted = completion[prayer] ?? false;
-                            return Container(
-                              width: 20,
-                              height: 20,
-                              margin: const EdgeInsets.symmetric(horizontal: 2),
-                              decoration: BoxDecoration(
-                                color:
-                                    isCompleted
-                                        ? AppColors.accentGreen(brightness)
-                                        : Colors.grey[300],
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  prayer[0], // First letter
-                                  style: TextStyle(
-                                    color:
-                                        isCompleted
-                                            ? Colors.white
-                                            : Colors.grey[600],
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                    ),
-                  ),
-                  Text(
-                    '$completedCount/5',
-                    style: AppTextStyles.dateSecondary(
-                      brightness,
-                    ).copyWith(fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            );
-          }),
         ],
       ),
     );
@@ -671,11 +388,5 @@ class _HistoryViewState extends State<HistoryView>
     } catch (e) {
       return dateKey;
     }
-  }
-
-  Color _getColorForPercentage(double percentage) {
-    if (percentage >= 0.8) return Colors.green;
-    if (percentage >= 0.5) return Colors.orange;
-    return Colors.red;
   }
 }

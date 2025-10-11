@@ -18,6 +18,7 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
   Map<String, int> _monthlyStats = {};
   double _weeklyCompletionRate = 0.0;
   int _currentStreak = 0;
+  int _bestStreak = 0;
   bool _isLoading = true;
 
   @override
@@ -35,6 +36,7 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
         _historyService.getMonthlyStats(),
         _historyService.getCompletionRate(days: 7),
         _historyService.getCurrentStreak(),
+        _historyService.getBestStreak(),
       ]);
 
       setState(() {
@@ -42,6 +44,7 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
         _monthlyStats = results[1] as Map<String, int>;
         _weeklyCompletionRate = results[2] as double;
         _currentStreak = results[3] as int;
+        _bestStreak = results[4] as int;
         _isLoading = false;
       });
     } catch (e) {
@@ -144,6 +147,15 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
                     fontSize: 32,
                   ),
                 ),
+                if (_bestStreak > 0) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Best: $_bestStreak ${_bestStreak == 1 ? 'day' : 'days'}',
+                    style: AppTextStyles.dateSecondary(
+                      brightness,
+                    ).copyWith(color: Colors.white70, fontSize: 14),
+                  ),
+                ],
               ],
             ),
           ),

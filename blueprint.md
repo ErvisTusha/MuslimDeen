@@ -90,7 +90,31 @@ flowchart TD
 
 ### Recent Architectural Decisions
 
-#### 1. Settings Persistence Strategy (October 2025)
+#### 1. Settings Persistence Race Condition Fix (October 2025)
+- **Problem**: Settings (including theme) not loading before initial UI render, causing "flash of default theme" and inconsistent persistence behavior
+- **Root Cause**: `SettingsNotifier.build()` was returning defaults immediately while loading settings asynchronously, creating a race condition
+- **Solution**: 
+  - Added synchronous `_loadSettingsSync()` method that loads settings immediately if storage is ready
+  - `build()` now returns loaded settings (or defaults if storage not ready)
+  - Async `_initializeSettings()` still runs for validation and recovery
+  - Added storage initialization checks before all save/load operations
+- **Impact**: 
+  - Settings (especially theme) load BEFORE UI renders, no more flashing
+  - 100% reliable persistence across app restarts
+  - Graceful recovery from corrupted settings data
+  - First-time users automatically get settings file created
+- **Test Coverage**: Created comprehensive tests (19 tests total)
+  - `settings_persistence_test.dart` - Basic save/load
+  - `settings_complete_persistence_test.dart` - All fields verification
+  - `settings_notifier_integration_test.dart` - Storage integration
+- **Files Changed**: 
+  - `lib/providers/settings_notifier.dart` - Added sync loading, error recovery
+  - `lib/services/storage_service.dart` - Added `isInitialized` getter, test-safe logging
+  - `test/settings_persistence_test.dart` - Basic tests
+  - `test/settings_complete_persistence_test.dart` - Comprehensive field tests
+  - `test/settings_notifier_integration_test.dart` - Integration tests
+
+#### 2. Settings Persistence Strategy (October 2025)
 - **Problem**: Settings not persisting on app close due to 750ms debounce timer
 - **Solution**: Immediate save for all setting changes
 - **Impact**: Prevents data loss, slightly increases I/O but acceptable for settings
@@ -198,8 +222,8 @@ flowchart TD
 
 #### 12. Home Screen Navigation & History Dashboard (October 2025)
 - **Problem**: Users lacked quick entry points to analytics and historical data, and the new dashboard risked duplicate/unsafe refresh work when lifecycle events fired rapidly.
-- **Solution**: Added dedicated app bar actions in `HomeView` that navigate to `PrayerStatsHistoryView` (combining statistics and historical data) and a newly built `HistoryView`. Hardened `HistoryView` with mounted checks and a single-flight loader to prevent overlapping queries or `setState` after disposal.
-- **Impact**: Analytics and historical prayer data are now combined in one tap away from the landing screen, and history data stays accurate without race conditions when returning from background states.
+- **Solution**: Added dedicated app bar action in `HomeView` that navigates to prayer statistics. Hardened `HistoryView` with mounted checks and a single-flight loader to prevent overlapping queries or `setState` after disposal.
+- **Impact**: Prayer statistics are now one tap away from the landing screen.
 - **Files Changed**: `lib/views/home_view.dart`, `lib/views/history_view.dart`
 
 #### 13. Prayer Times Section Refactor (October 2025)
@@ -229,6 +253,55 @@ flowchart TD
 - **Solution**: Consolidated `PrayerStatsView` and `PrayerStatsHistoryView` into a single `PrayerStatsHistoryView` that displays statistics (streak, completion rate, weekly/monthly stats) alongside historical completion grid in one unified interface.
 - **Impact**: Improved user experience with all prayer tracking data accessible from one tap, eliminating navigation friction.
 - **Files Changed**: `lib/views/home_view.dart` (updated navigation), `lib/views/prayer_stats_view.dart` (removed), `blueprint.md` (updated documentation)
+
+#### 16. Separated Prayer Statistics from Historical Data (October 2025)
+- **Problem**: The unified prayer statistics and history view combined too much information, making it cluttered and less focused.
+- **Solution**: 
+  - Renamed `PrayerStatsHistoryView` to `PrayerStatsView` containing only statistics (streak, completion rate, weekly/monthly stats) without the historical grid
+  - Modified `HistoryView` to show only tasbih historical data, removing the prayer history tab
+  - Updated navigation to maintain separate access to prayer statistics and tasbih history
+- **Impact**: Cleaner, more focused views with prayer statistics in one place and tasbih history in another, improving user experience and reducing cognitive load.
+- **Files Changed**: `lib/views/prayer_stats_history_view.dart` (renamed to `prayer_stats_view.dart`, removed history grid), `lib/views/history_view.dart` (removed prayer tab, kept only tasbih), `lib/views/home_view.dart` (updated imports), `blueprint.md` (updated documentation)
+
+#### 17. Removed Tasbih History Navigation from Home Screen (October 2025)
+- **Problem**: The home screen had multiple navigation options that could clutter the interface and confuse users about the primary actions.
+- **Solution**: Removed the tasbih history icon from the home screen app bar, keeping only the prayer statistics navigation. Tasbih history remains accessible through other means if needed.
+- **Impact**: Simplified home screen interface with focused navigation to prayer statistics only.
+- **Files Changed**: `lib/views/home_view.dart` (removed history icon and navigation method)
+
+#### 18. Tasbih Streak Feature (October 2025)
+- **Problem**: Users lacked motivation and tracking for consistent tasbih/dhikr practice, similar to prayer streaks.
+- **Solution**: Added tasbih streak tracking to `TasbihHistoryService.getCurrentTasbihStreak()` that counts consecutive days where all 4 dhikr types (Subhanallah: 33, Alhamdulillah: 33, Astaghfirullah: 33, Allahu Akbar: 34) reach their target counts. Updated `HistoryView` to display the tasbih streak prominently with a fire icon and gradient card, matching the prayer streak design.
+- **Impact**: Users can now track their complete tasbih practice consistency and see motivating streak statistics, encouraging comprehensive dhikr completion.
+- **Files Changed**: `lib/services/tasbih_history_service.dart` (added `getCurrentTasbihStreak()` method with target-based logic), `lib/views/history_view.dart` (added streak display and loading)
+
+#### 19. Personal Best Streak Tracking (October 2025)
+- **Problem**: Users could only see their current streaks but had no way to track their personal best achievements, reducing long-term motivation.
+- **Solution**: Added personal best streak tracking for both prayers and tasbih. Modified `PrayerHistoryService.getCurrentStreak()` and `TasbihHistoryService.getCurrentTasbihStreak()` to automatically update personal records when current streaks exceed previous bests. Added `getBestStreak()` and `getBestTasbihStreak()` methods that return stored personal records. Updated `PrayerStatsView` and `HistoryView` to display both current streak and personal best ("Best: X days") below the main streak number.
+- **Impact**: Users now have a clear record of their best achievements, providing long-term motivation and a sense of accomplishment even during streak breaks.
+- **Files Changed**: `lib/services/prayer_history_service.dart` (added `getBestStreak()`, `getPrayerStreakRecord()`, `_updatePrayerStreakRecord()`), `lib/services/tasbih_history_service.dart` (added `getBestTasbihStreak()`, `getTasbihStreakRecord()`, `_updateTasbihStreakRecord()`, `getCurrentDhikrTargets()`), `lib/views/prayer_stats_view.dart` (added best streak display), `lib/views/history_view.dart` (added best tasbih streak display, updated to use TesbihView targets)
+
+#### 20. Prayer Statistics Case Sensitivity Fix (October 2025)
+- **Problem**: Prayer history and streaks were showing 0 for all prayers because of a case mismatch. Prayers were saved using lowercase enum names (`fajr`, `dhuhr`, `asr`, `maghrib`, `isha`) but statistics were querying with capitalized names (`Fajr`, `Dhuhr`, `Asr`, `Maghrib`, `Isha`), causing all lookups to fail.
+- **Solution**: Updated `PrayerHistoryService.getDailyCompletionGrid()` to use lowercase prayer names matching the enum format. Modified `PrayerStatsView` and `PrayerStatsHistoryView` to use lowercase keys for data lookups while displaying capitalized names in the UI.
+- **Impact**: Prayer statistics, streaks, and completion rates now display actual data instead of zeros. Users can now see their prayer tracking history correctly.
+- **Files Changed**: `lib/services/prayer_history_service.dart` (fixed prayer names in getDailyCompletionGrid), `lib/views/prayer_stats_view.dart` (separated data keys from display names), `lib/views/prayer_stats_history_view.dart` (separated data keys from display names)
+
+#### 21. Prevent Marking Upcoming Prayers as Done (October 2025)
+- **Problem**: Users could mark prayers as completed even before the prayer time arrived, leading to inaccurate tracking and undermining the app's spiritual accountability features.
+- **Solution**: Added validation in `PrayerListItem` widget to check if a prayer's time has passed before allowing it to be marked as done. The checkbox is disabled for upcoming prayers (when `onChanged` is null), and attempting to mark an upcoming prayer shows a snackbar message: "Cannot mark [Prayer] as done - prayer time has not arrived yet". Users can still unmark previously completed prayers at any time.
+- **Impact**: Ensures prayer tracking integrity by enforcing that prayers can only be marked as done after their designated time, while maintaining flexibility to unmark incorrectly marked prayers.
+- **Files Changed**: `lib/widgets/prayer_list_item.dart` (added `_hasPrayerPassed()` method, updated `_toggleCompletion()` with validation, modified checkbox `onChanged` to disable for upcoming prayers)
+
+#### 22. Fixed Isha-to-Fajr Transition (October 2025)
+- **Problem**: After Isha prayer, the app failed to properly calculate and display the next prayer (Fajr of the next day). The `getNextPrayer()` method returns "none" for the period between Isha and midnight, causing the next prayer display to show "---" and the countdown timer to show "00:00:00" instead of counting down to tomorrow's Fajr.
+- **Solution**: Updated `_updatePrayerTimingsDisplay()` in `HomeView` to explicitly handle the case when `nextPrayerStr == adhan.Prayer.none`. When this occurs after Isha, the code now:
+  1. Sets `newNextPrayerEnum` to `PrayerNotification.fajr`
+  2. Sets the display name to "Fajr"
+  3. Calls `_prayerService.getNextPrayerTime()` which correctly calculates tomorrow's Fajr time
+  4. Made the method `async` to support the asynchronous prayer time calculation
+- **Impact**: Users now see accurate next prayer information and countdown timer during the Isha-to-Fajr period, maintaining consistent functionality throughout the entire 24-hour prayer cycle.
+- **Files Changed**: `lib/views/home_view.dart` (modified `_updatePrayerTimingsDisplay()` to handle "none" case and made it async)
 
 ### Core Services (Updated October 2025)
 
@@ -310,7 +383,7 @@ flowchart TD
 - **Prayer Streak Tracker**: Already implemented in prayer statistics
   - Service: `PrayerHistoryService.getCurrentStreak()` 
   - Tracks consecutive days with all 5 prayers completed
-  - Display: Featured in `PrayerStatsHistoryView` with fire icon and gradient card
+  - Display: Featured in `PrayerStatsView` with fire icon and gradient card
 
 #### Code Quality
 - Add comprehensive unit tests
@@ -320,4 +393,4 @@ flowchart TD
 ---
 
 *Last Updated: October 11, 2025*
-*Document reflects current implementation including prayer history tracking, dhikr reminders, Ramadan countdown, home screen navigation shortcuts, history dashboard refresh guards, improved error handling, centralized navigation, new features: Daily Hadith, Islamic Calendar, Prayer Streak Tracker, comprehensive code review findings with zero issues detected, production-ready quality assessment, initial test coverage, code refactoring improvements, October 11, 2025 dependency updates, and unified prayer statistics and history view*
+*Document reflects current implementation including prayer history tracking, dhikr reminders, Ramadan countdown, home screen navigation shortcuts, history dashboard refresh guards, improved error handling, centralized navigation, new features: Daily Hadith, Islamic Calendar, Prayer Streak Tracker, Tasbih Streak Tracker, Personal Best Streak Tracking, comprehensive code review findings with zero issues detected, production-ready quality assessment, initial test coverage, code refactoring improvements, October 11, 2025 dependency updates, unified prayer statistics and history view, separated prayer statistics from historical data, removed tasbih history navigation from home screen, and fixed prayer statistics case sensitivity bug*

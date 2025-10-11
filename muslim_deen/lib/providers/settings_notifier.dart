@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 
@@ -34,35 +35,106 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _logger = ref.read(loggerServiceProvider);
     _prayerService = ref.read(prayerServiceProvider);
 
-    // Initialize settings synchronously if possible, otherwise async
+    // Load settings immediately if storage is ready (synchronous path)
+    final loadedSettings = _loadSettingsSync();
+
+    // Still initialize async for any cleanup/validation
     _initializeSettings();
     _initializePermissionListener();
 
-    // Return default settings initially, will be updated after loading
-    return AppSettings.defaults;
+    // Return loaded settings if available, otherwise defaults
+    return loadedSettings ?? AppSettings.defaults;
+  }
+
+  /// Attempt to load settings synchronously if storage is already initialized
+  AppSettings? _loadSettingsSync() {
+    if (!_storage.isInitialized) {
+      _logger.warning('Storage not initialized during build, will load async');
+      return null;
+    }
+
+    try {
+      final String? storedSettings = _storage.getData(_settingsKey) as String?;
+      if (storedSettings != null && storedSettings.isNotEmpty) {
+        final decodedJson = jsonDecode(storedSettings) as Map<String, dynamic>;
+        final loadedSettings = AppSettings.fromJson(decodedJson);
+        _isInitialized = true;
+        _logger.info(
+          "Settings loaded synchronously during build",
+          data: {
+            'themeMode': loadedSettings.themeMode.toString(),
+            'calculationMethod': loadedSettings.calculationMethod,
+            'language': loadedSettings.language,
+          },
+        );
+        return loadedSettings;
+      }
+    } catch (e, s) {
+      _logger.error(
+        'Error loading settings synchronously',
+        error: e,
+        stackTrace: s,
+      );
+    }
+    return null;
   }
 
   Future<void> _initializeSettings() async {
-    if (_isInitialized) return;
+    if (_isInitialized) {
+      _logger.debug('Settings already initialized, skipping async init');
+      return;
+    }
+
+    // Ensure storage is initialized
+    if (!_storage.isInitialized) {
+      _logger.warning(
+        'Storage not initialized during settings init, initializing now',
+      );
+      await _storage.init();
+    }
 
     try {
-      // Try to load settings synchronously first
+      // Try to load settings
       final String? storedSettings = _storage.getData(_settingsKey) as String?;
-      if (storedSettings != null) {
-        final decodedJson = jsonDecode(storedSettings) as Map<String, dynamic>;
-        state = AppSettings.fromJson(decodedJson);
-        _logger.info(
-          "Settings loaded successfully during initialization",
-          data: {
-            'themeMode': state.themeMode.toString(),
-            'calculationMethod': state.calculationMethod,
-            'language': state.language,
-          },
-        );
+      if (storedSettings != null && storedSettings.isNotEmpty) {
+        try {
+          final decodedJson =
+              jsonDecode(storedSettings) as Map<String, dynamic>;
+          final loadedSettings = AppSettings.fromJson(decodedJson);
+          state = loadedSettings;
+          _logger.info(
+            "Settings loaded successfully during async initialization",
+            data: {
+              'themeMode': state.themeMode.toString(),
+              'calculationMethod': state.calculationMethod,
+              'language': state.language,
+              'jsonLength': storedSettings.length,
+            },
+          );
+        } catch (parseError, parseStack) {
+          _logger.error(
+            'Error parsing stored settings JSON',
+            error: parseError,
+            stackTrace: parseStack,
+            data: {
+              'storedSettingsLength': storedSettings.length,
+              'storedSettingsPreview': storedSettings.substring(
+                0,
+                min(100, storedSettings.length),
+              ),
+            },
+          );
+          // Reset to defaults and save to fix corrupted data
+          state = AppSettings.defaults;
+          await _forceSaveSettings();
+        }
       } else {
-        // If no stored settings, just use defaults - don't save during init
-        // Saving will happen naturally when settings are first changed
-        _logger.info("No stored settings found, using defaults");
+        // If no stored settings, use defaults
+        _logger.info(
+          "No stored settings found during async init, using defaults",
+        );
+        // Save defaults for first-time users
+        await _forceSaveSettings();
       }
       _isInitialized = true;
     } catch (e, s) {
@@ -88,6 +160,12 @@ class SettingsNotifier extends Notifier<AppSettings> {
   }
 
   Future<void> _saveSettings() async {
+    // Ensure storage is initialized
+    if (!_storage.isInitialized) {
+      _logger.warning('Storage not initialized, initializing now');
+      await _storage.init();
+    }
+
     try {
       final jsonString = jsonEncode(state.toJson());
       await _storage.saveData(_settingsKey, jsonString);
@@ -96,6 +174,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
         data: {
           'jsonLength': jsonString.length,
           'themeMode': state.themeMode.toString(),
+          'key': _settingsKey,
         },
       );
     } catch (e, s) {
@@ -106,6 +185,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
         data: {
           'themeMode': state.themeMode.toString(),
           'calculationMethod': state.calculationMethod,
+          'key': _settingsKey,
         },
       );
       // Retry saving after a short delay

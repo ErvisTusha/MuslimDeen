@@ -23,8 +23,7 @@ import 'package:muslim_deen/services/prayer_service.dart';
 import 'package:muslim_deen/services/widget_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/styles/ui_theme_helper.dart';
-import 'package:muslim_deen/views/history_view.dart';
-import 'package:muslim_deen/views/prayer_stats_history_view.dart';
+import 'package:muslim_deen/views/prayer_stats_view.dart';
 import 'package:muslim_deen/views/settings_view.dart';
 import 'package:muslim_deen/widgets/common_container_styles.dart';
 import 'package:muslim_deen/widgets/custom_app_bar.dart';
@@ -387,7 +386,7 @@ class _HomeViewState extends ConsumerState<HomeView>
 
   /// Updates the current/next prayer names and scrolls to the current prayer.
   /// The countdown timer is handled separately by PrayerCountdownTimer.
-  void _updatePrayerTimingsDisplay() {
+  void _updatePrayerTimingsDisplay() async {
     // No need to call this every second anymore.
     // It will be called once when data loads and potentially when prayer changes.
     final currentPrayerTimes = _prayerTimes;
@@ -400,7 +399,7 @@ class _HomeViewState extends ConsumerState<HomeView>
       final newCurrentPrayerEnum = _getPrayerNotificationFromAdhanPrayer(
         currentPrayerStr,
       );
-      final newNextPrayerEnum = _getPrayerNotificationFromAdhanPrayer(
+      var newNextPrayerEnum = _getPrayerNotificationFromAdhanPrayer(
         nextPrayerStr,
       );
 
@@ -419,7 +418,15 @@ class _HomeViewState extends ConsumerState<HomeView>
 
       String nextPrayerDisplayName = '---';
       DateTime? nextPrayerTime;
-      if (newNextPrayerEnum != null) {
+
+      // Handle case when next prayer is "none" (after Isha, next is Fajr tomorrow)
+      if (newNextPrayerEnum == null && nextPrayerStr == adhan.Prayer.none) {
+        // After Isha, next prayer is Fajr tomorrow
+        newNextPrayerEnum = PrayerNotification.fajr;
+        nextPrayerDisplayName = 'Fajr';
+        // Get tomorrow's Fajr time
+        nextPrayerTime = await _prayerService.getNextPrayerTime();
+      } else if (newNextPrayerEnum != null) {
         final nextPrayerInfo = _getPrayerDisplayInfo(
           newNextPrayerEnum,
           currentPrayerTimes,
@@ -948,11 +955,6 @@ class _HomeViewState extends ConsumerState<HomeView>
             onPressed: _navigateToPrayerStats,
             tooltip: 'Prayer Statistics',
           ),
-          IconButton(
-            icon: const Icon(Icons.history),
-            onPressed: _navigateToHistory,
-            tooltip: 'Historical Data',
-          ),
         ],
       ),
       body: FutureBuilder<Map<String, dynamic>>(
@@ -1240,18 +1242,8 @@ class _HomeViewState extends ConsumerState<HomeView>
     Navigator.push(
       context,
       MaterialPageRoute<void>(
-        builder: (context) => const PrayerStatsHistoryView(),
+        builder: (context) => const PrayerStatsView(),
         settings: const RouteSettings(name: '/prayer-stats'),
-      ),
-    );
-  }
-
-  void _navigateToHistory() {
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (context) => const HistoryView(),
-        settings: const RouteSettings(name: '/history'),
       ),
     );
   }
