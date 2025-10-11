@@ -20,8 +20,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
   late final NotificationService _notificationService;
   late final LoggerService _logger;
   late final PrayerService _prayerService;
-  StreamSubscription<NotificationPermissionStatus>?
-  _permissionSubscription;
+  StreamSubscription<NotificationPermissionStatus>? _permissionSubscription;
   Timer? _saveSettingsDebounceTimer;
   static const Duration _saveSettingsDebounceDuration = Duration(
     milliseconds: 750,
