@@ -4,14 +4,19 @@ import 'dart:async';
 
 import 'package:muslim_deen/services/cache_service.dart';
 import 'package:muslim_deen/services/compass_service.dart';
+import 'package:muslim_deen/services/database_service.dart';
+import 'package:muslim_deen/services/dhikr_reminder_service.dart';
 import 'package:muslim_deen/services/error_handler_service.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/map_service.dart';
+import 'package:muslim_deen/services/navigation_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
+import 'package:muslim_deen/services/prayer_history_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
 import 'package:muslim_deen/services/prayer_times_cache.dart';
 import 'package:muslim_deen/services/storage_service.dart';
+import 'package:muslim_deen/services/tasbih_history_service.dart';
 import 'package:muslim_deen/services/widget_service.dart';
 
 final GetIt locator = GetIt.instance;
@@ -38,9 +43,14 @@ Future<void> setupLocator({bool testing = false}) async {
 void _registerServices(bool testing) {
   // Register synchronous services first
   locator.registerLazySingleton<LoggerService>(LoggerService.new);
+  locator.registerLazySingleton<DatabaseService>(DatabaseService.new);
   locator.registerLazySingleton<StorageService>(StorageService.new);
   locator.registerLazySingleton<LocationService>(LocationService.new);
   locator.registerLazySingleton<ErrorHandlerService>(ErrorHandlerService.new);
+  locator.registerLazySingleton<NavigationService>(NavigationService.new);
+  locator.registerLazySingleton<PrayerHistoryService>(PrayerHistoryService.new);
+  locator.registerLazySingleton<DhikrReminderService>(DhikrReminderService.new);
+  locator.registerLazySingleton<TasbihHistoryService>(TasbihHistoryService.new);
 
   if (!testing) {
     locator.registerLazySingleton<NotificationService>(NotificationService.new);
@@ -87,6 +97,7 @@ void _registerServices(bool testing) {
 Future<void> _initializeCriticalServices() async {
   final stopwatch = Stopwatch()..start();
 
+  await locator<DatabaseService>().init();
   await locator<StorageService>().init();
 
   stopwatch.stop();

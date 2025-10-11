@@ -22,7 +22,7 @@ class QiblaView extends StatefulWidget {
 }
 
 class _QiblaViewState extends State<QiblaView>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final CompassService _compassService = locator<CompassService>();
   final LoggerService _logger = locator<LoggerService>();
 
@@ -55,15 +55,50 @@ class _QiblaViewState extends State<QiblaView>
       end: 2 * math.pi,
     ).animate(_animationController);
 
+    // Add lifecycle observer
+    WidgetsBinding.instance.addObserver(this);
+
     _initQiblaFinder();
   }
 
   @override
   void dispose() {
     _logger.debug('QiblaView disposed');
+    // Remove lifecycle observer
+    WidgetsBinding.instance.removeObserver(this);
     _compassSubscription?.cancel();
     _animationController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        // Cancel compass subscription when app goes to background or becomes hidden
+        _logger.debug(
+          'App going to background/hidden, cancelling compass subscription',
+        );
+        _compassSubscription?.cancel();
+        _compassSubscription = null;
+        break;
+      case AppLifecycleState.resumed:
+        // Recreate compass subscription when app comes back to foreground
+        if (_compassService.compassEvents != null &&
+            _compassSubscription == null) {
+          _logger.debug('App resumed, recreating compass subscription');
+          _compassSubscription = _compassService.compassEvents!.listen(
+            _handleCompassEvent,
+            onError: _handleCompassError,
+          );
+        }
+        break;
+    }
   }
 
   Future<void> _initQiblaFinder() async {
@@ -115,6 +150,7 @@ class _QiblaViewState extends State<QiblaView>
         _handleCompassEvent,
         onError: _handleCompassError,
       );
+      _logger.debug('Compass subscription created for Qibla direction');
     } catch (e) {
       _logger.error(
         'Error in Qibla finder initialization',
@@ -142,9 +178,7 @@ class _QiblaViewState extends State<QiblaView>
       _lastCompassUpdate = now;
       setState(() {
         _magneticHeading = event.heading;
-        _logger.debug(
-          '[DEBUG-QIBLA] Updated magnetic heading: $_magneticHeading°',
-        );
+        // Removed verbose debug logging - compass updates are too frequent
       });
     }
   }

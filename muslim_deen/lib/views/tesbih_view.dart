@@ -17,9 +17,11 @@ import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/notification_service.dart'
     show NotificationService;
 import 'package:muslim_deen/services/storage_service.dart';
+import 'package:muslim_deen/services/tasbih_history_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/styles/theme_utils.dart';
 import 'package:muslim_deen/styles/ui_theme_helper.dart';
+import 'package:muslim_deen/views/history_view.dart';
 
 class TesbihView extends ConsumerStatefulWidget {
   const TesbihView({super.key});
@@ -90,14 +92,31 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   @override
   void dispose() {
     _logger.debug('TesbihView disposed');
-    WidgetsBinding.instance.removeObserver(this);
+
+    try {
+      WidgetsBinding.instance.removeObserver(this);
+    } catch (e) {
+      _logger.warning('Error removing lifecycle observer', error: e);
+    }
 
     // NOTE: Removed cancelNotification(9876) call to prevent Tasbih reminder
     // from being canceled when switching between views. Tasbih reminders should
     // persist independently of view state, just like prayer notifications.
 
-    _dhikrPlayer?.dispose();
-    _counterPlayer?.dispose();
+    try {
+      _dhikrPlayer?.dispose();
+      _dhikrPlayer = null;
+    } catch (e) {
+      _logger.warning('Error disposing dhikr player', error: e);
+    }
+
+    try {
+      _counterPlayer?.dispose();
+      _counterPlayer = null;
+    } catch (e) {
+      _logger.warning('Error disposing counter player', error: e);
+    }
+
     super.dispose();
   }
 
@@ -451,6 +470,14 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     if (!mounted) return;
     setState(() => _count++);
 
+    // Record the tasbih count in history
+    try {
+      final tasbihHistoryService = locator<TasbihHistoryService>();
+      await tasbihHistoryService.recordTasbihCount(_currentDhikr, 1);
+    } catch (e) {
+      _logger.warning('Failed to record tasbih count in history', error: e);
+    }
+
     if (_vibrationEnabled) {
       _triggerHapticFeedback();
     }
@@ -770,6 +797,13 @@ class _TesbihViewState extends ConsumerState<TesbihView>
         elevation: 2,
         shadowColor: AppColors.shadowColor(brightness),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: _navigateToHistory,
+            tooltip: 'Historical Data',
+          ),
+        ],
         systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.light,
@@ -1231,6 +1265,16 @@ class _TesbihViewState extends ConsumerState<TesbihView>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _navigateToHistory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (context) => const HistoryView(),
+        settings: const RouteSettings(name: '/history'),
       ),
     );
   }

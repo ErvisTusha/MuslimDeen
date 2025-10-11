@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 
 /// A service for logging events throughout the application
@@ -23,7 +24,7 @@ class LoggerService {
       printEmojis: true,
       dateTimeFormat: DateTimeFormat.onlyTime,
     ),
-    level: Level.warning, // Set to Level.nothing in production
+    level: kDebugMode ? Level.debug : Level.warning,
   );
 
   void debug(

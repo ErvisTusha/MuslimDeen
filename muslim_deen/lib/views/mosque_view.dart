@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -16,43 +17,75 @@ import 'package:muslim_deen/widgets/custom_app_bar.dart';
 import 'package:muslim_deen/widgets/loading_error_state_builder.dart';
 
 Future<void> _openMosqueInMapsApp(BuildContext context, Mosque mosque) async {
-  final String query = Uri.encodeComponent(mosque.name);
-  final String coordinates =
-      '${mosque.location.latitude},${mosque.location.longitude}';
+  final logger = locator<LoggerService>();
 
-  List<String> urls = [];
+  try {
+    final String query = Uri.encodeComponent(mosque.name);
+    final String coordinates =
+        '${mosque.location.latitude},${mosque.location.longitude}';
 
-  if (Platform.isAndroid) {
-    urls = [
-      'geo:$coordinates?q=$coordinates($query)',
-      'https://www.google.com/maps/search/?api=1&query=$coordinates',
-    ];
-  } else if (Platform.isIOS) {
-    urls = [
-      'maps:$coordinates?q=$query',
-      'https://maps.apple.com/?q=$query&ll=$coordinates',
-      'https://www.google.com/maps/search/?api=1&query=$coordinates',
-    ];
-  } else {
-    urls = ['https://www.google.com/maps/search/?api=1&query=$coordinates'];
-  }
+    List<String> urls = [];
 
-  bool launched = false;
-  for (final url in urls) {
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url));
-      launched = true;
-      break;
+    if (Platform.isAndroid) {
+      urls = [
+        'geo:$coordinates?q=$coordinates($query)',
+        'https://www.google.com/maps/search/?api=1&query=$coordinates',
+      ];
+    } else if (Platform.isIOS) {
+      urls = [
+        'maps:$coordinates?q=$query',
+        'https://maps.apple.com/?q=$query&ll=$coordinates',
+        'https://www.google.com/maps/search/?api=1&query=$coordinates',
+      ];
+    } else {
+      urls = ['https://www.google.com/maps/search/?api=1&query=$coordinates'];
     }
-  }
 
-  if (!launched && context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Could not open maps app. Coordinates: $coordinates'),
-        backgroundColor: Colors.orange,
-      ),
+    bool launched = false;
+    for (final url in urls) {
+      try {
+        if (await canLaunchUrl(Uri.parse(url))) {
+          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+          launched = true;
+          logger.info('Successfully opened mosque in maps: ${mosque.name}');
+          break;
+        }
+      } catch (e) {
+        logger.warning('Failed to launch URL: $url', error: e);
+        continue;
+      }
+    }
+
+    if (!launched && context.mounted) {
+      logger.error('Could not open any maps app for mosque: ${mosque.name}');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not open maps app. Coordinates: $coordinates'),
+          backgroundColor: Colors.orange,
+          action: SnackBarAction(
+            label: 'Copy',
+            textColor: Colors.white,
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: coordinates));
+            },
+          ),
+        ),
+      );
+    }
+  } catch (e, stackTrace) {
+    logger.error(
+      'Unexpected error opening mosque in maps',
+      error: e,
+      stackTrace: stackTrace,
     );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('An error occurred. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
 

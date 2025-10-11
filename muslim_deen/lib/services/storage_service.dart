@@ -78,7 +78,11 @@ class StorageService {
   }
 
   /// Helper method to save different value types to SharedPreferences
-  Future<bool> _saveValueByType(SharedPreferences prefs, String key, dynamic value) async {
+  Future<bool> _saveValueByType(
+    SharedPreferences prefs,
+    String key,
+    dynamic value,
+  ) async {
     if (value is String) {
       await prefs.setString(key, value);
       return true;
@@ -101,5 +105,20 @@ class StorageService {
   /// Generic method to retrieve data
   dynamic getData(String key) {
     return _getPrefs().get(key);
+  }
+
+  /// Remove data for a specific key
+  Future<void> removeData(String key) async {
+    final prefs = _getPrefs();
+    try {
+      await prefs.remove(key);
+      locator<LoggerService>().debug('Data removed for key: $key');
+    } catch (e, s) {
+      locator<LoggerService>().error(
+        'Error removing data for key: $key',
+        error: e,
+        stackTrace: s,
+      );
+    }
   }
 }

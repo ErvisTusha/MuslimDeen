@@ -323,6 +323,69 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             },
           ),
 
+          const SettingsSectionHeader(title: "Dhikr Reminders"),
+
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            decoration: BoxDecoration(
+              color: UIThemeHelper.getThemeColors(brightness).contentSurface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: UIThemeHelper.getThemeColors(brightness).borderColor,
+              ),
+            ),
+            child: SwitchListTile(
+              title: Text(
+                "Dhikr Reminders",
+                style: AppTextStyles.prayerName(brightness),
+              ),
+              subtitle: const Text("Receive periodic reminders for dhikr"),
+              value: settings.dhikrRemindersEnabled,
+              onChanged: (value) {
+                _logger.logInteraction(
+                  'SettingsView',
+                  'Toggle dhikr reminders',
+                  data: {'enabled': value},
+                );
+                settingsNotifier.updateDhikrRemindersEnabled(value);
+              },
+              activeThumbColor:
+                  UIThemeHelper.getThemeColors(brightness).accentColor,
+              inactiveThumbColor:
+                  UIThemeHelper.getThemeColors(brightness).iconInactive,
+              inactiveTrackColor:
+                  UIThemeHelper.getThemeColors(brightness).borderColor,
+              secondary: const Icon(Icons.notifications_active_outlined),
+            ),
+          ),
+
+          if (settings.dhikrRemindersEnabled)
+            SettingsListItem(
+              icon: Icons.schedule,
+              title: "Reminder Interval",
+              subtitle: "${settings.dhikrReminderInterval} hours",
+              onTap: () {
+                _logger.logInteraction(
+                  'SettingsView',
+                  'Change dhikr reminder interval',
+                  data: {'current': settings.dhikrReminderInterval},
+                );
+                _showGenericSelectionDialog<int>(
+                  context: context,
+                  dialogTitle: "Dhikr Reminder Interval",
+                  currentValue: settings.dhikrReminderInterval,
+                  options: const [1, 2, 3, 4, 6, 8, 12, 24],
+                  optionTitleBuilder:
+                      (interval) => "$interval hour${interval == 1 ? '' : 's'}",
+                  onSettingChanged: (value) {
+                    if (value != null) {
+                      settingsNotifier.updateDhikrReminderInterval(value);
+                    }
+                  },
+                );
+              },
+            ),
+
           SettingsSectionHeader(
             title: "Notifications",
             trailing:
@@ -382,6 +445,23 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                 data: {'current': settings.madhab},
               );
               _showMadhabPicker(context, settings.madhab, settingsNotifier);
+            },
+          ),
+
+          SettingsListItem(
+            icon: Icons.access_time,
+            title: "Prayer Time Adjustments",
+            subtitle: "Adjust prayer times to match local mosque times",
+            onTap: () {
+              _logger.logInteraction(
+                'SettingsView',
+                'Open prayer time adjustments',
+              );
+              _showPrayerTimeAdjustmentsDialog(
+                context,
+                settings,
+                settingsNotifier,
+              );
             },
           ),
 
@@ -1043,6 +1123,23 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     );
   }
 
+  void _showPrayerTimeAdjustmentsDialog(
+    BuildContext context,
+    AppSettings settings,
+    SettingsNotifier notifier,
+  ) {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return PrayerTimeAdjustmentsDialog(
+          settings: settings,
+          notifier: notifier,
+          logger: _logger,
+        );
+      },
+    );
+  }
+
   Future<void> _recalculatePrayerTimes({
     String? newMethod,
     String? newMadhab,
@@ -1051,5 +1148,179 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       'RecalculatePrayerTimes called (placeholder)',
       data: {'newMethod': newMethod, 'newMadhab': newMadhab},
     );
+  }
+}
+
+class PrayerTimeAdjustmentsDialog extends StatefulWidget {
+  final AppSettings settings;
+  final SettingsNotifier notifier;
+  final LoggerService logger;
+
+  const PrayerTimeAdjustmentsDialog({
+    super.key,
+    required this.settings,
+    required this.notifier,
+    required this.logger,
+  });
+
+  @override
+  State<PrayerTimeAdjustmentsDialog> createState() =>
+      _PrayerTimeAdjustmentsDialogState();
+}
+
+class _PrayerTimeAdjustmentsDialogState
+    extends State<PrayerTimeAdjustmentsDialog> {
+  late int fajrOffset;
+  late int sunriseOffset;
+  late int dhuhrOffset;
+  late int asrOffset;
+  late int maghribOffset;
+  late int ishaOffset;
+
+  @override
+  void initState() {
+    super.initState();
+    fajrOffset = widget.settings.fajrOffset;
+    sunriseOffset = widget.settings.sunriseOffset;
+    dhuhrOffset = widget.settings.dhuhrOffset;
+    asrOffset = widget.settings.asrOffset;
+    maghribOffset = widget.settings.maghribOffset;
+    ishaOffset = widget.settings.ishaOffset;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+
+    return AlertDialog(
+      title: const Text('Prayer Time Adjustments'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Adjust prayer times to match your local mosque times.\n\nCurrent offsets are in minutes (±60 max).',
+              style: AppTextStyles.label(brightness).copyWith(fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            _buildOffsetSlider('Fajr', fajrOffset, (value) {
+              setState(() => fajrOffset = value);
+            }),
+            _buildOffsetSlider('Sunrise', sunriseOffset, (value) {
+              setState(() => sunriseOffset = value);
+            }),
+            _buildOffsetSlider('Dhuhr', dhuhrOffset, (value) {
+              setState(() => dhuhrOffset = value);
+            }),
+            _buildOffsetSlider('Asr', asrOffset, (value) {
+              setState(() => asrOffset = value);
+            }),
+            _buildOffsetSlider('Maghrib', maghribOffset, (value) {
+              setState(() => maghribOffset = value);
+            }),
+            _buildOffsetSlider('Isha', ishaOffset, (value) {
+              setState(() => ishaOffset = value);
+            }),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(onPressed: _saveChanges, child: const Text('Save')),
+      ],
+    );
+  }
+
+  Widget _buildOffsetSlider(
+    String prayerName,
+    int currentValue,
+    ValueChanged<int> onChanged,
+  ) {
+    final brightness = Theme.of(context).brightness;
+    final colors = UIThemeHelper.getThemeColors(brightness);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(prayerName, style: AppTextStyles.prayerName(brightness)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: Icon(Icons.remove, color: colors.accentColor),
+                onPressed:
+                    currentValue > -60
+                        ? () => onChanged(currentValue - 1)
+                        : null,
+                iconSize: 20,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              Text(
+                '${currentValue > 0 ? '+' : ''}$currentValue min',
+                style: AppTextStyles.label(brightness).copyWith(
+                  color: colors.accentColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.add, color: colors.accentColor),
+                onPressed:
+                    currentValue < 60
+                        ? () => onChanged(currentValue + 1)
+                        : null,
+                iconSize: 20,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Slider(
+            value: currentValue.toDouble(),
+            min: -60,
+            max: 60,
+            divisions: 120,
+            onChanged: (value) => onChanged(value.toInt()),
+            activeColor: colors.accentColor,
+            inactiveColor: colors.borderColor,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveChanges() async {
+    widget.logger.logInteraction(
+      'PrayerTimeAdjustmentsDialog',
+      'Save prayer time offsets',
+      data: {
+        'fajr': fajrOffset,
+        'sunrise': sunriseOffset,
+        'dhuhr': dhuhrOffset,
+        'asr': asrOffset,
+        'maghrib': maghribOffset,
+        'isha': ishaOffset,
+      },
+    );
+
+    await widget.notifier.updateFajrOffset(fajrOffset);
+    await widget.notifier.updateSunriseOffset(sunriseOffset);
+    await widget.notifier.updateDhuhrOffset(dhuhrOffset);
+    await widget.notifier.updateAsrOffset(asrOffset);
+    await widget.notifier.updateMaghribOffset(maghribOffset);
+    await widget.notifier.updateIshaOffset(ishaOffset);
+
+    if (mounted) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Prayer time adjustments saved')),
+      );
+    }
   }
 }

@@ -20,7 +20,8 @@ class SettingsNotifier extends Notifier<AppSettings> {
   late final NotificationService _notificationService;
   late final LoggerService _logger;
   late final PrayerService _prayerService;
-  StreamSubscription<NotificationPermissionStatus>? _permissionSubscription;
+  StreamSubscription<NotificationPermissionStatus>?
+  _permissionSubscription;
   Timer? _saveSettingsDebounceTimer;
   static const Duration _saveSettingsDebounceDuration = Duration(
     milliseconds: 750,
@@ -247,6 +248,27 @@ class SettingsNotifier extends Notifier<AppSettings> {
     await _forceSaveSettings();
   }
 
+  Future<void> updateDhikrRemindersEnabled(bool enabled) async {
+    state = state.copyWith(dhikrRemindersEnabled: enabled);
+    await _forceSaveSettings();
+
+    if (enabled) {
+      await _scheduleDhikrReminders();
+    } else {
+      await _cancelDhikrReminders();
+    }
+  }
+
+  Future<void> updateDhikrReminderInterval(int intervalHours) async {
+    state = state.copyWith(dhikrReminderInterval: intervalHours);
+    await _forceSaveSettings();
+
+    if (state.dhikrRemindersEnabled) {
+      await _cancelDhikrReminders();
+      await _scheduleDhikrReminders();
+    }
+  }
+
   /// Reset all settings to defaults
   Future<void> resetToDefaults() async {
     state = AppSettings.defaults;
@@ -414,6 +436,62 @@ class SettingsNotifier extends Notifier<AppSettings> {
     } catch (e, s) {
       _logger.error(
         'Error in _recalculateAndRescheduleNotifications',
+        error: e,
+        stackTrace: s,
+      );
+    }
+  }
+
+  Future<void> _scheduleDhikrReminders() async {
+    try {
+      // Cancel any existing dhikr reminders first
+      await _cancelDhikrReminders();
+
+      // Schedule the first dhikr reminder
+      final now = DateTime.now();
+      final nextReminderTime = now.add(
+        Duration(hours: state.dhikrReminderInterval),
+      );
+
+      await _notificationService.scheduleTesbihNotification(
+        id: 9999, // Use a unique ID for dhikr reminders
+        localizedTitle: 'Dhikr Reminder',
+        localizedBody:
+            '🤲 Time for your dhikr. Remember Allah with a peaceful heart.',
+        scheduledTime: nextReminderTime,
+        isEnabled: true,
+        payload: jsonEncode({
+          'type': 'dhikr_reminder',
+          'intervalHours': state.dhikrReminderInterval,
+          'scheduledTime': nextReminderTime.toIso8601String(),
+        }),
+      );
+
+      _logger.info(
+        'Dhikr reminder scheduled',
+        data: {
+          'nextReminder': nextReminderTime.toIso8601String(),
+          'intervalHours': state.dhikrReminderInterval,
+        },
+      );
+    } catch (e, s) {
+      _logger.error(
+        'Error scheduling dhikr reminders',
+        error: e,
+        stackTrace: s,
+      );
+    }
+  }
+
+  Future<void> _cancelDhikrReminders() async {
+    try {
+      // Cancel the dhikr reminder notification
+      await _notificationService.cancelNotification(9999);
+
+      _logger.info('Dhikr reminders cancelled');
+    } catch (e, s) {
+      _logger.error(
+        'Error cancelling dhikr reminders',
         error: e,
         stackTrace: s,
       );

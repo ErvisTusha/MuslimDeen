@@ -2,6 +2,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/database_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
@@ -21,4 +22,8 @@ final storageServiceProvider = Provider<StorageService>(
 
 final notificationServiceProvider = Provider<NotificationService>(
   (ref) => locator<NotificationService>(),
+);
+
+final databaseServiceProvider = Provider<DatabaseService>(
+  (ref) => locator<DatabaseService>(),
 );

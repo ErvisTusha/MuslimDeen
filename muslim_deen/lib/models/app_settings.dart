@@ -24,6 +24,8 @@ class AppSettings {
   final int asrOffset;
   final int maghribOffset;
   final int ishaOffset;
+  final bool dhikrRemindersEnabled;
+  final int dhikrReminderInterval; // in hours
 
   AppSettings({
     this.calculationMethod = 'MuslimWorldLeague',
@@ -42,6 +44,8 @@ class AppSettings {
     this.asrOffset = 0,
     this.maghribOffset = 0,
     this.ishaOffset = 0,
+    this.dhikrRemindersEnabled = false,
+    this.dhikrReminderInterval = 4,
   }) : notifications =
            notifications ??
            {for (var prayer in PrayerNotification.values) prayer: true};
@@ -62,6 +66,8 @@ class AppSettings {
     int? asrOffset,
     int? maghribOffset,
     int? ishaOffset,
+    bool? dhikrRemindersEnabled,
+    int? dhikrReminderInterval,
   }) {
     return AppSettings(
       calculationMethod: calculationMethod ?? this.calculationMethod,
@@ -81,6 +87,10 @@ class AppSettings {
       asrOffset: asrOffset ?? this.asrOffset,
       maghribOffset: maghribOffset ?? this.maghribOffset,
       ishaOffset: ishaOffset ?? this.ishaOffset,
+      dhikrRemindersEnabled:
+          dhikrRemindersEnabled ?? this.dhikrRemindersEnabled,
+      dhikrReminderInterval:
+          dhikrReminderInterval ?? this.dhikrReminderInterval,
     );
   }
 
@@ -103,6 +113,8 @@ class AppSettings {
       'asrOffset': asrOffset,
       'maghribOffset': maghribOffset,
       'ishaOffset': ishaOffset,
+      'dhikrRemindersEnabled': dhikrRemindersEnabled,
+      'dhikrReminderInterval': dhikrReminderInterval,
     };
   }
 
@@ -171,6 +183,8 @@ class AppSettings {
       asrOffset: json['asrOffset'] as int? ?? 0,
       maghribOffset: json['maghribOffset'] as int? ?? 0,
       ishaOffset: json['ishaOffset'] as int? ?? 0,
+      dhikrRemindersEnabled: json['dhikrRemindersEnabled'] as bool? ?? false,
+      dhikrReminderInterval: json['dhikrReminderInterval'] as int? ?? 4,
     );
   }
 

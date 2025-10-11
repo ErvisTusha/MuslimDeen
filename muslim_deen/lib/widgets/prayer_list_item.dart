@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:muslim_deen/models/prayer_display_info_data.dart';
+import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/prayer_history_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/views/settings_view.dart'; // For navigation
 
-class PrayerListItem extends StatelessWidget {
+class PrayerListItem extends StatefulWidget {
   final PrayerDisplayInfoData prayerInfo;
   final DateFormat timeFormatter;
   final bool isCurrent;
@@ -31,6 +33,67 @@ class PrayerListItem extends StatelessWidget {
   });
 
   @override
+  State<PrayerListItem> createState() => _PrayerListItemState();
+}
+
+class _PrayerListItemState extends State<PrayerListItem> {
+  bool _isCompleted = false;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkCompletionStatus();
+  }
+
+  Future<void> _checkCompletionStatus() async {
+    final prayerHistoryService = locator<PrayerHistoryService>();
+    final isCompleted = await prayerHistoryService.isPrayerCompletedToday(
+      widget.prayerInfo.prayerEnum.name,
+    );
+    if (mounted) {
+      setState(() {
+        _isCompleted = isCompleted;
+      });
+    }
+  }
+
+  Future<void> _toggleCompletion() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final prayerHistoryService = locator<PrayerHistoryService>();
+      if (_isCompleted) {
+        await prayerHistoryService.unmarkPrayerCompleted(
+          widget.prayerInfo.prayerEnum.name,
+        );
+      } else {
+        await prayerHistoryService.markPrayerCompleted(
+          widget.prayerInfo.prayerEnum.name,
+        );
+      }
+
+      setState(() {
+        _isCompleted = !_isCompleted;
+        _isLoading = false;
+      });
+
+      widget.onRefresh?.call();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update prayer status: $e')),
+        );
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final itemColors = _getItemColors();
     final splashColors = _getSplashColors();
@@ -45,31 +108,55 @@ class PrayerListItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: itemColors.background,
-            border: const Border(
-              top: BorderSide(color: Colors.transparent),
-            ),
+            border: const Border(top: BorderSide(color: Colors.transparent)),
           ),
           child: Row(
             children: [
-              Icon(prayerInfo.iconData, color: itemColors.icon, size: 22),
+              Icon(
+                widget.prayerInfo.iconData,
+                color: itemColors.icon,
+                size: 22,
+              ),
               const SizedBox(width: 16),
               Text(
-                prayerInfo.name,
-                style: AppTextStyles.prayerName(brightness).copyWith(
+                widget.prayerInfo.name,
+                style: AppTextStyles.prayerName(widget.brightness).copyWith(
                   color: itemColors.text,
-                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.w600,
+                  fontWeight:
+                      widget.isCurrent ? FontWeight.bold : FontWeight.w600,
                 ),
               ),
               const Spacer(),
               Text(
-                prayerInfo.time != null
-                    ? timeFormatter.format(prayerInfo.time!.toLocal())
+                widget.prayerInfo.time != null
+                    ? widget.timeFormatter.format(
+                      widget.prayerInfo.time!.toLocal(),
+                    )
                     : '---',
-                style: AppTextStyles.prayerTime(brightness).copyWith(
+                style: AppTextStyles.prayerTime(widget.brightness).copyWith(
                   color: itemColors.text,
-                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.w600,
+                  fontWeight:
+                      widget.isCurrent ? FontWeight.bold : FontWeight.w600,
                 ),
               ),
+              const SizedBox(width: 12),
+              _isLoading
+                  ? SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        itemColors.icon,
+                      ),
+                    ),
+                  )
+                  : Checkbox(
+                    value: _isCompleted,
+                    onChanged: (bool? value) => _toggleCompletion(),
+                    activeColor: itemColors.icon,
+                    checkColor: itemColors.background,
+                  ),
             ],
           ),
         ),
@@ -80,22 +167,28 @@ class PrayerListItem extends StatelessWidget {
   /// Returns the appropriate colors for the item based on its state
   _ItemColors _getItemColors() {
     return _ItemColors(
-      background: isCurrent ? currentPrayerItemBgColor : contentSurfaceColor,
-      icon: isCurrent
-          ? currentPrayerItemTextColor
-          : AppColors.iconInactive(brightness),
-      text: isCurrent
-          ? currentPrayerItemTextColor
-          : AppColors.textPrimary(brightness),
+      background:
+          widget.isCurrent
+              ? widget.currentPrayerItemBgColor
+              : widget.contentSurfaceColor,
+      icon:
+          widget.isCurrent
+              ? widget.currentPrayerItemTextColor
+              : AppColors.iconInactive(widget.brightness),
+      text:
+          widget.isCurrent
+              ? widget.currentPrayerItemTextColor
+              : AppColors.textPrimary(widget.brightness),
     );
   }
 
   /// Returns the appropriate splash colors for the item based on its state
   _SplashColors _getSplashColors() {
-    final baseColor = isCurrent
-        ? currentPrayerItemTextColor
-        : AppColors.primary(brightness);
-    
+    final baseColor =
+        widget.isCurrent
+            ? widget.currentPrayerItemTextColor
+            : AppColors.primary(widget.brightness);
+
     return _SplashColors(
       splash: baseColor.withAlpha((0.1 * 255).round()),
       highlight: baseColor.withAlpha((0.05 * 255).round()),
@@ -111,7 +204,7 @@ class PrayerListItem extends StatelessWidget {
         settings: const RouteSettings(name: '/settings'),
       ),
     ).then((_) {
-      onRefresh?.call();
+      widget.onRefresh?.call();
     });
   }
 }
@@ -134,8 +227,5 @@ class _SplashColors {
   final Color splash;
   final Color highlight;
 
-  const _SplashColors({
-    required this.splash,
-    required this.highlight,
-  });
+  const _SplashColors({required this.splash, required this.highlight});
 }

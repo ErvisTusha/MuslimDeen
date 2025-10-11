@@ -5,7 +5,7 @@
 ### Tech Stack
 - **Framework**: Flutter (Dart)
 - **State Management**: Riverpod (NotifierProvider for settings, StateNotifier for complex state)
-- **Local Storage**: SharedPreferences (for app settings)
+- **Local Storage**: SQLite database (sqflite) for structured data persistence
 - **Notifications**: flutter_local_notifications
 - **Prayer Calculations**: adhan_dart package
 - **Location Services**: geolocator, geocoding
@@ -16,12 +16,13 @@
 
 #### 1. Settings Management
 - **Provider**: `settingsProvider` (NotifierProvider<SettingsNotifier, AppSettings>)
-- **Persistence**: Debounced save to SharedPreferences (750ms) for most changes, immediate save for critical updates
-- **Decision**: Uses debounced saving to balance performance with data safety
+- **Persistence**: SQLite database with key-value table, automatic migration from SharedPreferences
+- **Decision**: Database provides better structure, query capabilities, and future sync preparation
 - **Data Flow**:
   ```
-  UI Change → SettingsNotifier.updateX() → _forceSaveSettings() → SharedPreferences
-  App Start → SettingsNotifier.build() → _initializeSettings() → State Update → UI Rebuild
+  UI Change → SettingsNotifier.updateX() → _saveSettings() → DatabaseService.saveSettings()
+  App Start → SettingsNotifier.build() → _initializeSettings() → DatabaseService.getSettings() → State Update → UI Rebuild
+  Migration: First launch → Check database → If empty → Migrate from SharedPreferences → Save to database
   ```
 
 #### 2. Notification Service
@@ -44,22 +45,47 @@ flowchart TD
     B --> C[State updated immediately]
     C --> D[_saveSettings() called]
     D --> E[JSON encode state]
-    E --> F[SharedPreferences.setString()]
-    F --> G[UI reflects change]
+    E --> F[DatabaseService.saveSettings()]
+    F --> G[SQLite INSERT/UPDATE]
+    G --> H[UI reflects change]
+```
+
+#### Data Migration
+```mermaid
+flowchart TD
+    A[App Launch] --> B[SettingsNotifier._initializeSettings()]
+    B --> C[Try DatabaseService.getSettings()]
+    C --> D{Settings exist?}
+    D -->|Yes| E[Load from database]
+    D -->|No| F[Try SharedPreferences.getString()]
+    F --> G{Legacy data?}
+    G -->|Yes| H[Load legacy data]
+    H --> I[DatabaseService.saveSettings()]
+    I --> J[Delete legacy SharedPreferences]
+    G -->|No| K[Use AppSettings.defaults]
+    E --> L[State = loaded settings]
+    H --> L
+    K --> L
 ```
 
 #### App Initialization
 ```mermaid
 flowchart TD
     A[main()] --> B[setupLocator()]
-    B --> C[Initialize SharedPreferences]
-    C --> D[Register services with GetIt]
-    D --> E[runApp()]
-    E --> F[ProviderScope]
-    F --> G[SettingsNotifier.build()]
-    G --> H[_initializeSettings()]
-    H --> I[State = loaded settings]
-    I --> J[MaterialApp with themeMode from state]
+    B --> C[Initialize DatabaseService]
+    C --> D[Create SQLite tables if needed]
+    D --> E[Register services with GetIt]
+    E --> F[runApp()]
+    F --> G[ProviderScope]
+    G --> H[SettingsNotifier.build()]
+    H --> I[_initializeSettings()]
+    I --> J[DatabaseService.getSettings()]
+    J --> K{Settings exist?}
+    K -->|Yes| L[Load from database]
+    K -->|No| M[Migrate from SharedPreferences]
+    L --> N[State = loaded settings]
+    M --> N
+    N --> O[MaterialApp with themeMode from state]
 ```
 
 ### Recent Architectural Decisions
@@ -100,11 +126,79 @@ flowchart TD
 - **Impact**: Both azan and tesbih reminders now follow the device sound profile—vibrating on vibrate mode and remaining quiet when muted.
 - **Files Changed**: `lib/services/notification_service.dart`
 
+#### 7. Local Database Implementation (October 2025)
+- **Problem**: SharedPreferences limitations for complex data relationships, query capabilities, and future Google Drive sync preparation.
+- **Solution**: Implemented comprehensive SQLite database with structured tables for settings, prayer history, tasbih history, and user location data.
+- **Impact**: Better data persistence, complex queries support, backward compatibility with automatic migration from SharedPreferences.
+- **Database Schema**:
+  - `settings` table: key-value storage for app settings
+  - `prayer_history` table: date-based prayer completion tracking
+  - `tasbih_history` table: date and dhikr-type based counting with statistics
+  - `user_location` table: GPS coordinates with names for location history
+- **Migration Strategy**: Automatic migration from SharedPreferences to database on first app launch
+- **Files Changed**: `lib/services/database_service.dart`, `lib/providers/settings_notifier.dart`, `lib/services/prayer_history_service.dart`, `lib/services/tasbih_history_service.dart`, `lib/providers/service_providers.dart`, `pubspec.yaml`
+
 #### 7. Tasbih Vibration Enhancement (October 2025)
 - **Problem**: Tasbih counter vibration feedback failed on certain devices due to inconsistent HapticFeedback support across platforms.
 - **Solution**: Integrated vibration package for robust device vibration detection and control, with HapticFeedback as fallback.
 - **Impact**: Improved vibration reliability across Android and iOS devices, ensuring consistent haptic feedback when counting dhikr.
 - **Files Changed**: `lib/views/tesbih_view.dart`, `pubspec.yaml`
+
+#### 8. Code Quality & Error Handling Improvements (October 2025)
+- **Problem**: Hardcoded log levels, missing error boundaries, potential memory leaks, inconsistent navigation
+- **Solution**: 
+  - Made logger level environment-based (debug vs production)
+  - Added comprehensive error handling in mosque_view with clipboard fallback
+  - Enhanced audio player disposal with try-catch blocks
+  - Created centralized NavigationService for consistent routing
+- **Impact**: More robust error handling, better resource management, improved debugging experience
+- **Files Changed**: `lib/services/logger_service.dart`, `lib/views/mosque_view.dart`, `lib/views/tesbih_view.dart`, `lib/services/navigation_service.dart`
+
+#### 9. Prayer History & Statistics Feature (October 2025)
+- **Problem**: No way to track prayer completion or view spiritual progress
+- **Solution**: 
+  - Created PrayerHistoryService with local storage for prayer tracking
+  - Built PrayerStatsView showing weekly/monthly stats, completion rates, and streaks
+  - Added methods for marking prayers complete/incomplete
+- **Impact**: Users can now track their prayer consistency and see motivating statistics
+- **Files Changed**: `lib/services/prayer_history_service.dart`, `lib/views/prayer_stats_view.dart`, `lib/services/storage_service.dart`
+
+#### 10. Dhikr Reminders Feature (October 2025)
+- **Problem**: No automated reminders to encourage dhikr throughout the day
+- **Solution**: 
+  - Extended AppSettings with dhikrRemindersEnabled and dhikrReminderInterval fields
+  - Created DhikrReminderService to schedule periodic notifications
+  - Leverages existing notification infrastructure
+- **Impact**: Users receive gentle reminders to engage in dhikr at customizable intervals
+- **Files Changed**: `lib/models/app_settings.dart`, `lib/services/dhikr_reminder_service.dart`
+
+#### 11. Ramadan Last 10 Nights Banner (October 2025)
+- **Problem**: No special UI to highlight the blessed last 10 nights of Ramadan
+- **Solution**: 
+  - Created RamadanCountdownBanner widget using Hijri calendar
+  - Automatically displays during Ramadan days 21-30
+  - Shows countdown and highlights odd nights (potential Laylat al-Qadr)
+- **Impact**: Spiritually meaningful feature that appears automatically during the holiest nights
+- **Files Changed**: `lib/widgets/ramadan_countdown_banner.dart`
+
+### Core Services (Updated October 2025)
+
+#### Navigation Service
+- **Purpose**: Centralized navigation management
+- **Pattern**: Singleton with GlobalKey<NavigatorState>
+- **Features**: Push, pop, replace, and complex navigation flows with logging
+
+#### Prayer History Service
+- **Purpose**: Track prayer completion and generate statistics
+- **Storage**: SharedPreferences with date-keyed entries
+- **Features**: Mark prayers complete, weekly/monthly stats, streak calculation, completion rate
+- **Data Retention**: 90 days of history
+
+#### Dhikr Reminder Service
+- **Purpose**: Schedule periodic dhikr reminder notifications
+- **Integration**: Uses NotificationService for scheduling
+- **Features**: Configurable intervals, automatic cycling through dhikr types
+- **Notification IDs**: 2000-2009 (base 2000, max 10 reminders)
 
 ### Key Design Patterns
 
@@ -138,6 +232,12 @@ flowchart TD
 
 ### Future Considerations
 
+#### Immediate Next Steps
+- Integrate prayer tracking UI into prayer_view.dart (checkboxes for marking prayers complete)
+- Add dhikr reminder settings UI in settings_view.dart (toggle and interval selector)
+- Integrate RamadanCountdownBanner into home_view.dart
+- Add navigation to prayer stats from home screen
+
 #### Performance Optimizations
 - Consider caching prayer times to reduce calculations
 - Implement background location updates for better accuracy
@@ -155,5 +255,5 @@ flowchart TD
 
 ---
 
-*Last Updated: October 10, 2025*
-*Document reflects current implementation after settings persistence, notification service fixes, permission implementation, and prayer/tesbih notification separation*
+*Last Updated: October 11, 2025*
+*Document reflects current implementation including prayer history tracking, dhikr reminders, Ramadan countdown, improved error handling, and centralized navigation*

@@ -30,53 +30,80 @@ class NotificationReschedulerService {
 
   /// Initialize the background service
   Future<void> init() async {
-    await Workmanager().initialize(_callbackDispatcher);
+    try {
+      await Workmanager().initialize(_callbackDispatcher);
+      _logger.info('Workmanager initialized successfully');
+    } catch (e, s) {
+      _logger.warning(
+        'Workmanager initialization failed - background rescheduling will not be available',
+        error: e,
+        stackTrace: s,
+      );
+      // Don't rethrow - background rescheduling is not critical for app functionality
+      return;
+    }
 
-    // Register periodic tasks
-    await _registerPeriodicTasks();
-
-    _logger.info('NotificationReschedulerService initialized');
+    try {
+      // Register periodic tasks
+      await _registerPeriodicTasks();
+      _logger.info('NotificationReschedulerService initialized');
+    } catch (e, s) {
+      _logger.error(
+        'Failed to register periodic tasks',
+        error: e,
+        stackTrace: s,
+      );
+    }
   }
 
   /// Register periodic background tasks
   Future<void> _registerPeriodicTasks() async {
-    // Reschedule prayer notifications every 24 hours
-    await Workmanager().registerPeriodicTask(
-      _rescheduleTaskName,
-      _rescheduleTaskName,
-      frequency: const Duration(hours: 24),
-      initialDelay: const Duration(hours: 1), // Start after 1 hour
-      constraints: Constraints(
-        networkType: NetworkType.notRequired,
-        requiresBatteryNotLow: false,
-        requiresCharging: false,
-        requiresDeviceIdle: false,
-        requiresStorageNotLow: false,
-      ),
-      backoffPolicy: BackoffPolicy.linear,
-      backoffPolicyDelay: const Duration(hours: 1),
-      existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
-    );
+    try {
+      // Reschedule prayer notifications every 24 hours
+      await Workmanager().registerPeriodicTask(
+        _rescheduleTaskName,
+        _rescheduleTaskName,
+        frequency: const Duration(hours: 24),
+        initialDelay: const Duration(hours: 1), // Start after 1 hour
+        constraints: Constraints(
+          networkType: NetworkType.connected,
+          requiresBatteryNotLow: false,
+          requiresCharging: false,
+          requiresDeviceIdle: false,
+          requiresStorageNotLow: false,
+        ),
+        backoffPolicy: BackoffPolicy.linear,
+        backoffPolicyDelay: const Duration(hours: 1),
+        existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
+      );
 
-    // Reschedule tesbih reminder every 12 hours
-    await Workmanager().registerPeriodicTask(
-      _tesbihReminderTaskName,
-      _tesbihReminderTaskName,
-      frequency: const Duration(hours: 12),
-      initialDelay: const Duration(minutes: 30),
-      constraints: Constraints(
-        networkType: NetworkType.notRequired,
-        requiresBatteryNotLow: false,
-        requiresCharging: false,
-        requiresDeviceIdle: false,
-        requiresStorageNotLow: false,
-      ),
-      backoffPolicy: BackoffPolicy.linear,
-      backoffPolicyDelay: const Duration(hours: 1),
-      existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
-    );
+      // Reschedule tesbih/dhikr reminder every 6 hours
+      await Workmanager().registerPeriodicTask(
+        _tesbihReminderTaskName,
+        _tesbihReminderTaskName,
+        frequency: const Duration(hours: 6),
+        initialDelay: const Duration(minutes: 30),
+        constraints: Constraints(
+          networkType: NetworkType.connected,
+          requiresBatteryNotLow: false,
+          requiresCharging: false,
+          requiresDeviceIdle: false,
+          requiresStorageNotLow: false,
+        ),
+        backoffPolicy: BackoffPolicy.linear,
+        backoffPolicyDelay: const Duration(hours: 1),
+        existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
+      );
 
-    _logger.info('Periodic notification reschedule tasks registered');
+      _logger.info('Periodic notification reschedule tasks registered');
+    } catch (e, s) {
+      _logger.error(
+        'Failed to register periodic tasks',
+        error: e,
+        stackTrace: s,
+      );
+      rethrow;
+    }
   }
 
   /// Cancel all background tasks
@@ -172,46 +199,60 @@ class NotificationReschedulerService {
     }
   }
 
-  /// Reschedule tesbih reminder
+  /// Reschedule tesbih/dhikr reminder
   Future<void> _rescheduleTesbihReminder() async {
     try {
-      final reminderHour =
-          _storageService.getData('tesbih_reminder_hour') as int?;
-      final reminderMinute =
-          _storageService.getData('tesbih_reminder_minute') as int?;
-      final enabled =
-          _storageService.getData('tesbih_reminder_enabled') as bool?;
-
-      if (reminderHour == null || reminderMinute == null || enabled != true) {
+      final settingsJson = _storageService.getData('app_settings') as String?;
+      if (settingsJson == null) {
+        _logger.warning(
+          'No app settings found, skipping dhikr reminder reschedule',
+        );
         return;
       }
 
-      final now = DateTime.now();
-      var scheduledDateTime = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        reminderHour,
-        reminderMinute,
+      final settings = AppSettings.fromJson(
+        jsonDecode(settingsJson) as Map<String, dynamic>,
       );
 
-      if (scheduledDateTime.isBefore(now)) {
-        scheduledDateTime = scheduledDateTime.add(const Duration(days: 1));
+      if (!settings.dhikrRemindersEnabled) {
+        // Cancel any existing dhikr reminders if disabled
+        await _notificationService.cancelNotification(9999);
+        _logger.info('Dhikr reminders disabled, cancelled existing reminders');
+        return;
       }
 
-      await _notificationService.scheduleTesbihNotification(
-        id: 9876,
-        localizedTitle: 'Tasbih Reminder',
-        localizedBody:
-            '🤲 Time for your dhikr. Remember Allah with a peaceful heart.',
-        scheduledTime: scheduledDateTime,
-        isEnabled: true,
+      // Check if there's already a dhikr reminder scheduled
+      // For simplicity, we'll always reschedule to ensure it's up to date
+      final now = DateTime.now();
+      final nextReminderTime = now.add(
+        Duration(hours: settings.dhikrReminderInterval),
       );
 
-      _logger.info('Tesbih reminder rescheduled in background');
+      await _notificationService.scheduleTesbihNotification(
+        id: 9999,
+        localizedTitle: 'Dhikr Reminder',
+        localizedBody:
+            '🤲 Time for your dhikr. Remember Allah with a peaceful heart.',
+        scheduledTime: nextReminderTime,
+        isEnabled: true,
+        payload: jsonEncode({
+          'type': 'dhikr_reminder',
+          'intervalHours': settings.dhikrReminderInterval,
+          'scheduledTime': nextReminderTime.toIso8601String(),
+        }),
+      );
+
+      _logger.info(
+        'Dhikr reminder rescheduled in background',
+        data: {
+          'enabled': settings.dhikrRemindersEnabled,
+          'intervalHours': settings.dhikrReminderInterval,
+          'nextReminder': nextReminderTime.toIso8601String(),
+        },
+      );
     } catch (e, s) {
       _logger.error(
-        'Error rescheduling tesbih reminder in background',
+        'Error rescheduling dhikr reminder in background',
         error: e,
         stackTrace: s,
       );

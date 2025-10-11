@@ -23,12 +23,15 @@ import 'package:muslim_deen/services/prayer_service.dart';
 import 'package:muslim_deen/services/widget_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/styles/ui_theme_helper.dart';
+import 'package:muslim_deen/views/history_view.dart';
+import 'package:muslim_deen/views/prayer_stats_view.dart';
 import 'package:muslim_deen/views/settings_view.dart';
 import 'package:muslim_deen/widgets/common_container_styles.dart';
 import 'package:muslim_deen/widgets/custom_app_bar.dart';
 import 'package:muslim_deen/widgets/loading_error_state_builder.dart';
 import 'package:muslim_deen/widgets/prayer_countdown_timer.dart';
 import 'package:muslim_deen/widgets/prayer_list_item.dart';
+import 'package:muslim_deen/widgets/ramadan_countdown_banner.dart';
 
 /// HomeView displays prayer times and manages prayer notifications.
 ///
@@ -936,7 +939,22 @@ class _HomeViewState extends ConsumerState<HomeView>
 
     return Scaffold(
       backgroundColor: AppColors.getScaffoldBackground(brightness),
-      appBar: CustomAppBar(title: "Prayer Times", brightness: brightness),
+      appBar: CustomAppBar(
+        title: "Prayer Times",
+        brightness: brightness,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bar_chart),
+            onPressed: _navigateToPrayerStats,
+            tooltip: 'Prayer Statistics',
+          ),
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: _navigateToHistory,
+            tooltip: 'Historical Data',
+          ),
+        ],
+      ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _dataLoadingFuture,
         builder: (context, snapshot) {
@@ -1040,6 +1058,7 @@ class _HomeViewState extends ConsumerState<HomeView>
           displayCountry,
           colors,
         ),
+        const RamadanCountdownBanner(),
         _buildCurrentNextPrayerSection(isLoading, colors),
         _buildPrayerTimesSection(
           isLoading,
@@ -1318,6 +1337,26 @@ class _HomeViewState extends ConsumerState<HomeView>
         _triggerUIRefresh();
       }
     });
+  }
+
+  void _navigateToPrayerStats() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (context) => const PrayerStatsView(),
+        settings: const RouteSettings(name: '/prayer-stats'),
+      ),
+    );
+  }
+
+  void _navigateToHistory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (context) => const HistoryView(),
+        settings: const RouteSettings(name: '/history'),
+      ),
+    );
   }
 }
 

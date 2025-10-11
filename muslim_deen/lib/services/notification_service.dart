@@ -48,7 +48,12 @@ class NotificationService {
         macOS: darwinSettings,
       );
 
-      await _notificationsPlugin.initialize(initializationSettings);
+      await _notificationsPlugin.initialize(
+        initializationSettings,
+        onDidReceiveNotificationResponse: _onNotificationResponse,
+        onDidReceiveBackgroundNotificationResponse:
+            _onBackgroundNotificationResponse,
+      );
 
       _isInitialized = true;
       _logger.info('NotificationService initialized successfully.');
@@ -59,6 +64,87 @@ class NotificationService {
       _isInitialized = false;
       _logger.error(
         'Failed to initialize NotificationService',
+        error: e,
+        stackTrace: s,
+      );
+    }
+  }
+
+  /// Handle notification response when app is in foreground
+  void _onNotificationResponse(NotificationResponse response) {
+    _handleNotificationResponse(response);
+  }
+
+  /// Handle notification response when app is in background
+  @pragma('vm:entry-point')
+  static void _onBackgroundNotificationResponse(NotificationResponse response) {
+    // Initialize minimal services for background
+    // For now, just log the response
+    // In a full implementation, you'd initialize services and handle the response
+  }
+
+  /// Handle notification response
+  void _handleNotificationResponse(NotificationResponse response) {
+    try {
+      final payload = response.payload;
+      if (payload != null) {
+        final data = jsonDecode(payload) as Map<String, dynamic>;
+        final type = data['type'] as String?;
+
+        if (type == 'dhikr_reminder') {
+          // Reschedule the next dhikr reminder
+          final intervalHours = data['intervalHours'] as int? ?? 4;
+          _rescheduleNextDhikrReminder(intervalHours);
+        }
+      }
+
+      _logger.info(
+        'Notification response handled',
+        data: {
+          'notificationId': response.id,
+          'actionId': response.actionId,
+          'payload': payload,
+        },
+      );
+    } catch (e, s) {
+      _logger.error(
+        'Error handling notification response',
+        error: e,
+        stackTrace: s,
+      );
+    }
+  }
+
+  /// Reschedule the next dhikr reminder
+  Future<void> _rescheduleNextDhikrReminder(int intervalHours) async {
+    try {
+      final now = DateTime.now();
+      final nextReminderTime = now.add(Duration(hours: intervalHours));
+
+      await scheduleTesbihNotification(
+        id: 9999,
+        localizedTitle: 'Dhikr Reminder',
+        localizedBody:
+            '🤲 Time for your dhikr. Remember Allah with a peaceful heart.',
+        scheduledTime: nextReminderTime,
+        isEnabled: true,
+        payload: jsonEncode({
+          'type': 'dhikr_reminder',
+          'intervalHours': intervalHours,
+          'scheduledTime': nextReminderTime.toIso8601String(),
+        }),
+      );
+
+      _logger.info(
+        'Next dhikr reminder rescheduled',
+        data: {
+          'nextReminder': nextReminderTime.toIso8601String(),
+          'intervalHours': intervalHours,
+        },
+      );
+    } catch (e, s) {
+      _logger.error(
+        'Error rescheduling next dhikr reminder',
         error: e,
         stackTrace: s,
       );
@@ -114,11 +200,12 @@ class NotificationService {
       await rescheduler.init();
       _logger.info('Background notification rescheduling initialized');
     } catch (e, s) {
-      _logger.error(
-        'Failed to initialize background rescheduling',
+      _logger.warning(
+        'Failed to initialize background rescheduling - notifications will still work but may not persist across device restarts',
         error: e,
         stackTrace: s,
       );
+      // Don't rethrow - background rescheduling is not critical for basic notification functionality
     }
   }
 
@@ -250,6 +337,22 @@ class NotificationService {
     if (!isEnabled || !_isInitialized) return;
 
     try {
+      // Ensure prayer time is in the future by scheduling for next day if needed
+      final now = DateTime.now();
+      DateTime scheduledTime = prayerTime;
+
+      // If prayer time has already passed today, schedule for tomorrow
+      if (scheduledTime.isBefore(now)) {
+        scheduledTime = scheduledTime.add(const Duration(days: 1));
+        _logger.debug(
+          'Prayer time was in the past, scheduling for tomorrow',
+          data: {
+            'originalTime': prayerTime.toIso8601String(),
+            'scheduledTime': scheduledTime.toIso8601String(),
+          },
+        );
+      }
+
       final prayer = _mapIdToPrayerNotification(id);
       final bool useCustomSound = _shouldUseCustomAdhan(prayer);
 
@@ -272,14 +375,14 @@ class NotificationService {
         id,
         localizedTitle,
         localizedBody,
-        TZDateTime.from(prayerTime, getLocation('UTC')),
+        TZDateTime.from(scheduledTime, getLocation('UTC')),
         platformDetails,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       );
 
       _logger.info(
         'Scheduled prayer notification',
-        data: {'id': id, 'time': prayerTime.toIso8601String()},
+        data: {'id': id, 'time': scheduledTime.toIso8601String()},
       );
     } catch (e, s) {
       _logger.error(

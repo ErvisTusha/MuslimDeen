@@ -84,7 +84,11 @@ class CacheService {
   }
 
   /// Helper method to save different value types to SharedPreferences
-  Future<bool> _saveValueByType(SharedPreferences prefs, String key, dynamic value) async {
+  Future<bool> _saveValueByType(
+    SharedPreferences prefs,
+    String key,
+    dynamic value,
+  ) async {
     if (value is String) {
       return await prefs.setString(key, value);
     } else if (value is int) {
