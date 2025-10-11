@@ -154,6 +154,10 @@ class SettingsNotifier extends Notifier<AppSettings> {
 
   bool get areNotificationsBlocked => _notificationService.isBlocked;
 
+  bool get areAllPrayerNotificationsEnabled => PrayerNotification.values.every(
+    (prayer) => state.notifications[prayer] ?? false,
+  );
+
   void _initializePermissionListener() {
     _permissionSubscription = _notificationService.permissionStatusStream
         .listen(_updateNotificationPermissionStatus);
@@ -272,6 +276,19 @@ class SettingsNotifier extends Notifier<AppSettings> {
       state.notifications,
     );
     newNotifications[prayer] = isEnabled;
+    state = state.copyWith(notifications: newNotifications);
+    await _forceSaveSettings();
+    // No need to call _recalculateAndRescheduleNotifications here as it's handled by HomeView's listener
+    // when notification settings change. HomeView will call _scheduleAllPrayerNotifications.
+  }
+
+  Future<void> updateAllPrayerNotifications(bool isEnabled) async {
+    final newNotifications = Map<PrayerNotification, bool>.from(
+      state.notifications,
+    );
+    for (var prayer in PrayerNotification.values) {
+      newNotifications[prayer] = isEnabled;
+    }
     state = state.copyWith(notifications: newNotifications);
     await _forceSaveSettings();
     // No need to call _recalculateAndRescheduleNotifications here as it's handled by HomeView's listener

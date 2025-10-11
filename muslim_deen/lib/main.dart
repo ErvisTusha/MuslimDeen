@@ -326,24 +326,6 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       label: "Mosques",
       tooltip: "Find nearby mosques",
     ),
-    _NavItemData(
-      icon: Icons.more_horiz_outlined,
-      activeIcon: Icons.more_horiz,
-      label: "Settings",
-      tooltip: "Settings and more",
-    ),
-    _NavItemData(
-      icon: Icons.book_outlined,
-      activeIcon: Icons.book,
-      label: "Hadith",
-      tooltip: "Daily Hadith",
-    ),
-    _NavItemData(
-      icon: Icons.calendar_today_outlined,
-      activeIcon: Icons.calendar_today,
-      label: "Calendar",
-      tooltip: "Islamic Calendar",
-    ),
   ];
 
   @override
@@ -381,6 +363,32 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
 
     setState(() {
       _selectedIndex = index;
+    });
+
+    // Add subtle haptic feedback
+    HapticFeedback.lightImpact();
+    _animationController.reset();
+    _animationController.forward();
+  }
+
+  void _onOverflowItemTapped(int index) {
+    // Overflow items are at indices 4, 5, 6 (Settings, Hadith, Calendar)
+    final actualIndex = index + 4; // Add 4 to get the real index
+
+    if (actualIndex == _selectedIndex) return; // Prevent unnecessary rebuilds
+
+    final String from = _tabNames[_selectedIndex] ?? 'Unknown';
+    final String to = _tabNames[actualIndex] ?? 'Unknown';
+
+    _logger.logNavigation(
+      'OverflowMenuTap',
+      routeName: to,
+      details: 'from $from',
+      params: {'fromIndex': _selectedIndex, 'toIndex': actualIndex},
+    );
+
+    setState(() {
+      _selectedIndex = actualIndex;
     });
 
     // Add subtle haptic feedback
@@ -427,18 +435,28 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           height: 72,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(_navItems.length, (index) {
-              return Expanded(
-                child: _NavItem(
-                  index: index,
-                  data: _navItems[index],
-                  selectedIndex: _selectedIndex,
-                  onTap: _onItemTapped,
+            children: [
+              // Main navigation items
+              ...List.generate(_navItems.length, (index) {
+                return Expanded(
+                  child: _NavItem(
+                    index: index,
+                    data: _navItems[index],
+                    selectedIndex: _selectedIndex,
+                    onTap: _onItemTapped,
+                    animation: _animation,
+                  ),
+                );
+              }),
+              // Overflow menu button
+              SizedBox(
+                width: 48,
+                child: _OverflowMenuButton(
+                  onItemSelected: _onOverflowItemTapped,
                   animation: _animation,
                 ),
-              );
-            }),
+              ),
+            ],
           ),
         ),
       ),
@@ -547,6 +565,139 @@ class _NavItem extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Overflow menu button widget
+class _OverflowMenuButton extends StatelessWidget {
+  const _OverflowMenuButton({
+    required this.onItemSelected,
+    required this.animation,
+  });
+
+  final ValueChanged<int> onItemSelected;
+  final Animation<double> animation;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final brightness = theme.brightness;
+
+    return Semantics(
+      label: 'More options',
+      button: true,
+      child: PopupMenuButton<int>(
+        onSelected: onItemSelected,
+        itemBuilder:
+            (BuildContext context) => [
+              PopupMenuItem<int>(
+                value: 0, // Settings
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.settings_outlined,
+                      color: AppColors.iconInactive(brightness),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Settings',
+                      style: TextStyle(
+                        color: AppColors.textPrimary(brightness),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem<int>(
+                value: 1, // Hadith
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.book_outlined,
+                      color: AppColors.iconInactive(brightness),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Hadith',
+                      style: TextStyle(
+                        color: AppColors.textPrimary(brightness),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem<int>(
+                value: 2, // Calendar
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today_outlined,
+                      color: AppColors.iconInactive(brightness),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Calendar',
+                      style: TextStyle(
+                        color: AppColors.textPrimary(brightness),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          splashColor: AppColors.accentGreen(brightness).withValues(alpha: 0.1),
+          highlightColor: AppColors.accentGreen(
+            brightness,
+          ).withValues(alpha: 0.05),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.more_vert, // Vertical ellipsis
+                    color: AppColors.iconInactive(brightness),
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 200),
+                  style: TextStyle(
+                    color: AppColors.iconInactive(brightness),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.1,
+                  ),
+                  child: const Text(
+                    'More',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -385,6 +385,18 @@ flowchart TD
   - Tracks consecutive days with all 5 prayers completed
   - Display: Featured in `PrayerStatsView` with fire icon and gradient card
 
+#### 5. Navigation Bar Refactoring (October 2025)
+- **Problem**: Bottom navigation bar was cluttered with 7 tabs, reducing visual clarity and making it harder for users to focus on primary functions.
+- **Solution**: Consolidated secondary functions (Settings, Hadith, Calendar) into an overflow menu accessible via a vertical ellipsis (⋮) icon.
+- **Implementation**: 
+  - Removed Settings, Hadith, and Calendar from main navigation bar
+  - Added overflow menu button with vertical ellipsis icon and "More" label
+  - Created dropdown menu with relocated items, each linking to respective views
+  - Menu is dismissible by selecting an item or clicking outside
+  - Maintained existing navigation architecture using IndexedStack
+- **Impact**: Cleaner, less cluttered navigation bar focusing on core functions (Tasbih, Qibla, Prayer, Mosques), with secondary features easily accessible through overflow menu.
+- **Files Changed**: `lib/main.dart` (refactored MainScreen navigation, added _OverflowMenuButton widget)
+
 #### Code Quality
 - Add comprehensive unit tests
 - Implement error boundaries for better error handling
@@ -392,5 +404,5 @@ flowchart TD
 
 ---
 
-*Last Updated: October 11, 2025*
-*Document reflects current implementation including prayer history tracking, dhikr reminders, Ramadan countdown, home screen navigation shortcuts, history dashboard refresh guards, improved error handling, centralized navigation, new features: Daily Hadith, Islamic Calendar, Prayer Streak Tracker, Tasbih Streak Tracker, Personal Best Streak Tracking, comprehensive code review findings with zero issues detected, production-ready quality assessment, initial test coverage, code refactoring improvements, October 11, 2025 dependency updates, unified prayer statistics and history view, separated prayer statistics from historical data, removed tasbih history navigation from home screen, and fixed prayer statistics case sensitivity bug*
+*Last Updated: October 12, 2025*
+*Document reflects current implementation including prayer history tracking, dhikr reminders, Ramadan countdown, home screen navigation shortcuts, history dashboard refresh guards, improved error handling, centralized navigation, new features: Daily Hadith, Islamic Calendar, Prayer Streak Tracker, Tasbih Streak Tracker, Personal Best Streak Tracking, comprehensive code review findings with zero issues detected, production-ready quality assessment, initial test coverage, code refactoring improvements, October 11, 2025 dependency updates, unified prayer statistics and history view, separated prayer statistics from historical data, removed tasbih history navigation from home screen, fixed prayer statistics case sensitivity bug, and navigation bar refactoring with overflow menu for secondary functions*

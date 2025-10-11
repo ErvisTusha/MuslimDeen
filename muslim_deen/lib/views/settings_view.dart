@@ -388,14 +388,35 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
           SettingsSectionHeader(
             title: "Notifications",
-            trailing:
-                ref.watch(settingsProvider.notifier).areNotificationsBlocked
-                    ? const Icon(
-                      Icons.notifications_off,
-                      size: 16,
-                      color: Colors.orange,
-                    )
-                    : null,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (ref
+                    .watch(settingsProvider.notifier)
+                    .areNotificationsBlocked)
+                  const Icon(
+                    Icons.notifications_off,
+                    size: 16,
+                    color: Colors.orange,
+                  ),
+                const SizedBox(width: 8),
+                Switch(
+                  value:
+                      ref
+                          .watch(settingsProvider.notifier)
+                          .areAllPrayerNotificationsEnabled,
+                  onChanged: (value) {
+                    _logger.logInteraction(
+                      'SettingsView',
+                      'Toggle all prayer notifications',
+                      data: {'enabled': value},
+                    );
+                    settingsNotifier.updateAllPrayerNotifications(value);
+                  },
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ],
+            ),
             sectionKey: _notificationsKey,
           ),
 

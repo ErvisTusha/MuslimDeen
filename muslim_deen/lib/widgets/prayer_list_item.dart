@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:muslim_deen/models/prayer_display_info_data.dart';
+import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/prayer_history_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/views/settings_view.dart'; // For navigation
 
-class PrayerListItem extends StatefulWidget {
+class PrayerListItem extends ConsumerStatefulWidget {
   final PrayerDisplayInfoData prayerInfo;
   final DateFormat timeFormatter;
   final bool isCurrent;
@@ -33,10 +34,10 @@ class PrayerListItem extends StatefulWidget {
   });
 
   @override
-  State<PrayerListItem> createState() => _PrayerListItemState();
+  ConsumerState<PrayerListItem> createState() => _PrayerListItemState();
 }
 
-class _PrayerListItemState extends State<PrayerListItem> {
+class _PrayerListItemState extends ConsumerState<PrayerListItem> {
   bool _isCompleted = false;
   bool _isLoading = false;
 
@@ -114,8 +115,11 @@ class _PrayerListItemState extends State<PrayerListItem> {
 
   @override
   Widget build(BuildContext context) {
+    final settings = ref.watch(settingsProvider);
     final itemColors = _getItemColors();
     final splashColors = _getSplashColors();
+    final isNotificationEnabled =
+        settings.notifications[widget.prayerInfo.prayerEnum] ?? false;
 
     return Material(
       color: Colors.transparent,
@@ -145,6 +149,14 @@ class _PrayerListItemState extends State<PrayerListItem> {
                       widget.isCurrent ? FontWeight.bold : FontWeight.w600,
                 ),
               ),
+              if (!isNotificationEnabled) ...[
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.notifications_off,
+                  color: Colors.orange.withAlpha(180),
+                  size: 16,
+                ),
+              ],
               const Spacer(),
               Text(
                 widget.prayerInfo.time != null
