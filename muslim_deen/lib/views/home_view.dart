@@ -24,13 +24,13 @@ import 'package:muslim_deen/services/widget_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/styles/ui_theme_helper.dart';
 import 'package:muslim_deen/views/history_view.dart';
-import 'package:muslim_deen/views/prayer_stats_view.dart';
+import 'package:muslim_deen/views/prayer_stats_history_view.dart';
 import 'package:muslim_deen/views/settings_view.dart';
 import 'package:muslim_deen/widgets/common_container_styles.dart';
 import 'package:muslim_deen/widgets/custom_app_bar.dart';
 import 'package:muslim_deen/widgets/loading_error_state_builder.dart';
 import 'package:muslim_deen/widgets/prayer_countdown_timer.dart';
-import 'package:muslim_deen/widgets/prayer_list_item.dart';
+import 'package:muslim_deen/widgets/prayer_times_section.dart';
 import 'package:muslim_deen/widgets/ramadan_countdown_banner.dart';
 
 /// HomeView displays prayer times and manages prayer notifications.
@@ -1060,13 +1060,20 @@ class _HomeViewState extends ConsumerState<HomeView>
         ),
         const RamadanCountdownBanner(),
         _buildCurrentNextPrayerSection(isLoading, colors),
-        _buildPrayerTimesSection(
-          isLoading,
-          prayerTimes,
-          prayerOrder,
-          appSettings,
-          colors,
-          prayerColors,
+        PrayerTimesSection(
+          isLoading: isLoading,
+          prayerOrder: prayerOrder,
+          colors: colors,
+          currentPrayerBg: prayerColors.currentPrayerBg,
+          currentPrayerBorder: prayerColors.currentPrayerBorder,
+          currentPrayerText: prayerColors.currentPrayerText,
+          currentPrayerEnum: _currentPrayerEnum,
+          timeFormatter: _timeFormatter,
+          onRefresh: _triggerUIRefresh,
+          scrollController: _scrollController,
+          getPrayerDisplayInfo:
+              (prayerEnum) =>
+                  _getPrayerDisplayInfo(prayerEnum, prayerTimes, appSettings),
         ),
       ],
     );
@@ -1208,116 +1215,6 @@ class _HomeViewState extends ConsumerState<HomeView>
     );
   }
 
-  Widget _buildPrayerTimesSection(
-    bool isLoading,
-    adhan.PrayerTimes? prayerTimes,
-    List<PrayerNotification> prayerOrder,
-    AppSettings appSettings,
-    UIColors colors,
-    PrayerItemColors prayerColors,
-  ) {
-    return Expanded(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "Prayer Times",
-                style: AppTextStyles.sectionTitle(
-                  colors.brightness,
-                ).copyWith(color: colors.textColorPrimary),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Stack(
-              children: [
-                Container(
-                  margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  decoration: _buildPrayerListDecoration(colors),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(11),
-                    child: ListView.separated(
-                      controller: _scrollController,
-                      padding: EdgeInsets.zero,
-                      itemCount: prayerOrder.length,
-                      separatorBuilder:
-                          (context, index) => Divider(
-                            color: colors.borderColor.withAlpha(
-                              colors.isDarkMode ? 70 : 100,
-                            ),
-                            height: 1,
-                            indent: 16,
-                            endIndent: 16,
-                          ),
-                      itemBuilder: (context, index) {
-                        final prayerEnum = prayerOrder[index];
-                        final prayerInfo = _getPrayerDisplayInfo(
-                          prayerEnum,
-                          prayerTimes,
-                          appSettings,
-                        );
-
-                        final bool isCurrent =
-                            !isLoading &&
-                            _currentPrayerEnum == prayerInfo.prayerEnum;
-
-                        return PrayerListItem(
-                          prayerInfo: prayerInfo,
-                          timeFormatter: _timeFormatter,
-                          isCurrent: isCurrent,
-                          brightness: colors.brightness,
-                          contentSurfaceColor: colors.contentSurface,
-                          currentPrayerItemBgColor:
-                              prayerColors.currentPrayerBg,
-                          currentPrayerItemBorderColor:
-                              prayerColors.currentPrayerBorder,
-                          currentPrayerItemTextColor:
-                              prayerColors.currentPrayerText,
-                          onRefresh: _triggerUIRefresh,
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                if (isLoading)
-                  Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        colors.accentColor,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  BoxDecoration _buildPrayerListDecoration(UIColors colors) {
-    return BoxDecoration(
-      color: colors.contentSurface,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(
-        color: colors.borderColor.withAlpha(colors.isDarkMode ? 70 : 100),
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: AppColors.shadowColor(
-            colors.brightness,
-          ).withAlpha(colors.isDarkMode ? 20 : 40),
-          spreadRadius: 0,
-          blurRadius: 4,
-          offset: const Offset(0, 1),
-        ),
-      ],
-    );
-  }
-
   void _navigateToSettings({
     bool scrollToDate = false,
     bool scrollToLocation = false,
@@ -1343,7 +1240,7 @@ class _HomeViewState extends ConsumerState<HomeView>
     Navigator.push(
       context,
       MaterialPageRoute<void>(
-        builder: (context) => const PrayerStatsView(),
+        builder: (context) => const PrayerStatsHistoryView(),
         settings: const RouteSettings(name: '/prayer-stats'),
       ),
     );
@@ -1370,17 +1267,5 @@ class _PrayerDetails {
     required this.prayerName,
     required this.displayName,
     required this.icon,
-  });
-}
-
-class PrayerItemColors {
-  final Color currentPrayerBg;
-  final Color currentPrayerBorder;
-  final Color currentPrayerText;
-
-  PrayerItemColors({
-    required this.currentPrayerBg,
-    required this.currentPrayerBorder,
-    required this.currentPrayerText,
   });
 }

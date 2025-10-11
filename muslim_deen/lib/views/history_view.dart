@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/prayer_history_service.dart';
 import 'package:muslim_deen/services/tasbih_history_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
@@ -18,6 +19,7 @@ class _HistoryViewState extends State<HistoryView>
       locator<PrayerHistoryService>();
   final TasbihHistoryService _tasbihHistoryService =
       locator<TasbihHistoryService>();
+  final LoggerService _logger = locator<LoggerService>();
 
   late TabController _tabController;
 
@@ -33,6 +35,7 @@ class _HistoryViewState extends State<HistoryView>
   Map<String, Map<String, int>> _tasbihDailyGrid = {};
 
   bool _isLoading = true;
+  Future<void>? _activeLoad;
 
   @override
   void initState() {
@@ -57,11 +60,16 @@ class _HistoryViewState extends State<HistoryView>
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadData() {
+    _activeLoad ??= _safeLoadData();
+    return _activeLoad!;
+  }
 
+  Future<void> _safeLoadData() async {
     try {
-      // Load prayer data
+      if (!mounted) return;
+      setState(() => _isLoading = true);
+
       final prayerResults = await Future.wait([
         _prayerHistoryService.getWeeklyStats(),
         _prayerHistoryService.getMonthlyStats(),
@@ -69,7 +77,6 @@ class _HistoryViewState extends State<HistoryView>
         _prayerHistoryService.getCurrentStreak(),
       ]);
 
-      // Load tasbih data with error handling
       Map<String, int> weeklyTasbihStats = {};
       Map<String, int> monthlyTasbihStats = {};
       Map<String, Map<String, int>> tasbihDailyGrid = {};
@@ -84,10 +91,16 @@ class _HistoryViewState extends State<HistoryView>
         weeklyTasbihStats = tasbihResults[0] as Map<String, int>;
         monthlyTasbihStats = tasbihResults[1] as Map<String, int>;
         tasbihDailyGrid = tasbihResults[2] as Map<String, Map<String, int>>;
-      } catch (e) {
-        // Log tasbih data loading error but don't fail the entire load
-        print('Error loading tasbih data: $e');
+      } catch (e, stackTrace) {
+        _logger.error(
+          'Error loading tasbih data',
+          error: e,
+          stackTrace: stackTrace,
+        );
       }
+
+      if (!mounted) return;
+
       setState(() {
         _weeklyPrayerStats = prayerResults[0] as Map<String, int>;
         _monthlyPrayerStats = prayerResults[1] as Map<String, int>;
@@ -101,8 +114,16 @@ class _HistoryViewState extends State<HistoryView>
 
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (e, stackTrace) {
+      _logger.error(
+        'Failed to load history data',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      if (!mounted) return;
       setState(() => _isLoading = false);
+    } finally {
+      _activeLoad = null;
     }
   }
 
