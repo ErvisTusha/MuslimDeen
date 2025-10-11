@@ -23,10 +23,10 @@ class NotificationReschedulerService {
   final LoggerService _logger;
 
   NotificationReschedulerService()
-      : _notificationService = locator<NotificationService>(),
-        _prayerService = locator<PrayerService>(),
-        _storageService = locator<StorageService>(),
-        _logger = locator<LoggerService>();
+    : _notificationService = locator<NotificationService>(),
+      _prayerService = locator<PrayerService>(),
+      _storageService = locator<StorageService>(),
+      _logger = locator<LoggerService>();
 
   /// Initialize the background service
   Future<void> init() async {
@@ -102,11 +102,15 @@ class NotificationReschedulerService {
       // Load settings from storage
       final settingsJson = _storageService.getData('app_settings') as String?;
       if (settingsJson == null) {
-        _logger.warning('No app settings found, skipping prayer notification reschedule');
+        _logger.warning(
+          'No app settings found, skipping prayer notification reschedule',
+        );
         return;
       }
 
-      final settings = AppSettings.fromJson(jsonDecode(settingsJson) as Map<String, dynamic>);
+      final settings = AppSettings.fromJson(
+        jsonDecode(settingsJson) as Map<String, dynamic>,
+      );
 
       // Cancel existing notifications
       await _notificationService.cancelAllNotifications();
@@ -122,7 +126,11 @@ class NotificationReschedulerService {
         ('Fajr', 0, settings.notifications[PrayerNotification.fajr] ?? false),
         ('Dhuhr', 1, settings.notifications[PrayerNotification.dhuhr] ?? false),
         ('Asr', 2, settings.notifications[PrayerNotification.asr] ?? false),
-        ('Maghrib', 3, settings.notifications[PrayerNotification.maghrib] ?? false),
+        (
+          'Maghrib',
+          3,
+          settings.notifications[PrayerNotification.maghrib] ?? false,
+        ),
         ('Isha', 4, settings.notifications[PrayerNotification.isha] ?? false),
       ];
 
@@ -133,7 +141,10 @@ class NotificationReschedulerService {
 
         if (!enabled) continue;
 
-        final prayerTime = _getPrayerTimeByName(prayerTimes, prayerName.toLowerCase());
+        final prayerTime = _getPrayerTimeByName(
+          prayerTimes,
+          prayerName.toLowerCase(),
+        );
         if (prayerTime == null) continue;
 
         final offsettedTime = _prayerService.getOffsettedPrayerTime(
@@ -167,9 +178,12 @@ class NotificationReschedulerService {
   /// Reschedule tesbih reminder
   Future<void> _rescheduleTesbihReminder() async {
     try {
-      final reminderHour = _storageService.getData('tesbih_reminder_hour') as int?;
-      final reminderMinute = _storageService.getData('tesbih_reminder_minute') as int?;
-      final enabled = _storageService.getData('tesbih_reminder_enabled') as bool?;
+      final reminderHour =
+          _storageService.getData('tesbih_reminder_hour') as int?;
+      final reminderMinute =
+          _storageService.getData('tesbih_reminder_minute') as int?;
+      final enabled =
+          _storageService.getData('tesbih_reminder_enabled') as bool?;
 
       if (reminderHour == null || reminderMinute == null || enabled != true) {
         return;
@@ -191,7 +205,8 @@ class NotificationReschedulerService {
       await _notificationService.scheduleTesbihNotification(
         id: 9876,
         localizedTitle: 'Tasbih Reminder',
-        localizedBody: '🤲 Time for your dhikr. Remember Allah with a peaceful heart.',
+        localizedBody:
+            '🤲 Time for your dhikr. Remember Allah with a peaceful heart.',
         scheduledTime: scheduledDateTime,
         isEnabled: true,
       );
@@ -207,7 +222,10 @@ class NotificationReschedulerService {
   }
 
   /// Get prayer time by name from prayer times object
-  DateTime? _getPrayerTimeByName(adhan.PrayerTimes prayerTimes, String prayerName) {
+  DateTime? _getPrayerTimeByName(
+    adhan.PrayerTimes prayerTimes,
+    String prayerName,
+  ) {
     try {
       switch (prayerName) {
         case 'fajr':
