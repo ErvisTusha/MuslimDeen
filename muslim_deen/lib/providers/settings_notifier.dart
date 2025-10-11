@@ -49,20 +49,33 @@ class SettingsNotifier extends Notifier<AppSettings> {
       // Try to load settings synchronously first
       final String? storedSettings = _storage.getData(_settingsKey) as String?;
       if (storedSettings != null) {
-        state = AppSettings.fromJson(
-          jsonDecode(storedSettings) as Map<String, dynamic>,
+        final decodedJson = jsonDecode(storedSettings) as Map<String, dynamic>;
+        state = AppSettings.fromJson(decodedJson);
+        _logger.info(
+          "Settings loaded successfully during initialization",
+          data: {
+            'themeMode': state.themeMode.toString(),
+            'calculationMethod': state.calculationMethod,
+            'language': state.language,
+          },
         );
-        _logger.info("Settings loaded successfully during initialization");
       } else {
-        // If no stored settings, save the defaults
-        await _saveSettings();
-        _logger.info("No stored settings found, saved defaults");
+        // If no stored settings, just use defaults - don't save during init
+        // Saving will happen naturally when settings are first changed
+        _logger.info("No stored settings found, using defaults");
       }
       _isInitialized = true;
-    } catch (e) {
-      _logger.error('Error initializing settings', error: e);
-      // Ensure defaults are saved if loading fails
-      await _saveSettings();
+    } catch (e, s) {
+      _logger.error(
+        'Error initializing settings',
+        error: e,
+        stackTrace: s,
+        data: {
+          'storedSettingsLength':
+              (_storage.getData(_settingsKey) as String?)?.length,
+        },
+      );
+      // Don't try to save during initialization - just use defaults
       _isInitialized = true;
     }
   }
@@ -76,17 +89,37 @@ class SettingsNotifier extends Notifier<AppSettings> {
 
   Future<void> _saveSettings() async {
     try {
-      await _storage.saveData(_settingsKey, jsonEncode(state.toJson()));
-      _logger.debug("Settings saved successfully");
-    } catch (e) {
-      _logger.error('Error saving settings', error: e);
+      final jsonString = jsonEncode(state.toJson());
+      await _storage.saveData(_settingsKey, jsonString);
+      _logger.debug(
+        "Settings saved successfully",
+        data: {
+          'jsonLength': jsonString.length,
+          'themeMode': state.themeMode.toString(),
+        },
+      );
+    } catch (e, s) {
+      _logger.error(
+        'Error saving settings',
+        error: e,
+        stackTrace: s,
+        data: {
+          'themeMode': state.themeMode.toString(),
+          'calculationMethod': state.calculationMethod,
+        },
+      );
       // Retry saving after a short delay
       Future.delayed(const Duration(seconds: 1), () async {
         try {
-          await _storage.saveData(_settingsKey, jsonEncode(state.toJson()));
+          final jsonString = jsonEncode(state.toJson());
+          await _storage.saveData(_settingsKey, jsonString);
           _logger.info("Settings retry save successful");
-        } catch (retryError) {
-          _logger.error('Settings retry save failed', error: retryError);
+        } catch (retryError, retryStack) {
+          _logger.error(
+            'Settings retry save failed',
+            error: retryError,
+            stackTrace: retryStack,
+          );
         }
       });
     }

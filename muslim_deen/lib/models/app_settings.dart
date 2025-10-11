@@ -109,11 +109,13 @@ class AppSettings {
   factory AppSettings.fromJson(Map<String, dynamic> json) {
     final validNotificationKeys =
         PrayerNotification.values.map((e) => e.name).toSet();
-    final notificationsJson = json['notifications'] as Map<String, dynamic>;
+    final notificationsJson =
+        json['notifications'] as Map<String, dynamic>? ?? {};
 
     return AppSettings(
-      calculationMethod: json['calculationMethod'] as String,
-      madhab: json['madhab'] as String,
+      calculationMethod:
+          json['calculationMethod'] as String? ?? 'MuslimWorldLeague',
+      madhab: json['madhab'] as String? ?? 'hanafi',
       themeMode: () {
         // Use a closure to handle logic cleanly inline
         final index = json['themeMode'] as int?;
@@ -122,7 +124,7 @@ class AppSettings {
         }
         return ThemeMode.system;
       }(),
-      language: json['language'] as String,
+      language: json['language'] as String? ?? 'en',
       notificationPermissionStatus: () {
         final index = json['notificationPermissionStatus'] as int?;
         if (index != null &&
@@ -142,7 +144,7 @@ class AppSettings {
                 PrayerNotification.values.firstWhere(
                   (e) => e.name == entry.key,
                 ), // Now safe
-                entry.value as bool,
+                entry.value as bool? ?? true,
               ),
             ),
       ),
