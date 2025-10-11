@@ -259,8 +259,9 @@ class _HomeViewState extends ConsumerState<HomeView>
       _updatePrayerTimingsDisplay();
 
       // Then force a fresh calculation for widget updates to ensure accuracy
-      final freshPrayerTimes = await _prayerService.calculatePrayerTimesForToday(appSettings);
-      
+      final freshPrayerTimes = await _prayerService
+          .calculatePrayerTimesForToday(appSettings);
+
       if (mounted) {
         // Update widgets with fresh prayer times
         _updateWidgets(freshPrayerTimes, null);
@@ -518,7 +519,8 @@ class _HomeViewState extends ConsumerState<HomeView>
     if (locationName.contains(',')) {
       final parts = locationName.split(',');
       String city = parts[0].trim();
-      String? country = parts.length > 1 ? parts.sublist(1).join(',').trim() : null;
+      String? country =
+          parts.length > 1 ? parts.sublist(1).join(',').trim() : null;
 
       if (city.isEmpty) {
         city = country ?? 'Unknown';
@@ -783,7 +785,7 @@ class _HomeViewState extends ConsumerState<HomeView>
 
     _logger.info("Scheduling/Rescheduling notifications...");
 
-    await _notificationService.cancelAllNotifications();
+    await _notificationService.cancelPrayerNotifications();
 
     for (var prayerEnum in PrayerNotification.values) {
       final prayerInfo = _getPrayerDisplayInfo(
@@ -831,7 +833,7 @@ class _HomeViewState extends ConsumerState<HomeView>
 
     // Get prayer details from helper method
     final prayerDetails = _getPrayerDetails(prayerEnum);
-    
+
     // Get offsetted time
     final time = _prayerService.getOffsettedPrayerTime(
       prayerDetails.prayerName,

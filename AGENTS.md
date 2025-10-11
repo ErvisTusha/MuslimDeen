@@ -6,6 +6,11 @@
 - Ruthlessly excise dead code (unused imports, variables, files, folders, feature flags, and abandoned endpoints) only after confirming there is zero runtime impact. Verify critical paths manually when feasible.
 - Cross-check dependency manifests whenever code is added or removed—never leave required packages uninstalled, and immediately purge packages the codebase no longer references.
 
+- no workarounds or temporary fixes
+- don't tell what you're doing, show it through code
+- don't say "this is temporary", just do it right the first time
+- Assume full ownership of the codebase. If you see something that can be improved, fix it without waiting for explicit instructions.
+
 ## Core Responsibilities
 
 - Profile before optimizing, but fix algorithmic bottlenecks and N+1 patterns as soon as they are identified.
@@ -16,8 +21,9 @@
 - Prefer the standard library and existing packages. Add a new dependency only when absolutely necessary, choose a reputable, actively maintained release, and pin to the latest stable version.
 
 
+
 ## Quality Gates
-- Zero tolerance for warnings or errors. 
+- Zero tolerance for warnings errors or info. 
 
 
 ## BluePrint 

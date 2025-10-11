@@ -137,6 +137,81 @@ class NotificationService {
     }
   }
 
+  /// Cancels only prayer notifications
+  Future<void> cancelPrayerNotifications() async {
+    if (!_isInitialized) return;
+    try {
+      await Future.wait(
+        PrayerNotification.values.map(
+          (prayer) => _notificationsPlugin.cancel(prayer.index),
+        ),
+      );
+      _logger.info('Cancelled prayer notifications.');
+    } catch (e, s) {
+      _logger.error(
+        'Error cancelling prayer notifications',
+        error: e,
+        stackTrace: s,
+      );
+    }
+  }
+
+  // Helper utilities keep prayer notifications aligned with their custom azan
+  // selection so future changes don't mix audio routing logic.
+  PrayerNotification? _mapIdToPrayerNotification(int id) {
+    if (id < 0 || id >= PrayerNotification.values.length) {
+      return null;
+    }
+    return PrayerNotification.values[id];
+  }
+
+  bool _shouldUseCustomAdhan(PrayerNotification? prayer) {
+    if (prayer == null) return false;
+    return const {
+      PrayerNotification.dhuhr,
+      PrayerNotification.asr,
+      PrayerNotification.maghrib,
+      PrayerNotification.isha,
+    }.contains(prayer);
+  }
+
+  String _extractAndroidRawResourceName(String? fileName) {
+    if (fileName == null || fileName.isEmpty) return 'default';
+    final sanitized = fileName.split('/').last;
+    final withoutExtension = sanitized.split('.').first;
+    return withoutExtension.toLowerCase();
+  }
+
+  AndroidNotificationDetails _buildPrayerAndroidDetails({
+    required bool useCustomSound,
+    required String? azanFileName,
+  }) {
+    final soundResource =
+        useCustomSound
+            ? RawResourceAndroidNotificationSound(
+              _extractAndroidRawResourceName(azanFileName),
+            )
+            : null;
+
+    final channelSuffix =
+        useCustomSound
+            ? _extractAndroidRawResourceName(azanFileName)
+            : 'default';
+
+    return AndroidNotificationDetails(
+      'prayer_channel_${channelSuffix}_v2',
+      'Prayer Notifications${useCustomSound ? ' ($channelSuffix)' : ''}',
+      channelDescription:
+          'Prayer alerts${useCustomSound ? ' with custom azan audio' : ''}',
+      importance: Importance.high,
+      priority: Priority.high,
+      sound: soundResource,
+      playSound: true,
+      audioAttributesUsage: AudioAttributesUsage.notification,
+      enableVibration: true,
+    );
+  }
+
   /// Reschedule all notifications (called on app start and boot)
   Future<void> rescheduleAllNotifications() async {
     try {
@@ -175,14 +250,19 @@ class NotificationService {
     if (!isEnabled || !_isInitialized) return;
 
     try {
-      const androidDetails = AndroidNotificationDetails(
-        'prayer_channel',
-        'Prayer Notifications',
-        importance: Importance.high,
-        priority: Priority.high,
+      final prayer = _mapIdToPrayerNotification(id);
+      final bool useCustomSound = _shouldUseCustomAdhan(prayer);
+
+      final androidDetails = _buildPrayerAndroidDetails(
+        useCustomSound: useCustomSound,
+        azanFileName: appSettings.azanSoundForStandardPrayers,
       );
-      const darwinDetails = DarwinNotificationDetails();
-      const platformDetails = NotificationDetails(
+
+      final darwinDetails = DarwinNotificationDetails(
+        sound: useCustomSound ? appSettings.azanSoundForStandardPrayers : null,
+      );
+
+      final platformDetails = NotificationDetails(
         android: androidDetails,
         iOS: darwinDetails,
         macOS: darwinDetails,
@@ -222,11 +302,17 @@ class NotificationService {
     if (!isEnabled || !_isInitialized) return;
 
     try {
-      const androidDetails = AndroidNotificationDetails(
-        'tesbih_channel',
+      final androidDetails = AndroidNotificationDetails(
+        'tesbih_channel_v3',
         'Tesbih Notifications',
+        channelDescription:
+            'Daily tasbih reminder respecting system sound mode',
         importance: Importance.high,
         priority: Priority.high,
+        audioAttributesUsage: AudioAttributesUsage.notification,
+        enableVibration: true,
+        playSound: true,
+        sound: null,
       );
       const darwinDetails = DarwinNotificationDetails();
       const platformDetails = NotificationDetails(

@@ -82,6 +82,24 @@ flowchart TD
 - **Impact**: Cross-platform permission handling with proper status mapping
 - **Files Changed**: `lib/services/notification_service.dart`
 
+#### 4. Prayer vs Tesbih Notification Separation (October 2025)
+- **Problem**: Rescheduling prayer (azan) notifications cancelled the tesbih reminder, causing dhikr alerts to disappear unexpectedly.
+- **Solution**: Added a dedicated `cancelPrayerNotifications` helper and updated all prayer scheduling flows to rely on it instead of the global cancel.
+- **Impact**: Prayer notifications can be refreshed without touching the tasbih reminder, ensuring dhikr alerts remain consistent.
+- **Files Changed**: `lib/services/notification_service.dart`, `lib/views/home_view.dart`, `lib/providers/settings_notifier.dart`, `lib/services/notification_rescheduler_service.dart`
+
+#### 5. Prayer Notification Custom Sound (October 2025)
+- **Problem**: Azan notifications always played the default system tone, ignoring the sound selected in Settings.
+- **Solution**: Extended the notification service to map scheduled prayers to the chosen azan audio and configure notification channels with that sound.
+- **Impact**: Dhuhr, Asr, Maghrib, and Isha notifications now honour the user's selected azan, aligning alerts with in-app previews.
+- **Files Changed**: `lib/services/notification_service.dart`
+
+#### 6. Notification System Mode Compliance (October 2025)
+- **Problem**: Prayer and tesbih alerts risked overriding a user's silent/vibrate preference by using alarm-focused audio attributes.
+- **Solution**: Updated Android notification channel configuration to rely on standard notification audio attributes and vibration defaults so the OS enforces silent/vibrate behaviour.
+- **Impact**: Both azan and tesbih reminders now follow the device sound profile—vibrating on vibrate mode and remaining quiet when muted.
+- **Files Changed**: `lib/services/notification_service.dart`
+
 ### Key Design Patterns
 
 #### 1. Provider Pattern for State Management
@@ -132,5 +150,4 @@ flowchart TD
 ---
 
 *Last Updated: October 10, 2025*
-*Document reflects current implementation after settings persistence, notification service fixes, and permission implementation*</content>
-<parameter name="filePath">/home/et/Desktop/MuslimDeen/blueprint.md
+*Document reflects current implementation after settings persistence, notification service fixes, permission implementation, and prayer/tesbih notification separation*

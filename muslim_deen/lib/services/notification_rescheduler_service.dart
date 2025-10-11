@@ -30,10 +30,7 @@ class NotificationReschedulerService {
 
   /// Initialize the background service
   Future<void> init() async {
-    await Workmanager().initialize(
-      _callbackDispatcher,
-      isInDebugMode: false, // Set to true for debugging
-    );
+    await Workmanager().initialize(_callbackDispatcher);
 
     // Register periodic tasks
     await _registerPeriodicTasks();
@@ -50,7 +47,7 @@ class NotificationReschedulerService {
       frequency: const Duration(hours: 24),
       initialDelay: const Duration(hours: 1), // Start after 1 hour
       constraints: Constraints(
-        networkType: NetworkType.not_required,
+        networkType: NetworkType.notRequired,
         requiresBatteryNotLow: false,
         requiresCharging: false,
         requiresDeviceIdle: false,
@@ -58,7 +55,7 @@ class NotificationReschedulerService {
       ),
       backoffPolicy: BackoffPolicy.linear,
       backoffPolicyDelay: const Duration(hours: 1),
-      existingWorkPolicy: ExistingWorkPolicy.replace,
+      existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
     );
 
     // Reschedule tesbih reminder every 12 hours
@@ -68,7 +65,7 @@ class NotificationReschedulerService {
       frequency: const Duration(hours: 12),
       initialDelay: const Duration(minutes: 30),
       constraints: Constraints(
-        networkType: NetworkType.not_required,
+        networkType: NetworkType.notRequired,
         requiresBatteryNotLow: false,
         requiresCharging: false,
         requiresDeviceIdle: false,
@@ -76,7 +73,7 @@ class NotificationReschedulerService {
       ),
       backoffPolicy: BackoffPolicy.linear,
       backoffPolicyDelay: const Duration(hours: 1),
-      existingWorkPolicy: ExistingWorkPolicy.replace,
+      existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
     );
 
     _logger.info('Periodic notification reschedule tasks registered');
@@ -112,8 +109,8 @@ class NotificationReschedulerService {
         jsonDecode(settingsJson) as Map<String, dynamic>,
       );
 
-      // Cancel existing notifications
-      await _notificationService.cancelAllNotifications();
+      // Cancel existing prayer notifications only
+      await _notificationService.cancelPrayerNotifications();
 
       // Get today's prayer times
       final prayerTimes = await _prayerService.calculatePrayerTimesForDate(

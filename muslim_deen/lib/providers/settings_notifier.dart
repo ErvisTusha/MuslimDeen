@@ -25,6 +25,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
   static const Duration _saveSettingsDebounceDuration = Duration(
     milliseconds: 750,
   ); // Increased debounce time
+  bool _isInitialized = false;
 
   @override
   AppSettings build() {
@@ -32,9 +33,38 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _notificationService = ref.read(notificationServiceProvider);
     _logger = ref.read(loggerServiceProvider);
     _prayerService = ref.read(prayerServiceProvider);
-    _loadSettings();
+
+    // Initialize settings synchronously if possible, otherwise async
+    _initializeSettings();
     _initializePermissionListener();
+
+    // Return default settings initially, will be updated after loading
     return AppSettings.defaults;
+  }
+
+  Future<void> _initializeSettings() async {
+    if (_isInitialized) return;
+
+    try {
+      // Try to load settings synchronously first
+      final String? storedSettings = _storage.getData(_settingsKey) as String?;
+      if (storedSettings != null) {
+        state = AppSettings.fromJson(
+          jsonDecode(storedSettings) as Map<String, dynamic>,
+        );
+        _logger.info("Settings loaded successfully during initialization");
+      } else {
+        // If no stored settings, save the defaults
+        await _saveSettings();
+        _logger.info("No stored settings found, saved defaults");
+      }
+      _isInitialized = true;
+    } catch (e) {
+      _logger.error('Error initializing settings', error: e);
+      // Ensure defaults are saved if loading fails
+      await _saveSettings();
+      _isInitialized = true;
+    }
   }
 
   bool get areNotificationsBlocked => _notificationService.isBlocked;
@@ -45,23 +75,43 @@ class SettingsNotifier extends Notifier<AppSettings> {
   }
 
   Future<void> _loadSettings() async {
+    if (_isInitialized) return;
+
     try {
       final String? storedSettings = _storage.getData(_settingsKey) as String?;
       if (storedSettings != null) {
         state = AppSettings.fromJson(
           jsonDecode(storedSettings) as Map<String, dynamic>,
         );
+        _logger.info("Settings loaded successfully");
+      } else {
+        _logger.info("No stored settings found, using defaults");
+        // Save defaults if no settings exist
+        await _saveSettings();
       }
     } catch (e) {
       _logger.error('Error loading settings', error: e);
+      // Save defaults if loading fails
+      await _saveSettings();
     }
+    _isInitialized = true;
   }
 
   Future<void> _saveSettings() async {
     try {
       await _storage.saveData(_settingsKey, jsonEncode(state.toJson()));
+      _logger.debug("Settings saved successfully");
     } catch (e) {
       _logger.error('Error saving settings', error: e);
+      // Retry saving after a short delay
+      Future.delayed(const Duration(seconds: 1), () async {
+        try {
+          await _storage.saveData(_settingsKey, jsonEncode(state.toJson()));
+          _logger.info("Settings retry save successful");
+        } catch (retryError) {
+          _logger.error('Settings retry save failed', error: retryError);
+        }
+      });
     }
   }
 
@@ -73,11 +123,18 @@ class SettingsNotifier extends Notifier<AppSettings> {
     });
   }
 
+  /// Force immediate save of settings without debouncing
+  Future<void> _forceSaveSettings() async {
+    _saveSettingsDebounceTimer?.cancel();
+    await _saveSettings();
+  }
+
   Future<void> _updateNotificationPermissionStatus(
     NotificationPermissionStatus status,
   ) async {
     if (state.notificationPermissionStatus != status) {
       state = state.copyWith(notificationPermissionStatus: status);
+      // Use debounced save for permission status as it may change frequently
       _debouncedSaveSettings();
     }
   }
@@ -92,29 +149,29 @@ class SettingsNotifier extends Notifier<AppSettings> {
 
   Future<void> updateTimeFormat(TimeFormat format) async {
     state = state.copyWith(timeFormat: format);
-    await _saveSettings();
+    await _forceSaveSettings();
   }
 
   Future<void> updateCalculationMethod(String method) async {
     state = state.copyWith(calculationMethod: method);
-    await _saveSettings();
+    await _forceSaveSettings();
     await _recalculateAndRescheduleNotifications();
   }
 
   Future<void> updateMadhab(String madhab) async {
     state = state.copyWith(madhab: madhab);
-    await _saveSettings();
+    await _forceSaveSettings();
     await _recalculateAndRescheduleNotifications();
   }
 
   Future<void> updateThemeMode(ThemeMode mode) async {
     state = state.copyWith(themeMode: mode);
-    await _saveSettings();
+    await _forceSaveSettings();
   }
 
   Future<void> updateDateFormatOption(DateFormatOption option) async {
     state = state.copyWith(dateFormatOption: option);
-    await _saveSettings();
+    await _forceSaveSettings();
   }
 
   Future<void> updatePrayerNotification(
@@ -126,25 +183,86 @@ class SettingsNotifier extends Notifier<AppSettings> {
     );
     newNotifications[prayer] = isEnabled;
     state = state.copyWith(notifications: newNotifications);
-    await _saveSettings();
+    await _forceSaveSettings();
     // No need to call _recalculateAndRescheduleNotifications here as it's handled by HomeView's listener
     // when notification settings change. HomeView will call _scheduleAllPrayerNotifications.
   }
 
   Future<void> updateAzanSound(String soundFileName) async {
     state = state.copyWith(azanSoundForStandardPrayers: soundFileName);
-    await _saveSettings();
+    await _forceSaveSettings();
     // Reschedule notifications if sound changed, as it's part of the notification content/payload
     await _recalculateAndRescheduleNotifications();
   }
 
-  // Removed updateCalculationMethod as it's unused
-  // Removed updateAzanSoundForStandardPrayers as it's unused
-  // Other methods like updateMadhab, updateThemeMode, updateLanguage, updateTimeFormat,
-  // updateDateFormatOption, setPrayerNotification, checkNotificationPermissionStatus,
-  // and all individual offset update methods were already removed in a previous refactoring pass
-  // or were not present in the version of the file read for this operation.
-  // The method loadSettings() is already private (_loadSettings) and correctly called.
+  // Prayer offset update methods
+  Future<void> updateFajrOffset(int offsetMinutes) async {
+    state = state.copyWith(fajrOffset: offsetMinutes);
+    await _forceSaveSettings();
+    await _recalculateAndRescheduleNotifications();
+  }
+
+  Future<void> updateSunriseOffset(int offsetMinutes) async {
+    state = state.copyWith(sunriseOffset: offsetMinutes);
+    await _forceSaveSettings();
+    await _recalculateAndRescheduleNotifications();
+  }
+
+  Future<void> updateDhuhrOffset(int offsetMinutes) async {
+    state = state.copyWith(dhuhrOffset: offsetMinutes);
+    await _forceSaveSettings();
+    await _recalculateAndRescheduleNotifications();
+  }
+
+  Future<void> updateAsrOffset(int offsetMinutes) async {
+    state = state.copyWith(asrOffset: offsetMinutes);
+    await _forceSaveSettings();
+    await _recalculateAndRescheduleNotifications();
+  }
+
+  Future<void> updateMaghribOffset(int offsetMinutes) async {
+    state = state.copyWith(maghribOffset: offsetMinutes);
+    await _forceSaveSettings();
+    await _recalculateAndRescheduleNotifications();
+  }
+
+  Future<void> updateIshaOffset(int offsetMinutes) async {
+    state = state.copyWith(ishaOffset: offsetMinutes);
+    await _forceSaveSettings();
+    await _recalculateAndRescheduleNotifications();
+  }
+
+  Future<void> updateLanguage(String language) async {
+    state = state.copyWith(language: language);
+    await _forceSaveSettings();
+  }
+
+  /// Reset all settings to defaults
+  Future<void> resetToDefaults() async {
+    state = AppSettings.defaults;
+    await _forceSaveSettings();
+    await _recalculateAndRescheduleNotifications();
+  }
+
+  /// Export settings as JSON string
+  String exportSettings() {
+    return jsonEncode(state.toJson());
+  }
+
+  /// Import settings from JSON string
+  Future<bool> importSettings(String settingsJson) async {
+    try {
+      final Map<String, dynamic> jsonData =
+          jsonDecode(settingsJson) as Map<String, dynamic>;
+      state = AppSettings.fromJson(jsonData);
+      await _forceSaveSettings();
+      await _recalculateAndRescheduleNotifications();
+      return true;
+    } catch (e) {
+      _logger.error('Error importing settings', error: e);
+      return false;
+    }
+  }
 
   Future<void> _recalculateAndRescheduleNotifications() async {
     try {
@@ -160,7 +278,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
       }
 
       // Cancel all existing prayer notifications before rescheduling
-      await _notificationService.cancelAllNotifications();
+      await _notificationService.cancelPrayerNotifications();
 
       final prayersToReschedule = [
         {
