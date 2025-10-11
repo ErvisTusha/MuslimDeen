@@ -10,7 +10,9 @@ import 'package:muslim_deen/services/error_handler_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/views/hadith_view.dart';
 import 'package:muslim_deen/views/home_view.dart';
+import 'package:muslim_deen/views/islamic_calendar_view.dart';
 import 'package:muslim_deen/views/mosque_view.dart';
 import 'package:muslim_deen/views/qibla_view.dart';
 import 'package:muslim_deen/views/settings_view.dart';
@@ -282,6 +284,8 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     HomeView.new,
     MosqueView.new,
     SettingsView.new,
+    HadithView.new,
+    IslamicCalendarView.new,
   ];
 
   // Optimized: Weak reference caching to prevent memory leaks
@@ -293,6 +297,8 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     2: 'Home',
     3: 'Mosque',
     4: 'Settings',
+    5: 'Hadith',
+    6: 'Calendar',
   };
 
   static const List<_NavItemData> _navItems = [
@@ -323,8 +329,20 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     _NavItemData(
       icon: Icons.more_horiz_outlined,
       activeIcon: Icons.more_horiz,
-      label: "More",
+      label: "Settings",
       tooltip: "Settings and more",
+    ),
+    _NavItemData(
+      icon: Icons.book_outlined,
+      activeIcon: Icons.book,
+      label: "Hadith",
+      tooltip: "Daily Hadith",
+    ),
+    _NavItemData(
+      icon: Icons.calendar_today_outlined,
+      activeIcon: Icons.calendar_today,
+      label: "Calendar",
+      tooltip: "Islamic Calendar",
     ),
   ];
 

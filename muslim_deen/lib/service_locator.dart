@@ -18,6 +18,7 @@ import 'package:muslim_deen/services/prayer_times_cache.dart';
 import 'package:muslim_deen/services/storage_service.dart';
 import 'package:muslim_deen/services/tasbih_history_service.dart';
 import 'package:muslim_deen/services/widget_service.dart';
+import 'package:muslim_deen/services/hadith_service.dart';
 
 final GetIt locator = GetIt.instance;
 
@@ -51,6 +52,7 @@ void _registerServices(bool testing) {
   locator.registerLazySingleton<PrayerHistoryService>(PrayerHistoryService.new);
   locator.registerLazySingleton<DhikrReminderService>(DhikrReminderService.new);
   locator.registerLazySingleton<TasbihHistoryService>(TasbihHistoryService.new);
+  locator.registerLazySingleton<HadithService>(HadithService.new);
 
   if (!testing) {
     locator.registerLazySingleton<NotificationService>(NotificationService.new);

@@ -248,6 +248,23 @@ flowchart TD
 - Implement prayer time adjustments per user preference
 - Add mosque finder with real API integration
 
+#### 4. New Features Added (October 2025)
+- **Daily Hadith Display**: Static collection of authentic hadiths with daily rotation
+  - Service: `HadithService` with `getHadithOfTheDay()` and `getRandomHadith()`
+  - View: `HadithView` with card-based display and refresh functionality
+  - Navigation: Added as 6th tab in bottom navigation
+
+- **Islamic Calendar Widget**: Gregorian/Hijri calendar with Islamic events
+  - Uses `hijri` package for date conversions
+  - View: `IslamicCalendarView` with month navigation and event highlighting
+  - Events: Islamic New Year, Ramadan start, Eid al-Fitr, Eid al-Adha
+  - Navigation: Added as 7th tab in bottom navigation
+
+- **Prayer Streak Tracker**: Already implemented in prayer statistics
+  - Service: `PrayerHistoryService.getCurrentStreak()` 
+  - Tracks consecutive days with all 5 prayers completed
+  - Display: Featured in `PrayerStatsView` with fire icon and gradient card
+
 #### Code Quality
 - Add comprehensive unit tests
 - Implement error boundaries for better error handling
@@ -256,4 +273,4 @@ flowchart TD
 ---
 
 *Last Updated: October 11, 2025*
-*Document reflects current implementation including prayer history tracking, dhikr reminders, Ramadan countdown, improved error handling, and centralized navigation*
+*Document reflects current implementation including prayer history tracking, dhikr reminders, Ramadan countdown, improved error handling, centralized navigation, and new features: Daily Hadith, Islamic Calendar, and Prayer Streak Tracker*
