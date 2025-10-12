@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:muslim_deen/models/app_constants.dart';
@@ -5,6 +6,34 @@ import 'package:muslim_deen/services/database_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/storage_service.dart';
 import 'package:muslim_deen/service_locator.dart';
+
+/// Cache entry for dhikr targets
+class DhikrTargetsCacheEntry {
+  final Map<String, int> targets;
+  final DateTime calculatedAt;
+
+  DhikrTargetsCacheEntry({
+    required this.targets,
+    required this.calculatedAt,
+  });
+
+  bool get isExpired => DateTime.now().difference(calculatedAt) > const Duration(minutes: 10);
+}
+
+/// Cache entry for tasbih statistics
+class TasbihStatsCacheEntry {
+  final Map<String, int> stats;
+  final DateTime calculatedAt;
+  final int days;
+
+  TasbihStatsCacheEntry({
+    required this.stats,
+    required this.calculatedAt,
+    required this.days,
+  });
+
+  bool get isExpired => DateTime.now().difference(calculatedAt) > const Duration(minutes: 5);
+}
 
 /// Service to track tasbih/dhikr counts and provide historical statistics
 class TasbihHistoryService {
@@ -15,27 +44,121 @@ class TasbihHistoryService {
 
   static const int _maxHistoryDays = 90; // Keep 90 days of history
 
+  // Caching for frequently accessed data
+  DhikrTargetsCacheEntry? _dhikrTargetsCache;
+  final Map<String, TasbihStatsCacheEntry> _statsCache = {};
+  Timer? _cacheCleanupTimer;
+  static const Duration _cacheCleanupInterval = Duration(minutes: 15);
+
   factory TasbihHistoryService() {
     _instance ??= TasbihHistoryService._internal();
     return _instance!;
   }
 
-  TasbihHistoryService._internal();
+  TasbihHistoryService._internal() {
+    _startCacheCleanupTimer();
+  }
 
-  /// Record a tasbih count for today
+  /// Start periodic cleanup of expired cache entries
+  void _startCacheCleanupTimer() {
+    _cacheCleanupTimer = Timer.periodic(_cacheCleanupInterval, (_) {
+      _cleanupExpiredCache();
+    });
+  }
+
+  /// Clean up expired cache entries
+  void _cleanupExpiredCache() {
+    // Clean dhikr targets cache
+    if (_dhikrTargetsCache?.isExpired == true) {
+      _dhikrTargetsCache = null;
+      _logger.debug('Cleaned up expired dhikr targets cache');
+    }
+
+    // Clean stats cache
+    final expiredKeys = <String>[];
+    for (final entry in _statsCache.entries) {
+      if (entry.value.isExpired) {
+        expiredKeys.add(entry.key);
+      }
+    }
+    
+    for (final key in expiredKeys) {
+      _statsCache.remove(key);
+    }
+    
+    if (expiredKeys.isNotEmpty) {
+      _logger.debug('Cleaned up ${expiredKeys.length} expired stats cache entries');
+    }
+  }
+
+  /// Generate cache key for statistics
+  String _generateStatsCacheKey(int days) {
+    final today = DateTime.now();
+    final todayKey = _getDateKey(today);
+    return 'stats_${todayKey}_$days';
+  }
+
+  /// Get cached statistics if available and not expired
+  Map<String, int>? _getCachedStats(int days) {
+    final cacheKey = _generateStatsCacheKey(days);
+    final cachedEntry = _statsCache[cacheKey];
+    
+    if (cachedEntry != null && !cachedEntry.isExpired && cachedEntry.days == days) {
+      _logger.debug('Retrieved tasbih stats from cache for $days days');
+      return cachedEntry.stats;
+    }
+    
+    return null;
+  }
+
+  /// Cache statistics calculation result
+  void _cacheStats(Map<String, int> stats, int days) {
+    final cacheKey = _generateStatsCacheKey(days);
+    _statsCache[cacheKey] = TasbihStatsCacheEntry(
+      stats: stats,
+      calculatedAt: DateTime.now(),
+      days: days,
+    );
+    
+    _logger.debug('Cached tasbih stats for $days days');
+  }
+
+  /// Invalidate caches when tasbih data changes
+  void _invalidateCaches() {
+    _dhikrTargetsCache = null;
+    _statsCache.clear();
+    _logger.debug('Invalidated all tasbih caches');
+  }
+
+  /// Dispose of resources
+  void dispose() {
+    _cacheCleanupTimer?.cancel();
+    _cacheCleanupTimer = null;
+    _invalidateCaches();
+  }
+
+  /// Record a tasbih count for today with batch operations
   Future<void> recordTasbihCount(String dhikrType, int count) async {
     try {
       final now = DateTime.now();
       final dateKey = _getDateKey(now);
 
-      // Get existing counts for today
-      final todayData = await _database.getTasbihHistory(dateKey);
-      todayData[dhikrType] = (todayData[dhikrType] ?? 0) + count;
+      // Use transaction for atomic update
+      await _database.transaction((txn) async {
+        // Get existing counts for today
+        final todayData = await _database.getTasbihHistory(dateKey);
+        todayData[dhikrType] = (todayData[dhikrType] ?? 0) + count;
 
-      // Save each dhikr type separately
-      for (final entry in todayData.entries) {
-        await _database.saveTasbihHistory(dateKey, entry.key, entry.value);
-      }
+        // Batch update all dhikr types for today
+        final batchData = <String, Map<String, int>>{
+          dateKey: todayData,
+        };
+        
+        await _database.batchInsertTasbihHistory(batchData);
+      });
+
+      // Invalidate caches since tasbih data changed
+      _invalidateCaches();
 
       _logger.info('Recorded $count $dhikrType tasbihs on $dateKey');
     } catch (e, stackTrace) {
@@ -44,6 +167,46 @@ class TasbihHistoryService {
         error: e,
         stackTrace: stackTrace,
         data: {'dhikr': dhikrType, 'count': count},
+      );
+    }
+  }
+
+  /// Record multiple tasbih counts in a single batch operation
+  Future<void> recordTasbihCountsBatch(Map<String, int> counts) async {
+    if (counts.isEmpty) return;
+    
+    try {
+      final now = DateTime.now();
+      final dateKey = _getDateKey(now);
+
+      // Use transaction for atomic update
+      await _database.transaction((txn) async {
+        // Get existing counts for today
+        final todayData = await _database.getTasbihHistory(dateKey);
+        
+        // Update counts
+        for (final entry in counts.entries) {
+          todayData[entry.key] = (todayData[entry.key] ?? 0) + entry.value;
+        }
+
+        // Batch update all dhikr types for today
+        final batchData = <String, Map<String, int>>{
+          dateKey: todayData,
+        };
+        
+        await _database.batchInsertTasbihHistory(batchData);
+      });
+
+      // Invalidate caches since tasbih data changed
+      _invalidateCaches();
+
+      _logger.info('Batch recorded ${counts.length} tasbih types on $dateKey');
+    } catch (e, stackTrace) {
+      _logger.error(
+        'Failed to record tasbih counts batch',
+        error: e,
+        stackTrace: stackTrace,
+        data: {'counts': counts},
       );
     }
   }
@@ -64,21 +227,46 @@ class TasbihHistoryService {
     return getTasbihCounts(DateTime.now());
   }
 
-  /// Get total tasbih counts for the last N days
+  /// Get total tasbih counts for the last N days with caching
   Future<Map<String, int>> getTasbihStatsForDays(int days) async {
-    final stats = <String, int>{};
+    // Check cache first
+    final cachedStats = _getCachedStats(days);
+    if (cachedStats != null) {
+      return cachedStats;
+    }
+
+    var stats = <String, int>{};
     final now = DateTime.now();
 
     try {
-      for (int i = 0; i < days; i++) {
-        final date = now.subtract(Duration(days: i));
-        final dailyCounts = await getTasbihCounts(date);
-
-        dailyCounts.forEach((dhikr, count) {
-          stats[dhikr] = (stats[dhikr] ?? 0) + count;
-        });
-      }
-      _logger.debug('Retrieved $days-day tasbih stats: $stats');
+      // Use optimized query with date range filtering
+      stats = await _database.transaction((txn) async {
+        final startDate = now.subtract(Duration(days: days - 1));
+        final startDateKey = _getDateKey(startDate);
+        final endDateKey = _getDateKey(now);
+        
+        // Get all tasbih history for the date range in a single query
+        final result = await txn.query(
+          'tasbih_history',
+          where: 'date >= ? AND date <= ?',
+          whereArgs: [startDateKey, endDateKey],
+          orderBy: 'date DESC',
+        );
+        
+        final aggregatedStats = <String, int>{};
+        for (final row in result) {
+          final dhikrType = row['dhikr_type'] as String;
+          final count = row['count'] as int;
+          aggregatedStats[dhikrType] = (aggregatedStats[dhikrType] ?? 0) + count;
+        }
+        
+        return aggregatedStats;
+      });
+      
+      // Cache the result
+      _cacheStats(stats, days);
+      
+      _logger.debug('Retrieved $days-day tasbih stats with optimized query: $stats');
     } catch (e, stackTrace) {
       _logger.error(
         'Error calculating tasbih statistics',
@@ -106,12 +294,19 @@ class TasbihHistoryService {
     final now = DateTime.now();
 
     try {
+      // Generate all date keys at once
+      final dateKeys = <String>[];
       for (int i = 0; i < days; i++) {
         final date = now.subtract(Duration(days: i));
-        final dateKey = _getDateKey(date);
-        final counts = await getTasbihCounts(date);
+        dateKeys.add(_getDateKey(date));
+      }
 
-        grid[dateKey] = counts;
+      // Fetch all tasbih history in a single batch query
+      final historyBatch = await _database.getTasbihHistoryBatch(dateKeys);
+
+      // Process the batched results
+      for (final dateKey in dateKeys) {
+        grid[dateKey] = historyBatch[dateKey] ?? {};
       }
     } catch (e) {
       _logger.error('Error getting daily tasbih grid', error: e);
@@ -126,10 +321,19 @@ class TasbihHistoryService {
       int total = 0;
       final now = DateTime.now();
 
-      // Check last 90 days
+      // Generate all date keys at once
+      final dateKeys = <String>[];
       for (int i = 0; i < _maxHistoryDays; i++) {
         final date = now.subtract(Duration(days: i));
-        final counts = await getTasbihCounts(date);
+        dateKeys.add(_getDateKey(date));
+      }
+
+      // Fetch all tasbih history in a single batch query
+      final historyBatch = await _database.getTasbihHistoryBatch(dateKeys);
+
+      // Process the batched results
+      for (final dateKey in dateKeys) {
+        final counts = historyBatch[dateKey] ?? {};
         total += counts[dhikrType] ?? 0;
       }
 
@@ -148,10 +352,22 @@ class TasbihHistoryService {
     final now = DateTime.now();
 
     try {
+      // Generate all date keys at once (up to 365 days)
+      final dateKeys = <String>[];
       for (int i = 0; i < 365; i++) {
-        // Max 1 year streak
         final date = now.subtract(Duration(days: i));
-        final counts = await getTasbihCounts(date);
+        dateKeys.add(_getDateKey(date));
+      }
+
+      // Fetch all tasbih history in a single batch query
+      final historyBatch = await _database.getTasbihHistoryBatch(dateKeys);
+
+      // Process the batched results in order
+      for (int i = 0; i < 365; i++) {
+        final date = now.subtract(Duration(days: i));
+        final dateKey = _getDateKey(date);
+        
+        final counts = historyBatch[dateKey] ?? {};
 
         // Check if all dhikr targets are met
         bool allTargetsMet = true;
@@ -175,7 +391,7 @@ class TasbihHistoryService {
       // Update personal record if current streak is higher
       await _updateTasbihStreakRecord(streak);
 
-      _logger.debug('Current tasbih streak: $streak days');
+      _logger.debug('Current tasbih streak with batch query: $streak days');
     } catch (e) {
       _logger.warning('Error calculating tasbih streak', error: e);
     }
@@ -220,8 +436,14 @@ class TasbihHistoryService {
     }
   }
 
-  /// Get the current effective dhikr targets (matching TesbihView logic)
+  /// Get the current effective dhikr targets with caching
   Future<Map<String, int>> getCurrentDhikrTargets() async {
+    // Check cache first
+    if (_dhikrTargetsCache != null && !_dhikrTargetsCache!.isExpired) {
+      _logger.debug('Retrieved dhikr targets from cache');
+      return _dhikrTargetsCache!.targets;
+    }
+
     try {
       final targets = <String, int>{};
 
@@ -253,6 +475,12 @@ class TasbihHistoryService {
         }
       }
 
+      // Cache the result
+      _dhikrTargetsCache = DhikrTargetsCacheEntry(
+        targets: targets,
+        calculatedAt: DateTime.now(),
+      );
+
       _logger.debug('Current dhikr targets: $targets');
       return targets;
     } catch (e) {
@@ -262,5 +490,11 @@ class TasbihHistoryService {
       );
       return AppConstants.defaultDhikrTargets;
     }
+  }
+
+  /// Invalidate dhikr targets cache (call when settings change)
+  void invalidateDhikrTargetsCache() {
+    _dhikrTargetsCache = null;
+    _logger.debug('Invalidated dhikr targets cache');
   }
 }

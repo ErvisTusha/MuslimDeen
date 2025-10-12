@@ -44,6 +44,9 @@ dev_dependencies:
   mockito: ^5.4.6
   build_runner: ^2.4.15
   clock: ^1.1.2
+  sqflite_common_ffi: ^2.3.0
+  integration_test:
+    sdk: flutter
 
 flutter_launcher_icons:
   android: true

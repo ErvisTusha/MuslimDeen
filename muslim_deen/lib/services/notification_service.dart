@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart';
 
 import 'package:muslim_deen/models/app_settings.dart';
@@ -10,16 +11,26 @@ import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/notification_rescheduler_service.dart';
 
+import 'package:muslim_deen/services/notification_cache_service.dart';
+
 /// Service responsible for managing local notifications in the application
 class NotificationService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
   final LoggerService _logger = locator<LoggerService>();
+  NotificationCacheService? _cacheService;
+
   bool _isInitialized = false;
   NotificationPermissionStatus _permissionStatus =
       NotificationPermissionStatus.notDetermined;
   final _permissionStatusController =
       StreamController<NotificationPermissionStatus>.broadcast();
+
+  // Intelligent notification rescheduling
+  final Map<int, DateTime> _lastNotificationTimes = {};
+  final Map<int, int> _notificationRescheduleAttempts = {};
+  static const int _maxRescheduleAttempts = 3;
+  static const Duration _rescheduleDelay = Duration(minutes: 5);
 
   NotificationService();
 
@@ -32,38 +43,15 @@ class NotificationService {
   Stream<NotificationPermissionStatus> get permissionStatusStream =>
       _permissionStatusController.stream;
 
-  /// Initializes the notification service
-  Future<void> init() async {
-    if (_isInitialized) return;
-
+  /// Initialize notification cache
+  Future<void> _initNotificationCache() async {
     try {
-      const androidSettings = AndroidInitializationSettings(
-        '@mipmap/ic_launcher',
-      );
-      const darwinSettings = DarwinInitializationSettings();
-
-      const initializationSettings = InitializationSettings(
-        android: androidSettings,
-        iOS: darwinSettings,
-        macOS: darwinSettings,
-      );
-
-      await _notificationsPlugin.initialize(
-        initializationSettings,
-        onDidReceiveNotificationResponse: _onNotificationResponse,
-        onDidReceiveBackgroundNotificationResponse:
-            _onBackgroundNotificationResponse,
-      );
-
-      _isInitialized = true;
-      _logger.info('NotificationService initialized successfully.');
-
-      // Initialize background rescheduling
-      await _initBackgroundRescheduling();
+      final prefs = await SharedPreferences.getInstance();
+      _cacheService = NotificationCacheService(prefs);
+      _logger.info('Notification cache initialized');
     } catch (e, s) {
-      _isInitialized = false;
       _logger.error(
-        'Failed to initialize NotificationService',
+        'Error initializing notification cache',
         error: e,
         stackTrace: s,
       );
@@ -325,7 +313,7 @@ class NotificationService {
     }
   }
 
-  /// Schedules a prayer notification
+  /// Schedules a prayer notification with caching and intelligent rescheduling
   Future<void> schedulePrayerNotification({
     required int id,
     required String localizedTitle,
@@ -337,6 +325,26 @@ class NotificationService {
     if (!isEnabled || !_isInitialized) return;
 
     try {
+      // Check cache first to avoid redundant scheduling
+      final cacheKey =
+          'prayer_${id}_${DateTime.now().day}_${DateTime.now().month}';
+      final cachedSchedule = _cacheService?.getCachedNotificationSchedule(
+        cacheKey,
+      );
+
+      if (cachedSchedule != null) {
+        final scheduledTime = DateTime.parse(
+          cachedSchedule['scheduledTime'] as String,
+        );
+        if (scheduledTime.isAfter(DateTime.now())) {
+          _logger.debug(
+            'Using cached prayer notification schedule',
+            data: {'id': id, 'time': scheduledTime.toIso8601String()},
+          );
+          return;
+        }
+      }
+
       // Ensure prayer time is in the future by scheduling for next day if needed
       final now = DateTime.now();
       DateTime scheduledTime = prayerTime;
@@ -380,6 +388,22 @@ class NotificationService {
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       );
 
+      // Cache the schedule
+      final scheduleData = {
+        'id': id,
+        'title': localizedTitle,
+        'body': localizedBody,
+        'scheduledTime': scheduledTime.toIso8601String(),
+        'prayer': prayer?.name ?? 'unknown',
+        'cachedAt': DateTime.now().toIso8601String(),
+      };
+
+      await _cacheService?.cacheNotificationSchedule(cacheKey, scheduleData);
+
+      // Track notification for intelligent rescheduling
+      _lastNotificationTimes[id] = scheduledTime;
+      _notificationRescheduleAttempts[id] = 0;
+
       _logger.info(
         'Scheduled prayer notification',
         data: {'id': id, 'time': scheduledTime.toIso8601String()},
@@ -390,10 +414,59 @@ class NotificationService {
         error: e,
         stackTrace: s,
       );
+
+      // Attempt intelligent rescheduling
+      await _attemptIntelligentReschedule(
+        id,
+        localizedTitle,
+        localizedBody,
+        prayerTime,
+        appSettings,
+      );
     }
   }
 
-  /// Schedules a Tesbih notification
+  /// Attempt intelligent rescheduling of a failed notification
+  Future<void> _attemptIntelligentReschedule(
+    int id,
+    String title,
+    String body,
+    DateTime prayerTime,
+    AppSettings appSettings,
+  ) async {
+    final attempts = _notificationRescheduleAttempts[id] ?? 0;
+
+    if (attempts >= _maxRescheduleAttempts) {
+      _logger.warning('Max reschedule attempts reached', data: {'id': id});
+      return;
+    }
+
+    _notificationRescheduleAttempts[id] = attempts + 1;
+
+    // Calculate delay with exponential backoff
+    final delay = Duration(
+      milliseconds: _rescheduleDelay.inMilliseconds * (1 << attempts),
+    );
+
+    _logger.info(
+      'Attempting intelligent reschedule',
+      data: {'id': id, 'attempt': attempts + 1, 'delay': delay.inSeconds},
+    );
+
+    // Schedule reschedule
+    Timer(delay, () async {
+      await schedulePrayerNotification(
+        id: id,
+        localizedTitle: title,
+        localizedBody: body,
+        prayerTime: prayerTime,
+        isEnabled: true,
+        appSettings: appSettings,
+      );
+    });
+  }
+
+  /// Schedules a Tesbih notification with caching
   Future<void> scheduleTesbihNotification({
     required int id,
     required String localizedTitle,
@@ -405,6 +478,26 @@ class NotificationService {
     if (!isEnabled || !_isInitialized) return;
 
     try {
+      // Check cache first to avoid redundant scheduling
+      final cacheKey =
+          'tesbih_${id}_${DateTime.now().day}_${DateTime.now().month}';
+      final cachedSchedule = _cacheService?.getCachedNotificationSchedule(
+        cacheKey,
+      );
+
+      if (cachedSchedule != null) {
+        final cachedTime = DateTime.parse(
+          cachedSchedule['scheduledTime'] as String,
+        );
+        if (cachedTime.isAfter(DateTime.now())) {
+          _logger.debug(
+            'Using cached tesbih notification schedule',
+            data: {'id': id, 'time': cachedTime.toIso8601String()},
+          );
+          return;
+        }
+      }
+
       final androidDetails = AndroidNotificationDetails(
         'tesbih_channel_v3',
         'Tesbih Notifications',
@@ -442,6 +535,19 @@ class NotificationService {
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       );
 
+      // Cache the schedule
+      final scheduleData = {
+        'id': id,
+        'title': localizedTitle,
+        'body': localizedBody,
+        'scheduledTime': scheduledTime.toIso8601String(),
+        'type': 'tesbih',
+        'payload': effectivePayload,
+        'cachedAt': DateTime.now().toIso8601String(),
+      };
+
+      await _cacheService?.cacheNotificationSchedule(cacheKey, scheduleData);
+
       _logger.info('Scheduled tesbih notification', data: {'id': id});
     } catch (e, s) {
       _logger.error(
@@ -450,5 +556,82 @@ class NotificationService {
         stackTrace: s,
       );
     }
+  }
+
+  /// Cache notification preferences
+  Future<void> cacheNotificationPreferences(AppSettings settings) async {
+    if (_cacheService != null) {
+      await _cacheService!.cacheNotificationPreferences(settings);
+    }
+  }
+
+  /// Get cached notification preferences
+  Map<String, dynamic>? getCachedNotificationPreferences() {
+    return _cacheService?.getCachedNotificationPreferences();
+  }
+
+  /// Get notification cache statistics
+  Map<String, dynamic> getNotificationCacheStatistics() {
+    final cacheStats = _cacheService?.getCacheStatistics() ?? {};
+    final rescheduleStats = {
+      'activeNotifications': _lastNotificationTimes.length,
+      'rescheduleAttempts': _notificationRescheduleAttempts,
+    };
+
+    return {...cacheStats, ...rescheduleStats};
+  }
+
+  /// Clear notification cache
+  Future<void> clearNotificationCache() async {
+    if (_cacheService != null) {
+      await _cacheService!.clearAllNotificationCache();
+    }
+  }
+
+  /// Initializes the notification service
+  Future<void> init() async {
+    if (_isInitialized) return;
+
+    try {
+      const androidSettings = AndroidInitializationSettings(
+        '@mipmap/ic_launcher',
+      );
+      const darwinSettings = DarwinInitializationSettings();
+
+      const initializationSettings = InitializationSettings(
+        android: androidSettings,
+        iOS: darwinSettings,
+        macOS: darwinSettings,
+      );
+
+      await _notificationsPlugin.initialize(
+        initializationSettings,
+        onDidReceiveNotificationResponse: _onNotificationResponse,
+        onDidReceiveBackgroundNotificationResponse:
+            _onBackgroundNotificationResponse,
+      );
+
+      _isInitialized = true;
+      _logger.info('NotificationService initialized successfully.');
+
+      // Initialize background rescheduling
+      await _initBackgroundRescheduling();
+
+      // Initialize notification cache
+      await _initNotificationCache();
+    } catch (e, s) {
+      _isInitialized = false;
+      _logger.error(
+        'Failed to initialize NotificationService',
+        error: e,
+        stackTrace: s,
+      );
+    }
+  }
+
+  /// Dispose of resources
+  void dispose() {
+    _cacheService?.dispose();
+    _logger.info('NotificationService disposed');
   }
 }

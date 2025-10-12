@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
+import 'package:muslim_deen/services/location_cache_manager.dart';
 
 import 'package:muslim_deen/models/custom_exceptions.dart';
 // LocationServiceException class removed
@@ -24,6 +25,8 @@ enum PermissionRequestState {
 
 class LocationService {
   final LoggerService _logger = locator<LoggerService>();
+  LocationCacheManager? _cacheManager;
+
   PermissionRequestState _permissionState = PermissionRequestState.notStarted;
   final _permissionStateController =
       StreamController<PermissionRequestState>.broadcast();
@@ -45,10 +48,20 @@ class LocationService {
   double? _manualLatCached;
   double? _manualLngCached;
 
-  // In-memory cache for device location
+  // In-memory cache for device location (legacy, will be replaced by cache manager)
   Position? _cachedDevicePosition;
   DateTime? _lastDevicePositionFetchTime;
-  static const Duration _deviceLocationCacheDuration = Duration(seconds: 30);
+  final Duration _deviceLocationCacheDuration = const Duration(
+    minutes: 5,
+  ); // Extended from 30s to 5min
+
+  // Request deduplication
+  Future<Position>? _pendingLocationRequest;
+
+  // Enhanced location tracking
+  final String _lastLocationCacheKey = 'device_location';
+  Timer? _locationChangeDetector;
+  static const Duration _locationChangeCheckInterval = Duration(minutes: 2);
 
   Stream<bool> get locationStatus =>
       _locationStatusController?.stream ?? Stream.value(false);
@@ -77,12 +90,20 @@ class LocationService {
       await _loadCachedSettings(); // Load SharedPreferences into memory
       await _loadLastPosition(); // For fallback
 
+      // Initialize location cache manager
+      _cacheManager = LocationCacheManager();
+      await _cacheManager!.init();
+
       // Set device location as default if not already set
       await _setDefaultToDeviceLocation(); // This will also update cache
 
       await _startPermissionFlow();
+
+      // Start location change detection
+      _startLocationChangeDetection();
+
       _isInitialized = true;
-      _logger.info('LocationService initialized successfully.');
+      _logger.info('LocationService initialized with enhanced caching.');
     } catch (e, s) {
       _logger.error(
         'Error initializing LocationService',
@@ -112,6 +133,7 @@ class LocationService {
     _logger.info('Disposing LocationService.');
     _locationCheckTimer?.cancel();
     _locationSubscription?.cancel();
+    _locationChangeDetector?.cancel();
 
     if (!_permissionStateController.isClosed) {
       _permissionStateController.close();
@@ -121,6 +143,8 @@ class LocationService {
         !_locationStatusController!.isClosed) {
       _locationStatusController!.close();
     }
+
+    _cacheManager?.dispose();
   }
 
   Future<void> _startPermissionFlow() async {
@@ -377,70 +401,168 @@ class LocationService {
       return _getManualLocation();
     } else {
       _logger.debug("Fetching device location via getLocation().");
-      // Check cache first
-      if (_cachedDevicePosition != null &&
-          _lastDevicePositionFetchTime != null &&
-          DateTime.now().difference(_lastDevicePositionFetchTime!) <
-              _deviceLocationCacheDuration) {
-        _logger.info(
-          'Using cached device position (fetched less than ${_deviceLocationCacheDuration.inSeconds}s ago).',
+
+      // Request deduplication - if there's already a pending request, return it
+      if (_pendingLocationRequest != null) {
+        _logger.debug(
+          "Location request already in progress, waiting for existing request.",
         );
-        return _cachedDevicePosition!;
+        return _pendingLocationRequest!;
       }
+
+      // Check enhanced cache first
+      if (_cacheManager != null) {
+        final cachedLocation = _cacheManager!.getCachedLocation(
+          _lastLocationCacheKey,
+        );
+        if (cachedLocation != null) {
+          _logger.info(
+            'Using cached device position from LocationCacheManager (accuracy: ${cachedLocation.accuracy}m).',
+          );
+          return cachedLocation.position;
+        }
+      }
+
+      // Fallback to legacy cache if cache manager is not available
+      if (_cachedDevicePosition != null &&
+          _lastDevicePositionFetchTime != null) {
+        final cacheAge = DateTime.now().difference(
+          _lastDevicePositionFetchTime!,
+        );
+
+        // Adjust cache duration based on accuracy
+        final adjustedCacheDuration = _adjustCacheDuration(
+          _cachedDevicePosition!.accuracy,
+        );
+
+        if (cacheAge < adjustedCacheDuration) {
+          _logger.info(
+            'Using legacy cached device position (fetched less than ${adjustedCacheDuration.inMinutes}min ago, accuracy: ${_cachedDevicePosition!.accuracy}m).',
+          );
+          return _cachedDevicePosition!;
+        }
+      }
+
+      // Create the pending request
+      _pendingLocationRequest = _fetchFreshLocation();
 
       try {
-        final hasPermission = await _hasLocationPermission();
-        if (!hasPermission) {
-          _logger.warning(
-            'Location permission denied while attempting to get device location.',
-          );
-          return _getLastKnownLocationOrDefault();
-        }
-
-        final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
-        if (!isServiceEnabled) {
-          _logger.warning(
-            'Location services disabled while attempting to get device location.',
-          );
-          return _getLastKnownLocationOrDefault();
-        }
-
-        _logger.debug("Fetching fresh device position from Geolocator.");
-        final position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 10),
-          ),
-        ).timeout(
-          const Duration(seconds: 12),
-          onTimeout: () {
-            _logger.warning('Geolocator.getCurrentPosition timed out.');
-            throw TimeoutException('Location request timed out');
-          },
-        );
-
-        _cachedDevicePosition = position;
-        _lastDevicePositionFetchTime = DateTime.now();
-        await cacheAsLastKnownPosition(
-          position,
-        ); // This also saves to persistent _lastKnownPosition
-        _logger.info(
-          'Fetched and cached new device position: ${position.latitude}, ${position.longitude}',
-        );
+        final position = await _pendingLocationRequest!;
         return position;
-      } on TimeoutException {
+      } finally {
+        // Clear the pending request when done
+        _pendingLocationRequest = null;
+      }
+    }
+  }
+
+  /// Fetch fresh location from the device with proper error handling and timeouts
+  Future<Position> _fetchFreshLocation() async {
+    try {
+      final hasPermission = await _hasLocationPermission();
+      if (!hasPermission) {
         _logger.warning(
-          'Location request timed out, using fallback from _getLastKnownLocationOrDefault.',
-        );
-        return _getLastKnownLocationOrDefault();
-      } catch (e, s) {
-        _logger.error(
-          'Error getting current device location',
-          error: e,
-          stackTrace: s,
+          'Location permission denied while attempting to get device location.',
         );
         return _getLastKnownLocationOrDefault();
       }
+
+      final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!isServiceEnabled) {
+        _logger.warning(
+          'Location services disabled while attempting to get device location.',
+        );
+        return _getLastKnownLocationOrDefault();
+      }
+
+      _logger.debug("Fetching fresh device position from Geolocator.");
+      final position = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              timeLimit: Duration(
+                seconds: 15,
+              ), // Increased timeout from 10s to 15s
+            ),
+          )
+          .timeout(
+            const Duration(seconds: 20), // Increased timeout from 12s to 20s
+            onTimeout: () {
+              _logger.warning(
+                'Geolocator.getCurrentPosition timed out after 20 seconds.',
+              );
+              throw TimeoutException(
+                'Location request timed out after 20 seconds',
+                const Duration(seconds: 20),
+              );
+            },
+          )
+          .catchError((Object e) {
+            _logger.error('Geolocator.getCurrentPosition failed', error: e);
+            // Re-throw to be caught by the outer try-catch
+            throw Exception('Geolocator error: $e');
+          });
+
+      _cachedDevicePosition = position;
+      _lastDevicePositionFetchTime = DateTime.now();
+
+      // Cache using the enhanced cache manager
+      if (_cacheManager != null) {
+        // Check if this is a significant location change
+        final hasSignificantChange = _cacheManager!
+            .hasSignificantLocationChange(_lastLocationCacheKey, position);
+
+        if (hasSignificantChange) {
+          _logger.info(
+            'Significant location change detected',
+            data: {
+              'newLat': position.latitude,
+              'newLng': position.longitude,
+              'accuracy': position.accuracy,
+            },
+          );
+        }
+
+        _cacheManager!.cacheLocation(_lastLocationCacheKey, position);
+      }
+
+      await cacheAsLastKnownPosition(
+        position,
+      ); // This also saves to persistent _lastKnownPosition
+      _logger.info(
+        'Fetched and cached new device position: ${position.latitude}, ${position.longitude} (accuracy: ${position.accuracy}m)',
+      );
+      return position;
+    } on TimeoutException catch (e) {
+      _logger.warning(
+        'Location request timed out: ${e.message}, using fallback from _getLastKnownLocationOrDefault.',
+      );
+      return _getLastKnownLocationOrDefault();
+    } catch (e, s) {
+      _logger.error(
+        'Error getting current device location',
+        error: e,
+        stackTrace: s,
+      );
+      return _getLastKnownLocationOrDefault();
+    }
+  }
+
+  /// Adjust cache duration based on location accuracy
+  Duration _adjustCacheDuration(double accuracy) {
+    // Higher accuracy (lower value) = longer cache duration
+    // Lower accuracy (higher value) = shorter cache duration
+    if (accuracy < 50) {
+      // High accuracy (< 50m) - cache for 10 minutes
+      return const Duration(minutes: 10);
+    } else if (accuracy < 100) {
+      // Medium accuracy (50-100m) - cache for 5 minutes
+      return const Duration(minutes: 5);
+    } else if (accuracy < 500) {
+      // Low accuracy (100-500m) - cache for 2 minutes
+      return const Duration(minutes: 2);
+    } else {
+      // Very low accuracy (> 500m) - cache for 1 minute
+      return const Duration(minutes: 1);
     }
   }
 
@@ -583,5 +705,134 @@ class LocationService {
       altitudeAccuracy: 0,
       headingAccuracy: 0,
     );
+  }
+
+  /// Start location change detection
+  void _startLocationChangeDetection() {
+    _locationChangeDetector?.cancel();
+    _locationChangeDetector = Timer.periodic(_locationChangeCheckInterval, (_) {
+      _checkForLocationChanges();
+    });
+  }
+
+  /// Check for location changes and update cache if needed
+  Future<void> _checkForLocationChanges() async {
+    if (_disposed || isUsingManualLocation()) return;
+
+    try {
+      // Get current location without cache to check for changes
+      final currentPosition = await _getCurrentPositionUncached();
+      if (currentPosition == null) return;
+
+      // Check if this represents a significant change from cached location
+      if (_cacheManager != null) {
+        final hasSignificantChange = _cacheManager!
+            .hasSignificantLocationChange(
+              _lastLocationCacheKey,
+              currentPosition,
+            );
+
+        if (hasSignificantChange) {
+          _logger.info(
+            'Location change detected in background',
+            data: {
+              'newLat': currentPosition.latitude,
+              'newLng': currentPosition.longitude,
+              'accuracy': currentPosition.accuracy,
+            },
+          );
+
+          // Update cache with new location
+          _cacheManager!.cacheLocation(_lastLocationCacheKey, currentPosition);
+
+          // Update legacy cache as well
+          _cachedDevicePosition = currentPosition;
+          _lastDevicePositionFetchTime = DateTime.now();
+        }
+      }
+    } catch (e, s) {
+      _logger.error(
+        'Error checking for location changes',
+        error: e,
+        stackTrace: s,
+      );
+    }
+  }
+
+  /// Get current position without using cache
+  Future<Position?> _getCurrentPositionUncached() async {
+    try {
+      final hasPermission = await _hasLocationPermission();
+      if (!hasPermission) return null;
+
+      final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!isServiceEnabled) return null;
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
+      ).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          _logger.warning('Uncached location request timed out');
+          throw TimeoutException(
+            'Location request timed out',
+            const Duration(seconds: 15),
+          );
+        },
+      );
+
+      return position;
+    } catch (e) {
+      _logger.error('Error getting uncached position', error: e);
+      return null;
+    }
+  }
+
+  /// Get location cache statistics
+  Map<String, dynamic> getLocationCacheStatistics() {
+    final cacheStats = _cacheManager?.getCacheStatistics() ?? {};
+    final legacyStats = {
+      'legacyCacheValid':
+          _cachedDevicePosition != null &&
+          _lastDevicePositionFetchTime != null &&
+          DateTime.now().difference(_lastDevicePositionFetchTime!) <
+              _deviceLocationCacheDuration,
+      'legacyCacheAge':
+          _lastDevicePositionFetchTime != null
+              ? DateTime.now()
+                  .difference(_lastDevicePositionFetchTime!)
+                  .inMinutes
+              : null,
+    };
+
+    return {
+      ...cacheStats,
+      ...legacyStats,
+      'isManualLocation': isUsingManualLocation(),
+    };
+  }
+
+  /// Force refresh location cache
+  Future<void> refreshLocationCache() async {
+    if (isUsingManualLocation()) return;
+
+    try {
+      _logger.info('Force refreshing location cache');
+
+      // Clear current cache
+      _cacheManager?.invalidateCache(_lastLocationCacheKey);
+      _cachedDevicePosition = null;
+      _lastDevicePositionFetchTime = null;
+
+      // Fetch fresh location
+      await getLocation();
+
+      _logger.info('Location cache refreshed successfully');
+    } catch (e, s) {
+      _logger.error('Error refreshing location cache', error: e, stackTrace: s);
+    }
   }
 }

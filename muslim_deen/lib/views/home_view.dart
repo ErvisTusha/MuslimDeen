@@ -78,6 +78,12 @@ class _HomeViewState extends ConsumerState<HomeView>
   // Timer variables for periodic refreshes
   Timer? _dailyRefreshTimer;
   Timer? _periodicRefreshTimer;
+  
+  // Optimized refresh tracking
+  DateTime? _lastPrayerUpdateTime;
+  String? _lastCurrentPrayer;
+  String? _lastNextPrayer;
+  static const Duration _smartRefreshInterval = Duration(minutes: 5); // Check every 5 minutes instead of 1
 
   @override
   bool get wantKeepAlive => true;
@@ -233,46 +239,66 @@ class _HomeViewState extends ConsumerState<HomeView>
   void _startPeriodicRefreshTimer() {
     _periodicRefreshTimer?.cancel();
 
-    // Refresh every minute to check for prayer time changes
-    _periodicRefreshTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
-      _logger.info("Periodic refresh triggered.");
+    // Refresh every 5 minutes with smart triggers for prayer changes
+    _periodicRefreshTimer = Timer.periodic(_smartRefreshInterval, (timer) {
+      _logger.debug("Smart periodic refresh triggered.");
       if (mounted) {
-        _performPeriodicRefresh();
+        _performSmartPeriodicRefresh();
       } else {
         timer.cancel();
       }
     });
 
-    _logger.info("Started periodic refresh timer (every minute)");
+    _logger.info("Started smart periodic refresh timer (every ${_smartRefreshInterval.inMinutes} minutes)");
   }
 
-  /// Performs the periodic refresh logic with error handling
-  Future<void> _performPeriodicRefresh() async {
+  /// Performs smart periodic refresh with better logic to avoid unnecessary updates
+  Future<void> _performSmartPeriodicRefresh() async {
     try {
-      // Get fresh prayer times for widget updates
       final appSettings = ref.read(settingsProvider);
+      final now = DateTime.now();
+      
+      // Get current prayer state without recalculating
+      final currentPrayer = _prayerService.getCurrentPrayer();
+      final nextPrayer = _prayerService.getNextPrayer();
+      
+      // Only update if prayer state changed or it's been more than 30 minutes since last update
+      bool shouldUpdate = false;
+      
+      if (_lastCurrentPrayer != currentPrayer || _lastNextPrayer != nextPrayer) {
+        _logger.info('Prayer state changed, triggering refresh');
+        shouldUpdate = true;
+      } else if (_lastPrayerUpdateTime == null ||
+                 now.difference(_lastPrayerUpdateTime!) > const Duration(minutes: 30)) {
+        _logger.debug('Long time since last update, triggering refresh');
+        shouldUpdate = true;
+      }
+      
+      if (shouldUpdate) {
+        // Force a check to ensure we have current prayer times
+        await _prayerService.recalculatePrayerTimesIfNeeded(appSettings);
 
-      // First, force a check to ensure we have current prayer times
-      await _prayerService.recalculatePrayerTimesIfNeeded(appSettings);
+        if (!mounted) return;
 
-      if (!mounted) return;
+        // Update UI display
+        _updatePrayerTimingsDisplay();
 
-      // Update UI display first
-      _updatePrayerTimingsDisplay();
+        // Get fresh prayer times for widget updates
+        final freshPrayerTimes = await _prayerService.calculatePrayerTimesForToday(appSettings);
 
-      // Then force a fresh calculation for widget updates to ensure accuracy
-      final freshPrayerTimes = await _prayerService
-          .calculatePrayerTimesForToday(appSettings);
-
-      if (mounted) {
-        // Update widgets with fresh prayer times
-        _updateWidgets(freshPrayerTimes, null);
-        _logger.debug(
-          'Widget updated with fresh prayer times in periodic refresh',
-        );
+        if (mounted) {
+          // Update widgets with fresh prayer times
+          _updateWidgets(freshPrayerTimes, null);
+          _lastPrayerUpdateTime = now;
+          _lastCurrentPrayer = currentPrayer;
+          _lastNextPrayer = nextPrayer;
+          _logger.debug('Smart refresh completed with updates');
+        }
+      } else {
+        _logger.debug('No prayer state change, skipping refresh');
       }
     } catch (e) {
-      _logger.warning('Error during periodic prayer recalculation: $e');
+      _logger.warning('Error during smart periodic refresh: $e');
       // Fallback: still try to update widgets with cached data
       if (mounted && _prayerTimes != null) {
         _updateWidgets(_prayerTimes!, null);

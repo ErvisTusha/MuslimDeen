@@ -6,10 +6,13 @@ import 'package:geolocator/geolocator.dart';
 import 'package:muslim_deen/models/app_constants.dart';
 import 'package:muslim_deen/models/app_settings.dart';
 import 'package:muslim_deen/models/prayer_times_model.dart';
+
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/prayer_times_cache.dart';
+import 'package:muslim_deen/services/prayer_times_precomputer.dart';
+import 'package:muslim_deen/services/cache_metrics_service.dart';
 
 /// Service responsible for calculating and providing prayer times.
 ///
@@ -19,6 +22,9 @@ import 'package:muslim_deen/services/prayer_times_cache.dart';
 class PrayerService {
   final LocationService _locationService;
   final PrayerTimesCache _prayerTimesCache;
+  PrayerTimesPrecomputer? _precomputer;
+  CacheMetricsService? _metricsService;
+
   adhan.PrayerTimes? _currentPrayerTimes;
   DateTime? _lastCalculationTime;
   adhan.CalculationParameters? _lastParamsUsed;
@@ -38,13 +44,115 @@ class PrayerService {
     minutes: AppConstants.positionCacheDurationMinutes,
   );
 
+  // Enhanced cache management
+  Timer? _cacheRefreshTimer;
+  final Map<String, DateTime> _cacheInvalidationTimes = {};
+  static const Duration _cacheRefreshInterval = Duration(hours: 12);
+  static const Duration _cacheValidityDuration = Duration(hours: 24);
+
   PrayerService(this._locationService, this._prayerTimesCache);
 
   Future<void> init() async {
     if (_isInitialized) return;
     await _locationService.init();
+
+    // Initialize precomputer
+    _precomputer = PrayerTimesPrecomputer(_prayerTimesCache, _locationService);
+    await _precomputer!.init();
+
+    // Start cache refresh timer
+    _startCacheRefreshTimer();
+
     _isInitialized = true;
-    _logger.info('PrayerService initialized');
+    _logger.info('PrayerService initialized with enhanced caching');
+  }
+
+  /// Set metrics service for performance tracking
+  void setMetricsService(CacheMetricsService metricsService) {
+    _metricsService = metricsService;
+    _logger.debug('Cache metrics service attached to PrayerService');
+  }
+
+  /// Start periodic cache refresh timer
+  void _startCacheRefreshTimer() {
+    _cacheRefreshTimer?.cancel();
+    _cacheRefreshTimer = Timer.periodic(_cacheRefreshInterval, (_) {
+      _refreshCacheIfNeeded();
+    });
+  }
+
+  /// Refresh cache if needed based on invalidation times
+  Future<void> _refreshCacheIfNeeded() async {
+    try {
+      final now = DateTime.now();
+      final keysToRefresh = <String>[];
+
+      for (final entry in _cacheInvalidationTimes.entries) {
+        if (now.difference(entry.value) > _cacheValidityDuration) {
+          keysToRefresh.add(entry.key);
+        }
+      }
+
+      if (keysToRefresh.isNotEmpty) {
+        _logger.info(
+          'Refreshing expired cache entries',
+          data: {'count': keysToRefresh.length},
+        );
+
+        for (final key in keysToRefresh) {
+          await _refreshCacheEntry(key);
+          _cacheInvalidationTimes.remove(key);
+        }
+      }
+    } catch (e, s) {
+      _logger.error('Error refreshing cache', error: e, stackTrace: s);
+    }
+  }
+
+  /// Refresh a specific cache entry
+  Future<void> _refreshCacheEntry(String cacheKey) async {
+    try {
+      // Parse cache key to extract date, location, and settings
+      final parts = cacheKey.split('_');
+      if (parts.length < 6) return;
+
+      final dateStr = '${parts[1]}-${parts[2]}-${parts[3]}';
+      final date = DateTime.parse(dateStr);
+      final method = parts.length > 6 ? parts[6] : 'MuslimWorldLeague';
+      final madhab = parts.length > 7 ? parts[7] : 'hanafi';
+
+      final settings = AppSettings(calculationMethod: method, madhab: madhab);
+
+      // Recalculate and cache prayer times
+      await calculatePrayerTimesForDate(date, settings);
+
+      _logger.debug('Cache entry refreshed', data: {'key': cacheKey});
+    } catch (e, s) {
+      _logger.error(
+        'Error refreshing cache entry',
+        error: e,
+        stackTrace: s,
+        data: {'key': cacheKey},
+      );
+    }
+  }
+
+  /// Generate optimized cache key with better hit rate
+  String _generateOptimizedCacheKey(
+    DateTime date,
+    adhan.Coordinates coordinates, {
+    String? calculationMethod,
+    String? madhab,
+  }) {
+    // Use consistent rounding for coordinates to improve hit rates
+    final lat = coordinates.latitude.toStringAsFixed(3);
+    final lng = coordinates.longitude.toStringAsFixed(3);
+    final dateStr =
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final method = calculationMethod ?? 'MuslimWorldLeague';
+    final m = madhab ?? 'hanafi';
+
+    return 'prayer_times_${dateStr}_$lat\_$lng\_$method\_$m';
   }
 
   /// Creates CalculationParameters based on the provided settings with caching.
@@ -177,16 +285,34 @@ class PrayerService {
       },
     );
 
-    // Cache the result
+    // Cache the result with optimized key and enhanced tracking
     final prayerTimesModelToCache = PrayerTimesModel.fromAdhanPrayerTimes(
       newAdhanPrayerTimes,
       date,
     );
+
+    final cacheKey = _generateOptimizedCacheKey(
+      date,
+      coordinates,
+      calculationMethod: effectiveSettings.calculationMethod,
+      madhab: effectiveSettings.madhab,
+    );
+
     await _prayerTimesCache.cachePrayerTimes(
       prayerTimesModelToCache,
       coordinates,
+      calculationMethod: effectiveSettings.calculationMethod,
+      madhab: effectiveSettings.madhab,
     );
-    _logger.info('Prayer times for $date cached.');
+
+    // Track cache invalidation time
+    _cacheInvalidationTimes[cacheKey] = DateTime.now();
+
+    _metricsService?.recordHit(cacheKey, 'prayer_times');
+    _logger.info(
+      'Prayer times for $date cached with optimized key.',
+      data: {'cacheKey': cacheKey},
+    );
 
     return newAdhanPrayerTimes;
   }
@@ -241,10 +367,19 @@ class PrayerService {
       return _currentPrayerTimes!;
     }
 
-    // Check cache first
+    // Check cache first with optimized key
+    final cacheKey = _generateOptimizedCacheKey(
+      date,
+      coordinates,
+      calculationMethod: effectiveSettings.calculationMethod,
+      madhab: effectiveSettings.madhab,
+    );
+
     final cachedTimes = await _prayerTimesCache.getCachedPrayerTimes(
       date,
       coordinates,
+      calculationMethod: effectiveSettings.calculationMethod,
+      madhab: effectiveSettings.madhab,
     );
 
     if (cachedTimes != null) {
@@ -264,9 +399,15 @@ class PrayerService {
       _lastCalculationMethodString = effectiveSettings.calculationMethod;
       _lastAppSettingsUsed = effectiveSettings;
 
-      _logger.debug('Prayer times loaded from cache and service state updated');
+      // Update cache invalidation time for LRU
+      _cacheInvalidationTimes[cacheKey] = DateTime.now();
+
+      _metricsService?.recordHit(cacheKey, 'prayer_times');
+      _logger.debug('Prayer times loaded from cache with optimized key');
       return adhanPrayerTimes;
     }
+
+    _metricsService?.recordMiss(cacheKey, 'prayer_times');
 
     // Calculate new prayer times
     final currentParams = _getCalculationParams(effectiveSettings);
@@ -555,5 +696,43 @@ class PrayerService {
       return null;
     }
     return rawTime.add(Duration(minutes: offsetMinutes));
+  }
+
+  /// Precompute prayer times for upcoming days
+  Future<void> precomputeUpcomingPrayerTimes() async {
+    if (_precomputer != null) {
+      await _precomputer!.forcePrecompute();
+    }
+  }
+
+  /// Check if precompute is needed
+  bool isPrecomputeNeeded() {
+    return _precomputer?.isPrecomputeNeeded() ?? false;
+  }
+
+  /// Get precompute status
+  Map<String, dynamic> getPrecomputeStatus() {
+    return _precomputer?.getPrecomputeStatus() ?? {'status': 'not_initialized'};
+  }
+
+  /// Get cache statistics
+  Map<String, dynamic> getCacheStatistics() {
+    return {
+      'cacheEntries': _cacheInvalidationTimes.length,
+      'parameterCacheSize': _paramCache.length,
+      'positionCacheValid':
+          _cachedPosition != null &&
+          _positionCacheTime != null &&
+          DateTime.now().difference(_positionCacheTime!) <
+              _positionCacheDuration,
+      'precomputeStatus': getPrecomputeStatus(),
+    };
+  }
+
+  /// Dispose of resources
+  void dispose() {
+    _cacheRefreshTimer?.cancel();
+    _precomputer?.dispose();
+    _logger.info('PrayerService disposed');
   }
 }

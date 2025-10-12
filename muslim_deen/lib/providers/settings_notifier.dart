@@ -24,8 +24,8 @@ class SettingsNotifier extends Notifier<AppSettings> {
   StreamSubscription<NotificationPermissionStatus>? _permissionSubscription;
   Timer? _saveSettingsDebounceTimer;
   static const Duration _saveSettingsDebounceDuration = Duration(
-    milliseconds: 750,
-  ); // Increased debounce time
+    milliseconds: 200,
+  ); // Reduced debounce time from 750ms to 200ms for better responsiveness
   bool _isInitialized = false;
 
   @override
@@ -222,6 +222,25 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _saveSettingsDebounceTimer?.cancel();
     await _saveSettings();
   }
+  
+  /// Update critical settings with immediate save (no debouncing)
+  /// Critical settings are those that need to be persisted immediately
+  /// such as notification permissions, calculation method changes, etc.
+  Future<void> updateCriticalSetting<T>(
+    String settingName,
+    T value, {
+    required T Function(AppSettings) getter,
+    required AppSettings Function(AppSettings, T) setter,
+  }) async {
+    if (getter(state) != value) {
+      state = setter(state, value);
+      _logger.info('Critical setting updated immediately', data: {
+        'setting': settingName,
+        'value': value,
+      });
+      await _forceSaveSettings();
+    }
+  }
 
   Future<void> _updateNotificationPermissionStatus(
     NotificationPermissionStatus status,
@@ -242,42 +261,73 @@ class SettingsNotifier extends Notifier<AppSettings> {
   }
 
   Future<void> updateTimeFormat(TimeFormat format) async {
-    state = state.copyWith(timeFormat: format);
-    await _forceSaveSettings();
+    // Time format is less critical, can use debounced save
+    if (state.timeFormat != format) {
+      state = state.copyWith(timeFormat: format);
+      _debouncedSaveSettings();
+    }
   }
 
   Future<void> updateCalculationMethod(String method) async {
-    state = state.copyWith(calculationMethod: method);
-    await _forceSaveSettings();
+    await updateCriticalSetting(
+      'calculationMethod',
+      method,
+      getter: (settings) => settings.calculationMethod,
+      setter: (settings, value) => settings.copyWith(calculationMethod: value),
+    );
     await _recalculateAndRescheduleNotifications();
   }
 
   Future<void> updateMadhab(String madhab) async {
-    state = state.copyWith(madhab: madhab);
-    await _forceSaveSettings();
+    await updateCriticalSetting(
+      'madhab',
+      madhab,
+      getter: (settings) => settings.madhab,
+      setter: (settings, value) => settings.copyWith(madhab: value),
+    );
     await _recalculateAndRescheduleNotifications();
   }
 
   Future<void> updateThemeMode(ThemeMode mode) async {
-    state = state.copyWith(themeMode: mode);
-    await _forceSaveSettings();
+    // Theme mode is less critical, can use debounced save
+    if (state.themeMode != mode) {
+      state = state.copyWith(themeMode: mode);
+      _debouncedSaveSettings();
+    }
   }
 
   Future<void> updateDateFormatOption(DateFormatOption option) async {
-    state = state.copyWith(dateFormatOption: option);
-    await _forceSaveSettings();
+    // Date format is less critical, can use debounced save
+    if (state.dateFormatOption != option) {
+      state = state.copyWith(dateFormatOption: option);
+      _debouncedSaveSettings();
+    }
   }
 
   Future<void> updatePrayerNotification(
     PrayerNotification prayer,
     bool isEnabled,
   ) async {
-    final newNotifications = Map<PrayerNotification, bool>.from(
-      state.notifications,
-    );
-    newNotifications[prayer] = isEnabled;
-    state = state.copyWith(notifications: newNotifications);
-    await _forceSaveSettings();
+    final currentStatus = state.notifications[prayer] ?? false;
+    if (currentStatus != isEnabled) {
+      final newNotifications = Map<PrayerNotification, bool>.from(
+        state.notifications,
+      );
+      newNotifications[prayer] = isEnabled;
+      state = state.copyWith(notifications: newNotifications);
+      
+      // Use critical setting update for notification changes
+      await updateCriticalSetting(
+        'notification_${prayer.name}',
+        isEnabled,
+        getter: (settings) => settings.notifications[prayer] ?? false,
+        setter: (settings, value) {
+          final newNotifs = Map<PrayerNotification, bool>.from(settings.notifications);
+          newNotifs[prayer] = value;
+          return settings.copyWith(notifications: newNotifs);
+        },
+      );
+    }
     // No need to call _recalculateAndRescheduleNotifications here as it's handled by HomeView's listener
     // when notification settings change. HomeView will call _scheduleAllPrayerNotifications.
   }
@@ -296,8 +346,12 @@ class SettingsNotifier extends Notifier<AppSettings> {
   }
 
   Future<void> updateAzanSound(String soundFileName) async {
-    state = state.copyWith(azanSoundForStandardPrayers: soundFileName);
-    await _forceSaveSettings();
+    await updateCriticalSetting(
+      'azanSound',
+      soundFileName,
+      getter: (settings) => settings.azanSoundForStandardPrayers,
+      setter: (settings, value) => settings.copyWith(azanSoundForStandardPrayers: value),
+    );
     // Reschedule notifications if sound changed, as it's part of the notification content/payload
     await _recalculateAndRescheduleNotifications();
   }
@@ -340,8 +394,12 @@ class SettingsNotifier extends Notifier<AppSettings> {
   }
 
   Future<void> updateLanguage(String language) async {
-    state = state.copyWith(language: language);
-    await _forceSaveSettings();
+    await updateCriticalSetting(
+      'language',
+      language,
+      getter: (settings) => settings.language,
+      setter: (settings, value) => settings.copyWith(language: value),
+    );
   }
 
   Future<void> updateDhikrRemindersEnabled(bool enabled) async {
