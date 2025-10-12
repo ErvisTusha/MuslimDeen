@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-
 import 'package:muslim_deen/service_locator.dart';
+
 import 'package:muslim_deen/services/logger_service.dart';
 
 /// Benchmark result data class
@@ -95,19 +95,21 @@ class BenchmarkComparison {
 /// Performance benchmark service for measuring and comparing performance
 class BenchmarkService {
   final LoggerService _logger = locator<LoggerService>();
-  
+
   // Benchmark storage
   final Map<String, BenchmarkResult> _benchmarks = {};
   final Map<String, List<BenchmarkResult>> _benchmarkHistory = {};
   final Map<String, BenchmarkResult> _baselines = {};
-  
+
   // Benchmark configuration
   static const int _defaultIterations = 10;
   static const int _maxHistorySize = 50;
   static const double _regressionThreshold = 10.0; // 10% slower than baseline
-  
+
   // Benchmark state
+
   bool _isRunning = false;
+
   Timer? _reportingTimer;
   static const Duration _reportingInterval = Duration(hours: 6);
 
@@ -139,12 +141,11 @@ class BenchmarkService {
     }
 
     _isRunning = true;
-    
-    _logger.info('Starting benchmark', data: {
-      'name': name,
-      'category': category,
-      'iterations': iterations,
-    });
+
+    _logger.info(
+      'Starting benchmark',
+      data: {'name': name, 'category': category, 'iterations': iterations},
+    );
 
     final List<Duration> runTimes = [];
     final Stopwatch stopwatch = Stopwatch();
@@ -152,25 +153,28 @@ class BenchmarkService {
     try {
       // Warm-up run
       await operation();
-      
+
       // Actual benchmark runs
       for (int i = 0; i < iterations; i++) {
         stopwatch.reset();
         stopwatch.start();
-        
+
         await operation();
-        
+
         stopwatch.stop();
         runTimes.add(stopwatch.elapsed);
-        
+
         // Log progress for long benchmarks
         if (iterations > 10 && i % (iterations ~/ 10) == 0) {
-          _logger.debug('Benchmark progress', data: {
-            'name': name,
-            'iteration': i + 1,
-            'total': iterations,
-            'currentTime': '${stopwatch.elapsed.inMilliseconds}ms',
-          });
+          _logger.debug(
+            'Benchmark progress',
+            data: {
+              'name': name,
+              'iteration': i + 1,
+              'total': iterations,
+              'currentTime': '${stopwatch.elapsed.inMilliseconds}ms',
+            },
+          );
         }
       }
     } catch (e, stackTrace) {
@@ -187,15 +191,19 @@ class BenchmarkService {
 
     // Calculate statistics
     final totalDuration = runTimes.reduce((a, b) => a + b);
-    final averageTime = Duration(microseconds: totalDuration.inMicroseconds ~/ runTimes.length);
+    final averageTime = Duration(
+      microseconds: totalDuration.inMicroseconds ~/ runTimes.length,
+    );
     final minTime = runTimes.reduce((a, b) => a < b ? a : b);
     final maxTime = runTimes.reduce((a, b) => a > b ? a : b);
-    
+
     // Calculate standard deviation
     final mean = averageTime.inMicroseconds.toDouble();
-    final variance = runTimes
-        .map((d) => math.pow(d.inMicroseconds - mean, 2))
-        .reduce((a, b) => a + b) / runTimes.length;
+    final variance =
+        runTimes
+            .map((d) => math.pow(d.inMicroseconds - mean, 2))
+            .reduce((a, b) => a + b) /
+        runTimes.length;
     final standardDeviation = math.sqrt(variance);
 
     // Create benchmark result
@@ -214,7 +222,7 @@ class BenchmarkService {
 
     // Store benchmark
     _storeBenchmark(result);
-    
+
     // Save as baseline if requested
     if (saveAsBaseline) {
       _baselines[name] = result;
@@ -224,13 +232,16 @@ class BenchmarkService {
     // Check for regression
     _checkForRegression(result);
 
-    _logger.info('Benchmark completed', data: {
-      'name': name,
-      'averageTime': '${averageTime.inMicroseconds}μs',
-      'minTime': '${minTime.inMicroseconds}μs',
-      'maxTime': '${maxTime.inMicroseconds}μs',
-      'standardDeviation': standardDeviation.toStringAsFixed(2),
-    });
+    _logger.info(
+      'Benchmark completed',
+      data: {
+        'name': name,
+        'averageTime': '${averageTime.inMicroseconds}μs',
+        'minTime': '${minTime.inMicroseconds}μs',
+        'maxTime': '${maxTime.inMicroseconds}μs',
+        'standardDeviation': standardDeviation.toStringAsFixed(2),
+      },
+    );
 
     return result;
   }
@@ -238,11 +249,11 @@ class BenchmarkService {
   /// Store benchmark result
   void _storeBenchmark(BenchmarkResult result) {
     _benchmarks[result.name] = result;
-    
+
     // Add to history
     _benchmarkHistory.putIfAbsent(result.name, () => []);
     _benchmarkHistory[result.name]!.add(result);
-    
+
     // Limit history size
     if (_benchmarkHistory[result.name]!.length > _maxHistorySize) {
       _benchmarkHistory[result.name]!.removeAt(0);
@@ -254,11 +265,14 @@ class BenchmarkService {
     if (!_baselines.containsKey(result.name)) {
       return;
     }
-    
+
     final baseline = _baselines[result.name]!;
-    final improvementPercentage = _calculateImprovementPercentage(baseline, result);
+    final improvementPercentage = _calculateImprovementPercentage(
+      baseline,
+      result,
+    );
     final isRegression = improvementPercentage < -_regressionThreshold;
-    
+
     if (isRegression) {
       _logger.warning(
         'Performance regression detected',
@@ -266,19 +280,25 @@ class BenchmarkService {
           'name': result.name,
           'baselineTime': '${baseline.averageTime.inMicroseconds}μs',
           'currentTime': '${result.averageTime.inMicroseconds}μs',
-          'regressionPercentage': '${improvementPercentage.toStringAsFixed(2)}%',
+          'regressionPercentage':
+              '${improvementPercentage.toStringAsFixed(2)}%',
         },
       );
     }
   }
 
   /// Calculate improvement percentage between two benchmarks
-  double _calculateImprovementPercentage(BenchmarkResult baseline, BenchmarkResult current) {
+  double _calculateImprovementPercentage(
+    BenchmarkResult baseline,
+    BenchmarkResult current,
+  ) {
     if (baseline.averageTime.inMicroseconds == 0) {
       return 0.0;
     }
-    
-    final improvement = baseline.averageTime.inMicroseconds - current.averageTime.inMicroseconds;
+
+    final improvement =
+        baseline.averageTime.inMicroseconds -
+        current.averageTime.inMicroseconds;
     return (improvement / baseline.averageTime.inMicroseconds) * 100;
   }
 
@@ -287,11 +307,14 @@ class BenchmarkService {
     if (!_benchmarks.containsKey(name) || !_baselines.containsKey(name)) {
       return null;
     }
-    
+
     final current = _benchmarks[name]!;
     final baseline = _baselines[name]!;
-    final improvementPercentage = _calculateImprovementPercentage(baseline, current);
-    
+    final improvementPercentage = _calculateImprovementPercentage(
+      baseline,
+      current,
+    );
+
     return BenchmarkComparison(
       name: name,
       baseline: baseline,
@@ -328,7 +351,7 @@ class BenchmarkService {
     if (!_benchmarks.containsKey(name)) {
       throw ArgumentError('Benchmark not found: $name');
     }
-    
+
     _baselines[name] = _benchmarks[name]!;
     _logger.info('Benchmark set as baseline', data: {'name': name});
   }
@@ -343,18 +366,18 @@ class BenchmarkService {
       'regressions': <String, dynamic>{},
       'improvements': <String, dynamic>{},
     };
-    
+
     // Count benchmarks by category
     for (final benchmark in _benchmarks.values) {
-      report['categories'][benchmark.category] = 
+      report['categories'][benchmark.category] =
           (report['categories'][benchmark.category] ?? 0) + 1;
     }
-    
+
     // Add benchmark details
     for (final entry in _benchmarks.entries) {
       final name = entry.key;
       final benchmark = entry.value;
-      
+
       report['benchmarks'][name] = {
         'category': benchmark.category,
         'averageTime': benchmark.averageTime.inMicroseconds,
@@ -364,7 +387,7 @@ class BenchmarkService {
         'iterations': benchmark.iterations,
         'timestamp': benchmark.timestamp.toIso8601String(),
       };
-      
+
       // Check for regression or improvement
       final comparison = compareWithBaseline(name);
       if (comparison != null) {
@@ -383,21 +406,24 @@ class BenchmarkService {
         }
       }
     }
-    
+
     return report;
   }
 
   /// Generate and log benchmark report
   void _generateBenchmarkReport() {
     final report = generateBenchmarkReport();
-    
-    _logger.info('Benchmark Report Generated', data: {
-      'totalBenchmarks': report['totalBenchmarks'],
-      'categories': report['categories'],
-      'regressions': report['regressions'].length,
-      'improvements': report['improvements'].length,
-    });
-    
+
+    _logger.info(
+      'Benchmark Report Generated',
+      data: {
+        'totalBenchmarks': report['totalBenchmarks'],
+        'categories': report['categories'],
+        'regressions': report['regressions'].length,
+        'improvements': report['improvements'].length,
+      },
+    );
+
     // Log regressions separately for visibility
     if ((report['regressions'] as Map).isNotEmpty) {
       _logger.warning('Performance Regressions', data: report['regressions']);
@@ -414,7 +440,7 @@ class BenchmarkService {
         (k, v) => MapEntry(k, v.map((e) => e.toJson())),
       ),
     };
-    
+
     return _encodeJson(exportData);
   }
 
@@ -422,33 +448,42 @@ class BenchmarkService {
   bool importBenchmarksFromJson(String jsonData) {
     try {
       final importData = _decodeJson(jsonData) as Map<String, dynamic>;
-      
+
       // Import benchmarks
       final benchmarksData = importData['benchmarks'] as Map<String, dynamic>;
       for (final entry in benchmarksData.entries) {
-        _benchmarks[entry.key] = BenchmarkResult.fromJson(entry.value as Map<String, dynamic>);
+        _benchmarks[entry.key] = BenchmarkResult.fromJson(
+          entry.value as Map<String, dynamic>,
+        );
       }
-      
+
       // Import baselines
       final baselinesData = importData['baselines'] as Map<String, dynamic>;
       for (final entry in baselinesData.entries) {
-        _baselines[entry.key] = BenchmarkResult.fromJson(entry.value as Map<String, dynamic>);
+        _baselines[entry.key] = BenchmarkResult.fromJson(
+          entry.value as Map<String, dynamic>,
+        );
       }
-      
+
       // Import history
-      final historyData = importData['benchmarkHistory'] as Map<String, dynamic>;
+      final historyData =
+          importData['benchmarkHistory'] as Map<String, dynamic>;
       for (final entry in historyData.entries) {
-        final historyList = (entry.value as List<dynamic>)
-            .map((e) => BenchmarkResult.fromJson(e as Map<String, dynamic>))
-            .toList();
+        final historyList =
+            (entry.value as List<dynamic>)
+                .map((e) => BenchmarkResult.fromJson(e as Map<String, dynamic>))
+                .toList();
         _benchmarkHistory[entry.key] = historyList;
       }
-      
-      _logger.info('Benchmarks imported successfully', data: {
-        'benchmarksCount': _benchmarks.length,
-        'baselinesCount': _baselines.length,
-      });
-      
+
+      _logger.info(
+        'Benchmarks imported successfully',
+        data: {
+          'benchmarksCount': _benchmarks.length,
+          'baselinesCount': _baselines.length,
+        },
+      );
+
       return true;
     } catch (e, stackTrace) {
       _logger.error(
@@ -484,22 +519,28 @@ class BenchmarkService {
         'slowestBenchmark': null,
       };
     }
-    
+
     // Calculate statistics
-    final allTimes = _benchmarks.values.map((b) => b.averageTime.inMicroseconds).toList();
+    final allTimes =
+        _benchmarks.values.map((b) => b.averageTime.inMicroseconds).toList();
     final averageTime = allTimes.reduce((a, b) => a + b) / allTimes.length;
-    
-    final fastestBenchmark = _benchmarks.values.reduce((a, b) =>
-        a.averageTime.inMicroseconds < b.averageTime.inMicroseconds ? a : b);
-    final slowestBenchmark = _benchmarks.values.reduce((a, b) =>
-        a.averageTime.inMicroseconds > b.averageTime.inMicroseconds ? a : b);
-    
+
+    final fastestBenchmark = _benchmarks.values.reduce(
+      (a, b) =>
+          a.averageTime.inMicroseconds < b.averageTime.inMicroseconds ? a : b,
+    );
+    final slowestBenchmark = _benchmarks.values.reduce(
+      (a, b) =>
+          a.averageTime.inMicroseconds > b.averageTime.inMicroseconds ? a : b,
+    );
+
     // Count by category
     final categories = <String, int>{};
     for (final benchmark in _benchmarks.values) {
-      categories[benchmark.category] = (categories[benchmark.category] ?? 0) + 1;
+      categories[benchmark.category] =
+          (categories[benchmark.category] ?? 0) + 1;
     }
-    
+
     return {
       'totalBenchmarks': _benchmarks.length,
       'categories': categories,
