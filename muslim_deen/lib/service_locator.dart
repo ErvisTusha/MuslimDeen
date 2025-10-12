@@ -128,7 +128,7 @@ Future<void> _initializeCriticalServices() async {
   }
   
   // Initialize optimization tweaks service
-  locator<OptimizationTweaksService>().initialize();
+  await locator<OptimizationTweaksService>().initialize();
 
   stopwatch.stop();
   locator<LoggerService>().info(

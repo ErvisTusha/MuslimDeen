@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
@@ -64,6 +66,9 @@ class DatabaseService {
     if (_isInitialized) return;
 
     try {
+      if (kIsWeb) {
+        databaseFactory = databaseFactoryFfiWeb;
+      }
       final databasesPath = await getDatabasesPath();
       final path = join(databasesPath, _databaseName);
 

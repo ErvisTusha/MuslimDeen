@@ -281,6 +281,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.11"
+  dev_build:
+    dependency: transitive
+    description:
+      name: dev_build
+      sha256: fda8a54458b2a873a84e0cd1513f4323a1fb0599ed5455245359bc0398bad9ee
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.2+11"
   device_info_plus:
     dependency: transitive
     description:
@@ -919,6 +927,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.0.5"
+  process_run:
+    dependency: transitive
+    description:
+      name: process_run
+      sha256: "6ec839cdd3e6de4685318e7686cd4abb523c3d3a55af0e8d32a12ae19bc66622"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.2.4"
   pub_semver:
     dependency: transitive
     description:
@@ -1108,6 +1124,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.6"
+  sqflite_common_ffi_web:
+    dependency: "direct main"
+    description:
+      name: sqflite_common_ffi_web
+      sha256: "33495e9172c958d907c48fd43fbea0b9c0a2ec2e36a548ebd07672fde61b6497"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1+1"
   sqflite_darwin:
     dependency: transitive
     description:

@@ -79,7 +79,7 @@ class OptimizationTweaksService {
   final LoggerService _logger = locator<LoggerService>();
   final PerformanceMonitoringService _performanceService =
       locator<PerformanceMonitoringService>();
-  final CacheService _cacheService = locator<CacheService>();
+  CacheService? _cacheService;
 
   // Tweak storage
   final List<OptimizationTweak> _tweaks = [];
@@ -89,8 +89,24 @@ class OptimizationTweaksService {
   bool _isInitialized = false;
 
   /// Initialize the optimization tweaks service
-  void initialize() {
+  Future<void> initialize() async {
     if (_isInitialized) return;
+
+    if (locator.isRegistered<CacheService>()) {
+      try {
+        _cacheService = await locator.getAsync<CacheService>();
+      } catch (e, stackTrace) {
+        _logger.warning(
+          'CacheService not ready; cache optimization tweaks will be limited',
+          error: e,
+          stackTrace: stackTrace,
+        );
+      }
+    } else {
+      _logger.warning(
+        'CacheService not registered; cache optimization tweaks disabled',
+      );
+    }
 
     _registerDefaultTweaks();
 
@@ -378,8 +394,15 @@ class OptimizationTweaksService {
         break;
 
       case 'cache':
-        final cacheStats = _cacheService.getCacheStats();
-        metrics.addAll(cacheStats);
+        final cacheService = _cacheService;
+        if (cacheService != null) {
+          final cacheStats = cacheService.getCacheStats();
+          metrics.addAll(cacheStats);
+        } else {
+          _logger.debug(
+            'Skipping cache metrics collection; CacheService unavailable',
+          );
+        }
         break;
 
       case 'battery':
@@ -426,15 +449,21 @@ class OptimizationTweaksService {
 
       case 'cache_hit_rate_optimization':
         // Pre-warm cache with commonly accessed items
-        final cacheStats = _cacheService.getCacheStats();
-        afterMetrics.addAll(cacheStats);
+        final cacheService = _cacheService;
+        if (cacheService != null) {
+          final cacheStats = cacheService.getCacheStats();
+          afterMetrics.addAll(cacheStats);
+        }
         break;
 
       case 'cache_size_optimization':
         // Force cache cleanup
-        await _cacheService.forceCleanup();
-        final cacheStats = _cacheService.getCacheStats();
-        afterMetrics.addAll(cacheStats);
+        final cacheService = _cacheService;
+        if (cacheService != null) {
+          await cacheService.forceCleanup();
+          final cacheStats = cacheService.getCacheStats();
+          afterMetrics.addAll(cacheStats);
+        }
         break;
 
       default:
