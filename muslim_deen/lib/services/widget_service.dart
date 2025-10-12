@@ -221,7 +221,7 @@ class WidgetService {
       case PrayerNotification.fajr:
         name = "Fajr";
         icon = Icons.wb_sunny_outlined;
-        time = _prayerService.getOffsettedPrayerTime(
+        time = _prayerService.getOffsettedPrayerTimeSync(
           "fajr",
           prayerTimes,
           appSettings,
@@ -230,7 +230,7 @@ class WidgetService {
       case PrayerNotification.sunrise:
         name = "Sunrise";
         icon = Icons.wb_twilight_outlined;
-        time = _prayerService.getOffsettedPrayerTime(
+        time = _prayerService.getOffsettedPrayerTimeSync(
           "sunrise",
           prayerTimes,
           appSettings,
@@ -239,7 +239,7 @@ class WidgetService {
       case PrayerNotification.dhuhr:
         name = "Dhuhr";
         icon = Icons.wb_sunny;
-        time = _prayerService.getOffsettedPrayerTime(
+        time = _prayerService.getOffsettedPrayerTimeSync(
           "dhuhr",
           prayerTimes,
           appSettings,
@@ -248,7 +248,7 @@ class WidgetService {
       case PrayerNotification.asr:
         name = "Asr";
         icon = Icons.wb_twilight;
-        time = _prayerService.getOffsettedPrayerTime(
+        time = _prayerService.getOffsettedPrayerTimeSync(
           "asr",
           prayerTimes,
           appSettings,
@@ -257,7 +257,7 @@ class WidgetService {
       case PrayerNotification.maghrib:
         name = "Maghrib";
         icon = Icons.brightness_4_outlined;
-        time = _prayerService.getOffsettedPrayerTime(
+        time = _prayerService.getOffsettedPrayerTimeSync(
           "maghrib",
           prayerTimes,
           appSettings,
@@ -266,7 +266,7 @@ class WidgetService {
       case PrayerNotification.isha:
         name = "Isha";
         icon = Icons.nights_stay;
-        time = _prayerService.getOffsettedPrayerTime(
+        time = _prayerService.getOffsettedPrayerTimeSync(
           "isha",
           prayerTimes,
           appSettings,

@@ -13,6 +13,7 @@ import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/prayer_times_cache.dart';
 import 'package:muslim_deen/services/prayer_times_precomputer.dart';
 import 'package:muslim_deen/services/cache_metrics_service.dart';
+import 'package:muslim_deen/services/country_calculation_service.dart';
 
 /// Service responsible for calculating and providing prayer times.
 ///
@@ -157,9 +158,28 @@ class PrayerService {
 
   /// Creates CalculationParameters based on the provided settings with caching.
   /// Falls back to defaults if settings are null or invalid.
-  adhan.CalculationParameters _getCalculationParams(AppSettings? settings) {
-    final calculationMethod =
-        settings?.calculationMethod ?? 'MuslimWorldLeague';
+  /// Automatically detects country-specific calculation method if not specified.
+  Future<adhan.CalculationParameters> _getCalculationParams(AppSettings? settings, {Position? position}) async {
+    String calculationMethod;
+    
+    if (settings?.calculationMethod == 'Auto' || settings?.calculationMethod == null) {
+      // Auto-detect calculation method based on location
+      calculationMethod = 'MuslimWorldLeague'; // default
+      if (position != null) {
+        try {
+          calculationMethod = await CountryCalculationService.getCalculationMethodForCoordinates(
+            position.latitude, 
+            position.longitude,
+          );
+          _logger.info('Auto-detected calculation method', data: {'method': calculationMethod});
+        } catch (e) {
+          _logger.warning('Failed to auto-detect calculation method, using default', error: e);
+        }
+      }
+    } else {
+      calculationMethod = settings!.calculationMethod;
+    }
+    
     final madhab = settings?.madhab ?? 'hanafi';
     final cacheKey = '$calculationMethod-$madhab';
 
@@ -244,8 +264,6 @@ class PrayerService {
 
     return params;
   }
-
-  /// Calculates prayer times for a specific date and position,
   /// performs the calculation, updates service state, caches the result, and returns the prayer times.
   Future<adhan.PrayerTimes> _calculateAndPersistPrayerTimes(
     DateTime date,
@@ -384,7 +402,7 @@ class PrayerService {
 
     if (cachedTimes != null) {
       // Use cached prayer times - reconstruct adhan.PrayerTimes
-      final currentParams = _getCalculationParams(effectiveSettings);
+      final currentParams = await _getCalculationParams(effectiveSettings, position: position);
       final adhanPrayerTimes = adhan.PrayerTimes(
         coordinates: coordinates,
         date: date.toUtc(),
@@ -410,7 +428,7 @@ class PrayerService {
     _metricsService?.recordMiss(cacheKey, 'prayer_times');
 
     // Calculate new prayer times
-    final currentParams = _getCalculationParams(effectiveSettings);
+    final currentParams = await _getCalculationParams(effectiveSettings, position: position);
     return await _calculateAndPersistPrayerTimes(
       date,
       position,
@@ -552,8 +570,9 @@ class PrayerService {
 
   Future<void> recalculatePrayerTimesIfNeeded(AppSettings settings) async {
     if (!_isInitialized) await init();
+    final position = await _getEffectivePosition('prayer time recalculation');
 
-    final currentSettingsParams = _getCalculationParams(settings);
+    final currentSettingsParams = await _getCalculationParams(settings, position: position);
     final String currentMethodNameString = settings.calculationMethod;
     final nowUtc = DateTime.now().toUtc();
 
@@ -629,7 +648,7 @@ class PrayerService {
 
     try {
       final tomorrow = DateTime.now().add(const Duration(days: 1));
-      final params = _getCalculationParams(settings);
+      final params = await _getCalculationParams(settings, position: position);
       final tomorrowPrayerTimes = adhan.PrayerTimes(
         date: tomorrow,
         coordinates: adhan.Coordinates(position.latitude, position.longitude),
@@ -651,11 +670,12 @@ class PrayerService {
   }
 
   // Within the PrayerService class
-  DateTime? getOffsettedPrayerTime(
+  Future<DateTime?> getOffsettedPrayerTime(
     String prayerName,
     adhan.PrayerTimes rawPrayerTimes,
-    AppSettings settings,
-  ) {
+    AppSettings settings, {
+    Position? currentPosition,
+  }) async {
     DateTime? rawTime;
     int offsetMinutes = 0;
 
@@ -695,6 +715,10 @@ class PrayerService {
     if (rawTime == null) {
       return null;
     }
+
+    // No country-specific adjustments applied
+    // Using standard MWL calculation for all countries
+
     return rawTime.add(Duration(minutes: offsetMinutes));
   }
 
@@ -713,6 +737,55 @@ class PrayerService {
   /// Get precompute status
   Map<String, dynamic> getPrecomputeStatus() {
     return _precomputer?.getPrecomputeStatus() ?? {'status': 'not_initialized'};
+  }
+
+  /// Get prayer time with user-specific offsets only (sync version for widgets)
+  /// This version doesn't apply Albania adjustments to maintain compatibility with sync contexts
+  DateTime? getOffsettedPrayerTimeSync(
+    String prayerName,
+    adhan.PrayerTimes rawPrayerTimes,
+    AppSettings settings,
+  ) {
+    DateTime? rawTime;
+    int offsetMinutes = 0;
+
+    switch (prayerName.toLowerCase()) {
+      case 'fajr':
+        rawTime = rawPrayerTimes.fajr;
+        offsetMinutes = settings.fajrOffset;
+        break;
+      case 'sunrise':
+        rawTime = rawPrayerTimes.sunrise;
+        offsetMinutes = settings.sunriseOffset;
+        break;
+      case 'dhuhr':
+        rawTime = rawPrayerTimes.dhuhr;
+        offsetMinutes = settings.dhuhrOffset;
+        break;
+      case 'asr':
+        rawTime = rawPrayerTimes.asr;
+        offsetMinutes = settings.asrOffset;
+        break;
+      case 'maghrib':
+        rawTime = rawPrayerTimes.maghrib;
+        offsetMinutes = settings.maghribOffset;
+        break;
+      case 'isha':
+        rawTime = rawPrayerTimes.isha;
+        offsetMinutes = settings.ishaOffset;
+        break;
+      default:
+        _logger.warning(
+          'getOffsettedPrayerTimeSync called with unknown prayer name: $prayerName',
+        );
+        return null;
+    }
+
+    if (rawTime == null) {
+      return null;
+    }
+
+    return rawTime.add(Duration(minutes: offsetMinutes));
   }
 
   /// Get cache statistics

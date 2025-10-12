@@ -28,7 +28,7 @@ class AppSettings {
   final int dhikrReminderInterval; // in hours
 
   AppSettings({
-    this.calculationMethod = 'MuslimWorldLeague',
+    this.calculationMethod = 'Auto',
     this.madhab = 'hanafi',
     this.themeMode = ThemeMode.system,
     this.language = 'en',
@@ -126,7 +126,7 @@ class AppSettings {
 
     return AppSettings(
       calculationMethod:
-          json['calculationMethod'] as String? ?? 'MuslimWorldLeague',
+          json['calculationMethod'] as String? ?? 'Auto',
       madhab: json['madhab'] as String? ?? 'hanafi',
       themeMode: () {
         // Use a closure to handle logic cleanly inline

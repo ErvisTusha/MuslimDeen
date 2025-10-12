@@ -171,7 +171,7 @@ class NotificationReschedulerService {
         );
         if (prayerTime == null) continue;
 
-        final offsettedTime = _prayerService.getOffsettedPrayerTime(
+        final offsettedTime = _prayerService.getOffsettedPrayerTimeSync(
           prayerName.toLowerCase(),
           prayerTimes,
           settings,

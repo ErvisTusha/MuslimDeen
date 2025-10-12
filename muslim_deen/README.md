@@ -19,7 +19,7 @@ A comprehensive Islamic app providing essential tools for Muslims.
 Built with Flutter using:
 - Riverpod for state management
 - GetIt for service location
-- Adhan library for prayer time calculations
+- Adhan library for prayer time calculations (Muslim World League)
 - Geolocator for location services
 - Flutter Compass for qibla direction
 

@@ -871,7 +871,7 @@ class _HomeViewState extends ConsumerState<HomeView>
     final prayerDetails = _getPrayerDetails(prayerEnum);
 
     // Get offsetted time
-    final time = _prayerService.getOffsettedPrayerTime(
+    final time = _prayerService.getOffsettedPrayerTimeSync(
       prayerDetails.prayerName,
       prayerTimes,
       appSettings,

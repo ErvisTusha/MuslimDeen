@@ -502,8 +502,8 @@ class SettingsNotifier extends Notifier<AppSettings> {
         final prayerEnum = prayerDetail['enum'] as PrayerNotification;
         final prayerDisplayName = prayerDetail['displayName'] as String;
 
-        // Use PrayerService.getOffsettedPrayerTime for consistent offset handling
-        final DateTime? finalPrayerTime = _prayerService.getOffsettedPrayerTime(
+        // Use PrayerService.getOffsettedPrayerTimeSync for consistent offset handling
+        final DateTime? finalPrayerTime = _prayerService.getOffsettedPrayerTimeSync(
           prayerName,
           prayerTimesToday,
           state,
