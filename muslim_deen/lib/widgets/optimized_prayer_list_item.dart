@@ -8,7 +8,6 @@ import 'package:muslim_deen/providers/optimized_providers.dart';
 import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
-import 'package:muslim_deen/services/performance_monitoring_service.dart';
 
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/views/settings_view.dart';
@@ -54,7 +53,6 @@ class _OptimizedPrayerListItemState
 
   // Services
   late final LoggerService _logger;
-  late final PerformanceMonitoringService _performanceService;
 
   // Memoized values
   late final String _prayerKey;
@@ -74,15 +72,10 @@ class _OptimizedPrayerListItemState
 
   void _initializeServices() {
     _logger = locator<LoggerService>();
-    _performanceService = locator<PerformanceMonitoringService>();
   }
 
   /// Optimized completion status check with caching
   Future<void> _checkCompletionStatus() async {
-    final trackingId = _performanceService.startWidgetBuildTracking(
-      'PrayerCompletionCheck',
-    );
-
     try {
       // Cache completion status for 30 seconds
       final now = DateTime.now();
@@ -110,8 +103,6 @@ class _OptimizedPrayerListItemState
         error: e,
         stackTrace: s,
       );
-    } finally {
-      _performanceService.endWidgetBuildTracking(trackingId);
     }
   }
 
@@ -121,20 +112,8 @@ class _OptimizedPrayerListItemState
     return DateTime.now().isAfter(widget.prayerInfo.time!);
   }
 
-  /// Optimized completion toggle with proper state management
-  Future<void> _toggleCompletion() async {
-    // Prevent marking upcoming prayers as done
-    if (!_isCompleted && !_hasPrayerPassed()) {
-      _showSnackBar(
-        'Cannot mark ${widget.prayerInfo.name} as done - prayer time has not arrived yet',
-      );
-      return;
-    }
-
-    final trackingId = _performanceService.startWidgetBuildTracking(
-      'PrayerCompletionToggle',
-    );
-
+  /// Toggle completion status with optimized provider usage
+  Future<void> _toggleCompletionStatus() async {
     setState(() {
       _isLoading = true;
     });
@@ -173,8 +152,6 @@ class _OptimizedPrayerListItemState
         });
         _showSnackBar('Failed to update prayer status: $e');
       }
-    } finally {
-      _performanceService.endWidgetBuildTracking(trackingId);
     }
   }
 
@@ -225,12 +202,8 @@ class _OptimizedPrayerListItemState
     return _cachedNotificationEnabled!;
   }
 
-  /// Navigate to settings with performance tracking
+  /// Navigate to settings
   void _navigateToSettings(BuildContext context) {
-    final trackingId = _performanceService.startWidgetBuildTracking(
-      'NavigateToSettings',
-    );
-
     Navigator.push(
       context,
       MaterialPageRoute<void>(
@@ -240,17 +213,11 @@ class _OptimizedPrayerListItemState
     ).then((_) {
       widget.onRefresh?.call();
     });
-
-    _performanceService.endWidgetBuildTracking(trackingId);
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
-
-    final trackingId = _performanceService.startWidgetBuildTracking(
-      'OptimizedPrayerListItemBuild',
-    );
 
     try {
       // Use selector to only rebuild when settings.notifications changes
@@ -362,7 +329,7 @@ class _OptimizedPrayerListItemState
                       value: _isCompleted,
                       onChanged:
                           (_isCompleted || _hasPrayerPassed())
-                              ? (bool? value) => _toggleCompletion()
+                              ? (bool? value) => _toggleCompletionStatus()
                               : null,
                       activeColor: itemColors.icon,
                       checkColor: itemColors.background,
@@ -372,8 +339,9 @@ class _OptimizedPrayerListItemState
           ),
         ),
       );
-    } finally {
-      _performanceService.endWidgetBuildTracking(trackingId);
+    } catch (e) {
+      _logger.error('Error building prayer list item', error: e);
+      return const SizedBox.shrink();
     }
   }
 

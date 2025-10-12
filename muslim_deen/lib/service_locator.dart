@@ -1,6 +1,5 @@
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart';
 import 'dart:async';
 
 import 'package:muslim_deen/services/cache_service.dart';
@@ -13,7 +12,6 @@ import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/map_service.dart';
 import 'package:muslim_deen/services/navigation_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
-import 'package:muslim_deen/services/performance_monitoring_service.dart';
 import 'package:muslim_deen/services/prayer_history_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
 import 'package:muslim_deen/services/prayer_times_cache.dart';
@@ -21,10 +19,6 @@ import 'package:muslim_deen/services/storage_service.dart';
 import 'package:muslim_deen/services/tasbih_history_service.dart';
 import 'package:muslim_deen/services/widget_service.dart';
 import 'package:muslim_deen/services/hadith_service.dart';
-import 'package:muslim_deen/services/benchmark_service.dart';
-import 'package:muslim_deen/services/scalability_test_service.dart';
-import 'package:muslim_deen/services/production_monitoring_service.dart';
-import 'package:muslim_deen/services/optimization_tweaks_service.dart';
 
 final GetIt locator = GetIt.instance;
 
@@ -59,11 +53,6 @@ void _registerServices(bool testing) {
   locator.registerLazySingleton<DhikrReminderService>(DhikrReminderService.new);
   locator.registerLazySingleton<TasbihHistoryService>(TasbihHistoryService.new);
   locator.registerLazySingleton<HadithService>(HadithService.new);
-  locator.registerLazySingleton<PerformanceMonitoringService>(PerformanceMonitoringService.new);
-  locator.registerLazySingleton<BenchmarkService>(BenchmarkService.new);
-  locator.registerLazySingleton<ScalabilityTestService>(ScalabilityTestService.new);
-  locator.registerLazySingleton<ProductionMonitoringService>(ProductionMonitoringService.new);
-  locator.registerLazySingleton<OptimizationTweaksService>(OptimizationTweaksService.new);
 
   if (!testing) {
     locator.registerLazySingleton<NotificationService>(NotificationService.new);
@@ -112,23 +101,6 @@ Future<void> _initializeCriticalServices() async {
 
   await locator<DatabaseService>().init();
   await locator<StorageService>().init();
-
-  // Initialize performance monitoring service
-  locator<PerformanceMonitoringService>().initialize();
-  
-  // Initialize benchmark service
-  locator<BenchmarkService>().initialize();
-  
-  // Initialize scalability test service
-  locator<ScalabilityTestService>().initialize();
-  
-  // Initialize production monitoring service (only in release mode)
-  if (!kDebugMode) {
-    locator<ProductionMonitoringService>().initialize();
-  }
-  
-  // Initialize optimization tweaks service
-  await locator<OptimizationTweaksService>().initialize();
 
   stopwatch.stop();
   locator<LoggerService>().info(

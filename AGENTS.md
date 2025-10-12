@@ -8,8 +8,10 @@
 
 - no workarounds or temporary fixes
 - don't tell what you're doing, show it through code
-- don't say "this is temporary", just do it right the first time
+- no half-done work, every PR should be shippable
 - Assume full ownership of the codebase. If you see something that can be improved, fix it without waiting for explicit instructions.
+- Generate relevant pre-commit hooks
+
 
 ## Core Responsibilities
 

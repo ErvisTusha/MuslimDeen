@@ -7,7 +7,6 @@ import 'package:riverpod/riverpod.dart' as riverpod;
 import 'package:muslim_deen/models/app_settings.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
-import 'package:muslim_deen/services/performance_monitoring_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
 
 /// State class for prayer-related data
@@ -86,16 +85,13 @@ class PrayerState {
 class PrayerStateNotifier extends riverpod.Notifier<PrayerState> {
   final PrayerService _prayerService;
   final LoggerService _logger;
-  final PerformanceMonitoringService _performanceService;
   Timer? _updateTimer;
 
   PrayerStateNotifier({
     required PrayerService prayerService,
     required LoggerService loggerService,
-    required PerformanceMonitoringService performanceService,
   }) : _prayerService = prayerService,
-       _logger = loggerService,
-       _performanceService = performanceService;
+       _logger = loggerService;
 
   @override
   PrayerState build() {
@@ -104,10 +100,6 @@ class PrayerStateNotifier extends riverpod.Notifier<PrayerState> {
 
   /// Initialize prayer state
   Future<void> initialize(AppSettings settings) async {
-    final trackingId = _performanceService.startWidgetBuildTracking(
-      'PrayerStateInitialize',
-    );
-
     try {
       state = state.copyWith(isLoading: true, error: null);
 
@@ -123,17 +115,11 @@ class PrayerStateNotifier extends riverpod.Notifier<PrayerState> {
         data: {'error': e.toString(), 'stackTrace': s.toString()},
       );
       state = state.copyWith(isLoading: false, error: e.toString());
-    } finally {
-      _performanceService.endWidgetBuildTracking(trackingId);
     }
   }
 
   /// Update prayer state with current data
   Future<void> updatePrayerState(AppSettings settings) async {
-    final trackingId = _performanceService.startWidgetBuildTracking(
-      'PrayerStateUpdate',
-    );
-
     try {
       await _updatePrayerState(settings);
     } catch (e, s) {
@@ -142,8 +128,6 @@ class PrayerStateNotifier extends riverpod.Notifier<PrayerState> {
         data: {'error': e.toString(), 'stackTrace': s.toString()},
       );
       state = state.copyWith(error: e.toString());
-    } finally {
-      _performanceService.endWidgetBuildTracking(trackingId);
     }
   }
 
@@ -222,7 +206,6 @@ final prayerStateProvider =
       return PrayerStateNotifier(
         prayerService: locator<PrayerService>(),
         loggerService: locator<LoggerService>(),
-        performanceService: locator<PerformanceMonitoringService>(),
       );
     });
 
@@ -305,13 +288,10 @@ class PrayerCompletionState {
 class PrayerCompletionNotifier
     extends riverpod.Notifier<PrayerCompletionState> {
   final LoggerService _logger;
-  final PerformanceMonitoringService _performanceService;
 
   PrayerCompletionNotifier({
     required LoggerService loggerService,
-    required PerformanceMonitoringService performanceService,
-  }) : _logger = loggerService,
-       _performanceService = performanceService;
+  }) : _logger = loggerService;
 
   @override
   PrayerCompletionState build() {
@@ -323,10 +303,6 @@ class PrayerCompletionNotifier
     String prayerName,
     bool isCompleted,
   ) async {
-    final trackingId = _performanceService.startWidgetBuildTracking(
-      'PrayerCompletionUpdate',
-    );
-
     try {
       final newCompletedPrayers = Map<String, bool>.from(
         state.completedPrayers,
@@ -348,8 +324,6 @@ class PrayerCompletionNotifier
         data: {'error': e.toString(), 'stackTrace': s.toString()},
       );
       state = state.copyWith(error: e.toString());
-    } finally {
-      _performanceService.endWidgetBuildTracking(trackingId);
     }
   }
 
@@ -371,11 +345,9 @@ final prayerCompletionProvider =
     riverpod.NotifierProvider<PrayerCompletionNotifier, PrayerCompletionState>(
       () {
         final loggerService = locator<LoggerService>();
-        final performanceService = locator<PerformanceMonitoringService>();
 
         return PrayerCompletionNotifier(
           loggerService: loggerService,
-          performanceService: performanceService,
         );
       },
     );

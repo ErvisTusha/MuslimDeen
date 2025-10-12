@@ -9,7 +9,6 @@ import 'package:muslim_deen/models/prayer_display_info_data.dart';
 import 'package:muslim_deen/providers/optimized_providers.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
-import 'package:muslim_deen/services/performance_monitoring_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/styles/ui_theme_helper.dart';
 import 'package:muslim_deen/widgets/optimized_prayer_list_item.dart';
@@ -54,9 +53,6 @@ class OptimizedPrayerTimesSection extends ConsumerStatefulWidget {
 class _OptimizedPrayerTimesSectionState
     extends ConsumerState<OptimizedPrayerTimesSection>
     with AutomaticKeepAliveClientMixin {
-  final PerformanceMonitoringService _performanceService =
-      locator<PerformanceMonitoringService>();
-
   // Memoized decoration
   BoxDecoration? _cachedDecoration;
 
@@ -94,10 +90,6 @@ class _OptimizedPrayerTimesSectionState
 
   /// Optimized item builder with proper keys
   Widget _buildPrayerItem(BuildContext context, int index) {
-    final trackingId = _performanceService.startWidgetBuildTracking(
-      'PrayerItemBuild',
-    );
-
     try {
       final prayerEnum = widget.prayerOrder[index];
       final prayerInfo = widget.getPrayerDisplayInfo(prayerEnum);
@@ -117,8 +109,9 @@ class _OptimizedPrayerTimesSectionState
         currentPrayerItemTextColor: widget.currentPrayerText,
         onRefresh: widget.onRefresh,
       );
-    } finally {
-      _performanceService.endWidgetBuildTracking(trackingId);
+    } catch (e) {
+      // Handle error gracefully
+      return const SizedBox.shrink();
     }
   }
 
@@ -138,10 +131,6 @@ class _OptimizedPrayerTimesSectionState
   @override
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
-
-    final trackingId = _performanceService.startWidgetBuildTracking(
-      'PrayerTimesSectionBuild',
-    );
 
     try {
       // Use optimized provider for UI state
@@ -213,8 +202,9 @@ class _OptimizedPrayerTimesSectionState
           ],
         ),
       );
-    } finally {
-      _performanceService.endWidgetBuildTracking(trackingId);
+    } catch (e) {
+      // Handle error gracefully
+      return const SizedBox.shrink();
     }
   }
 
@@ -262,8 +252,6 @@ class _AutoRefreshPrayerTimesSectionState
     with AutomaticKeepAliveClientMixin {
   final ScrollController _scrollController = ScrollController();
   final LoggerService _logger = locator<LoggerService>();
-  final PerformanceMonitoringService _performanceService =
-      locator<PerformanceMonitoringService>();
 
   Timer? _autoRefreshTimer;
   DateTime? _lastRefreshTime;
@@ -291,10 +279,6 @@ class _AutoRefreshPrayerTimesSectionState
   }
 
   Future<void> _performAutoRefresh() async {
-    final trackingId = _performanceService.startWidgetBuildTracking(
-      'AutoRefresh',
-    );
-
     try {
       // Only refresh if enough time has passed
       final now = DateTime.now();
@@ -319,16 +303,10 @@ class _AutoRefreshPrayerTimesSectionState
       _logger.debug('Auto refresh completed');
     } catch (e, s) {
       _logger.error('Error during auto refresh', error: e, stackTrace: s);
-    } finally {
-      _performanceService.endWidgetBuildTracking(trackingId);
     }
   }
 
   Future<void> _manualRefresh() async {
-    final trackingId = _performanceService.startWidgetBuildTracking(
-      'ManualRefresh',
-    );
-
     try {
       ref.read(uiStateProvider.notifier).triggerRefresh();
 
@@ -340,8 +318,8 @@ class _AutoRefreshPrayerTimesSectionState
       }
 
       _logger.debug('Manual refresh completed');
-    } finally {
-      _performanceService.endWidgetBuildTracking(trackingId);
+    } catch (e) {
+      _logger.error('Error during manual refresh', error: e);
     }
   }
 

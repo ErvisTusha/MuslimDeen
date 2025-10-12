@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:muslim_deen/models/app_settings.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
-import 'package:muslim_deen/services/performance_monitoring_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
 import 'package:muslim_deen/services/prayer_history_service.dart';
 
@@ -14,7 +13,6 @@ import 'package:muslim_deen/services/prayer_history_service.dart';
 class OptimizedPrayerStateNotifier extends Notifier<OptimizedPrayerState> {
   late final PrayerService _prayerService;
   late final LoggerService _logger;
-  late final PerformanceMonitoringService _performanceService;
   Timer? _updateTimer;
   Timer? _debounceTimer;
 
@@ -28,7 +26,6 @@ class OptimizedPrayerStateNotifier extends Notifier<OptimizedPrayerState> {
   OptimizedPrayerState build() {
     _prayerService = locator<PrayerService>();
     _logger = locator<LoggerService>();
-    _performanceService = locator<PerformanceMonitoringService>();
 
     // Start with empty state
     return const OptimizedPrayerState(
@@ -41,10 +38,6 @@ class OptimizedPrayerStateNotifier extends Notifier<OptimizedPrayerState> {
 
   /// Initialize prayer state with settings
   Future<void> initialize(AppSettings settings) async {
-    final trackingId = _performanceService.startWidgetBuildTracking(
-      'OptimizedPrayerInit',
-    );
-
     try {
       state = state.copyWith(isLoading: true);
       await _updatePrayerState(settings);
@@ -58,17 +51,11 @@ class OptimizedPrayerStateNotifier extends Notifier<OptimizedPrayerState> {
         stackTrace: s,
       );
       state = state.copyWith(isLoading: false, error: e.toString());
-    } finally {
-      _performanceService.endWidgetBuildTracking(trackingId);
     }
   }
 
   /// Update prayer state with smart caching
   Future<void> _updatePrayerState(AppSettings settings) async {
-    final trackingId = _performanceService.startWidgetBuildTracking(
-      'PrayerStateUpdate',
-    );
-
     try {
       final currentPrayer = _prayerService.getCurrentPrayer();
       final nextPrayer = _prayerService.getNextPrayer();
@@ -106,8 +93,6 @@ class OptimizedPrayerStateNotifier extends Notifier<OptimizedPrayerState> {
     } catch (e, s) {
       _logger.error('Failed to update prayer state', error: e, stackTrace: s);
       state = state.copyWith(isLoading: false, error: e.toString());
-    } finally {
-      _performanceService.endWidgetBuildTracking(trackingId);
     }
   }
 
@@ -252,7 +237,6 @@ class OptimizedPrayerCompletionNotifier
     extends Notifier<OptimizedPrayerCompletionState> {
   late final PrayerHistoryService _prayerHistoryService;
   late final LoggerService _logger;
-  late final PerformanceMonitoringService _performanceService;
 
   // Cache for prayer completion status
   final Map<String, bool> _completionCache = {};
@@ -262,7 +246,6 @@ class OptimizedPrayerCompletionNotifier
   OptimizedPrayerCompletionState build() {
     _prayerHistoryService = locator<PrayerHistoryService>();
     _logger = locator<LoggerService>();
-    _performanceService = locator<PerformanceMonitoringService>();
 
     return const OptimizedPrayerCompletionState(
       completedPrayers: {},
@@ -272,10 +255,6 @@ class OptimizedPrayerCompletionNotifier
 
   /// Load prayer completion status with caching
   Future<void> loadCompletionStatus() async {
-    final trackingId = _performanceService.startWidgetBuildTracking(
-      'LoadPrayerCompletion',
-    );
-
     try {
       state = state.copyWith(isLoading: true);
 
@@ -324,8 +303,6 @@ class OptimizedPrayerCompletionNotifier
         stackTrace: s,
       );
       state = state.copyWith(isLoading: false, error: e.toString());
-    } finally {
-      _performanceService.endWidgetBuildTracking(trackingId);
     }
   }
 
@@ -334,10 +311,6 @@ class OptimizedPrayerCompletionNotifier
     String prayerName,
     bool isCompleted,
   ) async {
-    final trackingId = _performanceService.startWidgetBuildTracking(
-      'UpdatePrayerCompletion',
-    );
-
     try {
       if (isCompleted) {
         await _prayerHistoryService.markPrayerCompleted(prayerName);
@@ -365,8 +338,6 @@ class OptimizedPrayerCompletionNotifier
         stackTrace: s,
       );
       state = state.copyWith(error: e.toString());
-    } finally {
-      _performanceService.endWidgetBuildTracking(trackingId);
     }
   }
 
