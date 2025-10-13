@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:muslim_deen/models/prayer_display_info_data.dart';
 import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/navigation_service.dart';
 import 'package:muslim_deen/services/prayer_history_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/views/settings_view.dart'; // For navigation
@@ -231,12 +232,9 @@ class _PrayerListItemState extends ConsumerState<PrayerListItem> {
 
   /// Navigates to the settings screen and calls the refresh callback when returning
   void _navigateToSettings(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (context) => const SettingsView(scrollToNotifications: true),
-        settings: const RouteSettings(name: '/settings'),
-      ),
+    locator<NavigationService>().navigateTo<void>(
+      const SettingsView(scrollToNotifications: true),
+      routeName: '/settings',
     ).then((_) {
       widget.onRefresh?.call();
     });

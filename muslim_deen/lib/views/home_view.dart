@@ -18,12 +18,14 @@ import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/fasting_service.dart';
 import 'package:muslim_deen/services/location_service.dart';
+import 'package:muslim_deen/services/navigation_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
 import 'package:muslim_deen/services/widget_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/styles/ui_theme_helper.dart';
+import 'package:muslim_deen/views/moon_phase_details_view.dart';
 import 'package:muslim_deen/views/prayer_stats_view.dart';
 import 'package:muslim_deen/views/settings_view.dart';
 import 'package:muslim_deen/widgets/common_container_styles.dart';
@@ -1013,6 +1015,11 @@ class _HomeViewState extends ConsumerState<HomeView>
         brightness: brightness,
         actions: [
           IconButton(
+            icon: const Icon(Icons.brightness_2),
+            onPressed: _navigateToMoonPhases,
+            tooltip: 'Moon Phase Details',
+          ),
+          IconButton(
             icon: const Icon(Icons.bar_chart),
             onPressed: _navigateToPrayerStats,
             tooltip: 'Prayer Statistics',
@@ -1288,16 +1295,12 @@ class _HomeViewState extends ConsumerState<HomeView>
     bool scrollToDate = false,
     bool scrollToLocation = false,
   }) {
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder:
-            (context) => SettingsView(
-              scrollToDate: scrollToDate,
-              scrollToLocation: scrollToLocation,
-            ),
-        settings: const RouteSettings(name: '/settings'),
+    locator<NavigationService>().navigateTo<void>(
+      SettingsView(
+        scrollToDate: scrollToDate,
+        scrollToLocation: scrollToLocation,
       ),
+      routeName: '/settings',
     ).then((_) {
       if (mounted) {
         _triggerUIRefresh();
@@ -1306,12 +1309,18 @@ class _HomeViewState extends ConsumerState<HomeView>
   }
 
   void _navigateToPrayerStats() {
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (context) => const PrayerStatsView(),
-        settings: const RouteSettings(name: '/prayer-stats'),
+    locator<NavigationService>().navigateTo<void>(
+      const PrayerStatsView(),
+      routeName: '/prayer-stats',
+    );
+  }
+
+  void _navigateToMoonPhases() {
+    locator<NavigationService>().navigateTo<MoonPhaseDetailsView>(
+      MoonPhaseDetailsView(
+        selectedDate: DateTime.now(),
       ),
+      routeName: '/moon-phases',
     );
   }
 }

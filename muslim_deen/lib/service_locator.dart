@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 
+import 'package:muslim_deen/services/cache_metrics_service.dart';
 import 'package:muslim_deen/services/cache_service.dart';
 import 'package:muslim_deen/services/compass_service.dart';
 import 'package:muslim_deen/services/database_service.dart';
@@ -11,6 +12,7 @@ import 'package:muslim_deen/services/error_handler_service.dart';
 import 'package:muslim_deen/services/fasting_service.dart';
 import 'package:muslim_deen/services/hadith_service.dart';
 import 'package:muslim_deen/services/islamic_events_service.dart';
+import 'package:muslim_deen/services/location_cache_manager.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/map_service.dart';
@@ -24,6 +26,8 @@ import 'package:muslim_deen/services/storage_service.dart';
 import 'package:muslim_deen/services/tasbih_history_service.dart';
 import 'package:muslim_deen/services/widget_service.dart';
 import 'package:muslim_deen/services/zakat_calculator_service.dart';
+import 'package:muslim_deen/services/audio_player_service.dart';
+import 'package:muslim_deen/services/prayer_analytics_service.dart';
 
 final GetIt locator = GetIt.instance;
 
@@ -75,6 +79,7 @@ void _registerServices(bool testing) {
   locator.registerLazySingleton<ErrorHandlerService>(ErrorHandlerService.new);
   locator.registerLazySingleton<NavigationService>(NavigationService.new);
   locator.registerLazySingleton<PrayerHistoryService>(PrayerHistoryService.new);
+  locator.registerLazySingleton<PrayerAnalyticsService>(PrayerAnalyticsService.new);
   locator.registerLazySingleton<DhikrReminderService>(DhikrReminderService.new);
   locator.registerLazySingleton<TasbihHistoryService>(TasbihHistoryService.new);
   locator.registerLazySingleton<HadithService>(HadithService.new);
@@ -89,6 +94,24 @@ void _registerServices(bool testing) {
   locator.registerLazySingletonAsync<CacheService>(() async {
     final prefs = _sharedPrefsCache ?? await SharedPreferences.getInstance();
     return CacheService(prefs);
+  });
+
+  locator.registerLazySingletonAsync<CacheMetricsService>(() async {
+    final prefs = _sharedPrefsCache ?? await SharedPreferences.getInstance();
+    return CacheMetricsService(prefs);
+  });
+
+  locator.registerLazySingletonAsync<LocationCacheManager>(() async {
+    final cacheManager = LocationCacheManager();
+    await cacheManager.init();
+    // Attach metrics service if available
+    try {
+      final metricsService = await locator.getAsync<CacheMetricsService>();
+      cacheManager.setMetricsService(metricsService);
+    } catch (e) {
+      // Metrics service not available, continue without it
+    }
+    return cacheManager;
   });
 
   /// PrayerTimesCache requires async CacheService dependency
@@ -136,6 +159,9 @@ void _registerServices(bool testing) {
     await service.init();
     return service;
   });
+
+  /// AudioPlayerService depends on CacheService
+  locator.registerLazySingleton<AudioPlayerService>(AudioPlayerService.new);
 }
 
 /// Initialize critical services required for app to start

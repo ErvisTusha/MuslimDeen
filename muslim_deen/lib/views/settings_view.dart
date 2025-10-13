@@ -10,6 +10,7 @@ import 'package:muslim_deen/providers/settings_prayer_mixin.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
+import 'package:muslim_deen/services/navigation_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/styles/ui_theme_helper.dart';
 import 'package:muslim_deen/views/about_view.dart';
@@ -549,12 +550,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             subtitle: "About this app",
             onTap: () {
               _logger.logInteraction('SettingsView', 'Open about screen');
-              Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (context) => const AboutScreen(),
-                ),
-              );
+              locator<NavigationService>().navigateTo<void>(const AboutScreen());
             },
           ),
         ],
@@ -760,12 +756,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
                   if (!mounted) return;
 
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute<bool>(
-                      builder: (context) => const CitySearchScreen(),
-                    ),
-                  );
+                  final result = await locator<NavigationService>().navigateTo<bool>(const CitySearchScreen());
 
                   if (result == true && mounted) {
                     setState(() {});

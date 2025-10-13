@@ -1,4 +1,4 @@
-import 'dart:developer';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +9,7 @@ import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/error_handler_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
+import 'package:muslim_deen/services/navigation_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/views/fasting_tracker_view.dart';
@@ -107,6 +108,7 @@ class MuslimDeenApp extends StatelessWidget {
           darkTheme: _buildDarkTheme(),
           themeMode: settingsState.themeMode,
           home: const MainScreen(),
+          navigatorKey: locator<NavigationService>().navigatorKey,
           navigatorObservers: [_NavigationObserver()],
         );
       },
@@ -799,10 +801,7 @@ class ErrorApp extends StatelessWidget {
                 ),
                 const SizedBox(height: 32),
                 ElevatedButton(
-                  onPressed: () {
-                    // Try to restart the app
-                    main();
-                  },
+                  onPressed: main,
                   child: const Text('Retry'),
                 ),
               ],

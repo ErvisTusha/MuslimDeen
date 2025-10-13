@@ -5,18 +5,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get_it/get_it.dart';
 
 import 'package:muslim_deen/models/app_constants.dart';
 import 'package:muslim_deen/providers/providers.dart';
+import 'package:muslim_deen/providers/service_providers.dart';
 import 'package:muslim_deen/providers/tesbih_reminder_provider.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
+import 'package:muslim_deen/services/navigation_service.dart';
 import 'package:muslim_deen/services/notification_service.dart'
     show NotificationService;
 import 'package:muslim_deen/services/storage_service.dart';
+import 'package:muslim_deen/services/audio_player_service.dart';
 import 'package:muslim_deen/services/tasbih_history_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/styles/theme_utils.dart';
@@ -36,6 +38,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   String _currentDhikr = 'Subhanallah';
   bool _vibrationEnabled = true;
   bool _soundEnabled = false;
+  bool _dhikrAudioEnabled = false; // New setting for dhikr pronunciation audio
   int _target = 33;
 
   late final NotificationService _notificationService =
@@ -45,8 +48,8 @@ class _TesbihViewState extends ConsumerState<TesbihView>
 
   final List<String> _dhikrOrder = AppConstants.dhikrOrder;
 
-  AudioPlayer? _dhikrPlayer;
-  AudioPlayer? _counterPlayer;
+  // Use AudioPlayerService instead of direct AudioPlayer instances
+  AudioPlayerService get _audioService => ref.read(audioPlayerServiceProvider);
 
   bool _isAudioPlaying = false;
   bool _isResetting = false;
@@ -103,19 +106,8 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     // from being canceled when switching between views. Tasbih reminders should
     // persist independently of view state, just like prayer notifications.
 
-    try {
-      _dhikrPlayer?.dispose();
-      _dhikrPlayer = null;
-    } catch (e) {
-      _logger.warning('Error disposing dhikr player', error: e);
-    }
-
-    try {
-      _counterPlayer?.dispose();
-      _counterPlayer = null;
-    } catch (e) {
-      _logger.warning('Error disposing counter player', error: e);
-    }
+    // AudioPlayer instances are now managed by AudioPlayerService singleton
+    // No need to dispose them here
 
     super.dispose();
   }
@@ -345,6 +337,8 @@ class _TesbihViewState extends ConsumerState<TesbihView>
           _storageService.getData('vibration_enabled') as bool?;
       final bool? storedSound =
           _storageService.getData('sound_enabled') as bool?;
+      final bool? storedDhikrAudio =
+          _storageService.getData('dhikr_audio_enabled') as bool?;
       final int? storedCount =
           _storageService.getData('${storedDhikr ?? _currentDhikr}_count')
               as int?;
@@ -391,6 +385,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
         _currentDhikr = storedDhikr!;
         _vibrationEnabled = storedVibration ?? true;
         _soundEnabled = storedSound ?? false;
+        _dhikrAudioEnabled = storedDhikrAudio ?? false;
         _isCustomTarget = isCustom ?? false;
 
         if (_isCustomTarget && _customDhikrTargets.containsKey(_currentDhikr)) {
@@ -431,8 +426,8 @@ class _TesbihViewState extends ConsumerState<TesbihView>
 
   void _initializeAudioPlayers() {
     if (_soundEnabled) {
-      _dhikrPlayer ??= AudioPlayer();
-      _counterPlayer ??= AudioPlayer();
+      // AudioPlayerService is a singleton and handles its own initialization
+      // No need to create new instances here
     }
   }
 
@@ -443,6 +438,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
       final Map<String, dynamic> dataToSave = {
         'vibration_enabled': _vibrationEnabled,
         'sound_enabled': _soundEnabled,
+        'dhikr_audio_enabled': _dhikrAudioEnabled,
         'current_dhikr': _currentDhikr,
         'tasbih_target': _target,
         '${_currentDhikr}_count': _count,
@@ -616,20 +612,19 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   Future<void> _playCounterSound() async {
     if (!_soundEnabled || _isAudioPlaying) return;
 
-    _initializeAudioPlayers();
-
     try {
       _isAudioPlaying = true;
-      await _counterPlayer?.stop();
-      await _counterPlayer?.play(AssetSource('audio/tesbih.mp3'));
+      await _audioService.playCounterSound();
 
+      // Set a timeout to reset the playing state
       final completeTimer = Timer(const Duration(seconds: 3), () {
         if (_isAudioPlaying) {
           _isAudioPlaying = false;
         }
       });
 
-      _counterPlayer?.onPlayerComplete.first.then((_) {
+      // Since AudioPlayerService handles completion internally, we use a simpler approach
+      Future.delayed(const Duration(seconds: 3), () {
         completeTimer.cancel();
         if (mounted) {
           setState(() {
@@ -688,8 +683,8 @@ class _TesbihViewState extends ConsumerState<TesbihView>
 
   Future<void> _stopAllAudio() async {
     try {
-      await _dhikrPlayer?.stop();
-      await _counterPlayer?.stop();
+      await _audioService.stopDhikrAudio();
+      await _audioService.stopCounterSound();
       _isAudioPlaying = false;
     } catch (e, s) {
       _logger.error('Error stopping audio', error: e, stackTrace: s);
@@ -697,41 +692,30 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   }
 
   Future<void> _playDhikrSound(String dhikr) async {
-    if (!_soundEnabled) return;
-
-    if (_isAudioPlaying) {
-      await _stopAllAudio();
-    }
-
-    _initializeAudioPlayers();
+    if (!_dhikrAudioEnabled) return;
 
     try {
-      final audioFile = AppConstants.dhikrAudioFiles[dhikr];
-      if (audioFile != null) {
-        _isAudioPlaying = true;
-        _logger.info('Playing dhikr sound: $audioFile');
+      await _audioService.playDhikrAudio(dhikr);
+      _isAudioPlaying = true;
 
-        await _dhikrPlayer?.play(AssetSource(audioFile));
+      // Set a timeout to reset the playing state
+      final completeTimer = Timer(const Duration(seconds: 3), () {
+        if (_isAudioPlaying) {
+          _isAudioPlaying = false;
+        }
+      });
 
-        final completeTimer = Timer(const Duration(seconds: 3), () {
-          if (_isAudioPlaying) {
+      // Since AudioPlayerService handles completion internally, we use a timeout
+      Future.delayed(const Duration(seconds: 3), () {
+        completeTimer.cancel();
+        if (mounted) {
+          setState(() {
             _isAudioPlaying = false;
-          }
-        });
-
-        _dhikrPlayer?.onPlayerComplete.first.then((_) {
-          completeTimer.cancel();
-          if (mounted) {
-            setState(() {
-              _isAudioPlaying = false;
-            });
-          } else {
-            _isAudioPlaying = false;
-          }
-        });
-      } else {
-        _logger.warning('No audio file found for dhikr: $dhikr');
-      }
+          });
+        } else {
+          _isAudioPlaying = false;
+        }
+      });
     } catch (e, s) {
       _isAudioPlaying = false;
       _logger.error('Error playing dhikr sound', error: e, stackTrace: s);
@@ -830,30 +814,24 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   /// Creates Tesbih-specific colors
   TesbihColors _getTesbihColors(UIColors colors) {
     return TesbihColors(
-      contentSurface:
-          colors.isDarkMode
-              ? const Color(0xFF2C2C2C)
-              : AppColors.primaryVariant(colors.brightness),
-      counterCircleBg:
-          colors.isDarkMode
-              ? const Color(0xFF3C3C3C)
-              : AppColors.background(colors.brightness),
-      dhikrArabicText:
-          colors.isDarkMode
-              ? colors.textColorPrimary
-              : AppColors.primary(colors.brightness),
-      counterProgress:
-          colors.isDarkMode
-              ? colors.accentColor
-              : AppColors.primary(colors.brightness),
-      counterCountText:
-          colors.isDarkMode
-              ? colors.accentColor
-              : AppColors.primary(colors.brightness),
-      toggleCardBg:
-          colors.isDarkMode
-              ? const Color(0xFF2C2C2C)
-              : AppColors.background(colors.brightness),
+      contentSurface: colors.isDarkMode
+          ? const Color(0xFF2C2C2C)
+          : AppColors.primaryVariant(colors.brightness),
+      counterCircleBg: colors.isDarkMode
+          ? const Color(0xFF3C3C3C)
+          : AppColors.background(colors.brightness),
+      dhikrArabicText: colors.isDarkMode
+          ? colors.textColorPrimary
+          : AppColors.primary(colors.brightness),
+      counterProgress: colors.isDarkMode
+          ? colors.accentColor
+          : AppColors.primary(colors.brightness),
+      counterCountText: colors.isDarkMode
+          ? colors.accentColor
+          : AppColors.primary(colors.brightness),
+      toggleCardBg: colors.isDarkMode
+          ? const Color(0xFF2C2C2C)
+          : AppColors.background(colors.brightness),
     );
   }
 
@@ -1189,6 +1167,30 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                   )
                   : null,
         ),
+        Divider(color: AppColors.borderColor(colors.brightness), height: 1),
+        _buildToggleOption(
+          "Dhikr Pronunciation",
+          Icons.record_voice_over_rounded,
+          _dhikrAudioEnabled,
+          (value) {
+            if (!mounted) return;
+            setState(() => _dhikrAudioEnabled = value);
+            _savePreferences().catchError((Object e, StackTrace? s) {
+              _logger.error(
+                "Error saving dhikr audio preference",
+                error: e,
+                stackTrace: s,
+              );
+              if (mounted) {
+                _showErrorSnackBar(
+                  "Failed to save dhikr audio preference. Please try again.",
+                );
+              }
+            });
+          },
+          colors.brightness,
+        ),
+        Divider(color: AppColors.borderColor(colors.brightness), height: 1),
       ],
     );
   }
@@ -1270,12 +1272,9 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   }
 
   void _navigateToHistory() {
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (context) => const HistoryView(),
-        settings: const RouteSettings(name: '/history'),
-      ),
+    locator<NavigationService>().navigateTo<void>(
+      const HistoryView(),
+      routeName: '/history',
     );
   }
 }

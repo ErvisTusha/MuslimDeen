@@ -171,7 +171,7 @@ class IslamicEventsService {
         : await _getAllEvents();
 
     return IslamicEventsDatabase.searchEvents(query)
-        .where((event) => events.contains(event))
+        .where(events.contains)
         .toList();
   }
 

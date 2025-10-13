@@ -130,14 +130,14 @@ mixin PrayerCalculationMixin on Notifier<AppSettings> {
 
   Future<void> _cancelDhikrReminders() async {
     try {
-      final notificationService = ref.read(notificationServiceProvider);
-      await notificationService.cancelNotification(9999);
+      final dhikrReminderService = ref.read(dhikrReminderServiceProvider);
+      await dhikrReminderService.cancelDhikrReminders();
       final logger = ref.read(loggerServiceProvider);
-      logger.info('Dhikr reminders cancelled');
+      logger.info('Dhikr reminders cancelled via DhikrReminderService');
     } catch (e, s) {
       final logger = ref.read(loggerServiceProvider);
       logger.error(
-        'Error cancelling dhikr reminders',
+        'Error cancelling dhikr reminders via DhikrReminderService',
         error: e,
         stackTrace: s,
       );

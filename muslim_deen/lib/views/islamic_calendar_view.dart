@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hijri/hijri_calendar.dart';
 import 'package:intl/intl.dart';
+import 'package:muslim_deen/models/islamic_event.dart';
 import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/providers/service_providers.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/islamic_events_service.dart';
 import 'package:muslim_deen/services/moon_phases_service.dart';
+import 'package:muslim_deen/services/navigation_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/views/moon_phase_details_view.dart';
 import 'package:muslim_deen/widgets/custom_app_bar.dart';
 
 class IslamicCalendarView extends ConsumerStatefulWidget {
@@ -28,6 +31,13 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
 
   List<Map<String, dynamic>> _monthlyEvents = [];
   Map<DateTime, String> _moonPhases = {};
+
+  // Search and filter state
+  String _searchQuery = '';
+  IslamicEventType? _selectedEventType;
+  IslamicEventCategory? _selectedEventCategory;
+  bool _showEventsList = false;
+  List<Map<String, dynamic>> _filteredEvents = [];
 
   static const List<String> _islamicMonths = [
     'Muharram',
@@ -63,9 +73,15 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
         'date': event.gregorianDate?.toIso8601String() ?? event.getGregorianDateForYear(_selectedDate.year).toIso8601String(),
         'name': event.title,
         'type': event.type.name,
+        'category': event.category.name,
         'description': event.description,
+        'significance': event.significance,
+        'tags': event.tags,
       }).toList();
-      setState(() => _monthlyEvents = eventMaps);
+      setState(() {
+        _monthlyEvents = eventMaps;
+        _filteredEvents = eventMaps; // Initialize filtered events
+      });
 
       // Load moon phases for the month
       final moonPhases = await _moonPhasesService.getMoonPhasesForMonth(
@@ -75,6 +91,10 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
       setState(() => _moonPhases = moonPhases);
     } catch (e) {
       // Handle error silently for now
+      setState(() {
+        _monthlyEvents = [];
+        _filteredEvents = [];
+      });
     }
   }
 
@@ -151,13 +171,318 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
     return _moonPhases[date] ?? '';
   }
 
+  Future<void> _searchEvents() async {
+    if (_searchQuery.isEmpty && _selectedEventType == null && _selectedEventCategory == null) {
+      setState(() => _filteredEvents = _monthlyEvents);
+      return;
+    }
+
+    try {
+      List<Map<String, dynamic>> filteredEvents = [];
+
+      if (_searchQuery.isNotEmpty) {
+        // Use the service's search functionality
+        final searchResults = await _eventsService.searchEvents(_searchQuery, year: _selectedDate.year);
+        filteredEvents = searchResults.map((event) => {
+          'date': event.gregorianDate?.toIso8601String() ?? event.getGregorianDateForYear(_selectedDate.year).toIso8601String(),
+          'name': event.title,
+          'type': event.type.name,
+          'category': event.category.name,
+          'description': event.description,
+          'significance': event.significance,
+          'tags': event.tags,
+        }).toList();
+      } else {
+        // Filter by type/category
+        final events = await _eventsService.getEventsForMonth(_selectedDate.year, _selectedDate.month);
+        filteredEvents = events
+            .where((event) =>
+                (_selectedEventType == null || event.type == _selectedEventType) &&
+                (_selectedEventCategory == null || event.category == _selectedEventCategory))
+            .map((event) => {
+          'date': event.gregorianDate?.toIso8601String() ?? event.getGregorianDateForYear(_selectedDate.year).toIso8601String(),
+          'name': event.title,
+          'type': event.type.name,
+          'category': event.category.name,
+          'description': event.description,
+          'significance': event.significance,
+          'tags': event.tags,
+        }).toList();
+      }
+
+      setState(() => _filteredEvents = filteredEvents);
+    } catch (e) {
+      // Handle error silently
+      setState(() => _filteredEvents = []);
+    }
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _searchQuery = '';
+      _selectedEventType = null;
+      _selectedEventCategory = null;
+    });
+    _searchEvents();
+  }
+
+  Widget _buildCalendarView(Brightness brightness, List<DateTime> days) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(8),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 7,
+        childAspectRatio: 1,
+      ),
+      itemCount: days.length,
+      itemBuilder: (context, index) {
+        final day = days[index];
+        final isCurrentMonth = day.month == _selectedDate.month;
+        final isToday =
+            day.year == DateTime.now().year &&
+            day.month == DateTime.now().month &&
+            day.day == DateTime.now().day;
+        final event = _getIslamicEvent(day);
+        final moonPhase = _getMoonPhase(day);
+
+        return GestureDetector(
+          onTap: () => _loadPrayerTimesForDay(day),
+          child: Container(
+            margin: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              color:
+                  _selectedDay != null &&
+                  _selectedDay!.year == day.year &&
+                  _selectedDay!.month == day.month &&
+                  _selectedDay!.day == day.day
+                      ? AppColors.accentGreen(brightness).withValues(alpha: 0.3)
+                      : isToday
+                      ? AppColors.primary(
+                        brightness,
+                      ).withValues(alpha: 0.2)
+                      : isCurrentMonth
+                      ? AppColors.surface(brightness)
+                      : AppColors.surface(
+                        brightness,
+                      ).withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(8),
+              border:
+                  isToday
+                      ? Border.all(
+                        color: AppColors.primary(brightness),
+                        width: 2,
+                      )
+                      : _selectedDay != null &&
+                        _selectedDay!.year == day.year &&
+                        _selectedDay!.month == day.month &&
+                        _selectedDay!.day == day.day
+                      ? Border.all(
+                        color: AppColors.accentGreen(brightness),
+                        width: 2,
+                      )
+                      : null,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '${day.day}',
+                  style: TextStyle(
+                    color:
+                        isCurrentMonth
+                            ? AppColors.textPrimary(brightness)
+                            : AppColors.textSecondary(brightness),
+                    fontWeight:
+                        isToday ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                if (event.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentGreen(brightness).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      event,
+                      style: TextStyle(
+                        fontSize: 8,
+                        color: AppColors.accentGreen(brightness),
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                if (moonPhase.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      moonPhase,
+                      style: const TextStyle(
+                        fontSize: 7,
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEventsListView(Brightness brightness) {
+    if (_filteredEvents.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.event_note,
+              size: 64,
+              color: AppColors.textSecondary(brightness),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No events found',
+              style: AppTextStyles.sectionTitle(brightness).copyWith(
+                color: AppColors.textSecondary(brightness),
+              ),
+            ),
+            if (_searchQuery.isNotEmpty || _selectedEventType != null || _selectedEventCategory != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'Try adjusting your search or filters',
+                  style: AppTextStyles.prayerTime(brightness).copyWith(
+                    color: AppColors.textSecondary(brightness),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _filteredEvents.length,
+      itemBuilder: (context, index) {
+        final event = _filteredEvents[index];
+        final eventDate = DateTime.parse(event['date'] as String);
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        event['name'] as String,
+                        style: AppTextStyles.sectionTitle(brightness),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.accentGreen(brightness).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        DateFormat('MMM dd').format(eventDate),
+                        style: TextStyle(
+                          color: AppColors.accentGreen(brightness),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  event['description'] as String,
+                  style: AppTextStyles.prayerTime(brightness),
+                ),
+                if (event['significance'] != null && (event['significance'] as String).isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Significance: ${event['significance']}',
+                    style: AppTextStyles.prayerTime(brightness).copyWith(
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _buildEventChip(brightness, event['type'] as String, AppColors.primary(brightness)),
+                    const SizedBox(width: 8),
+                    _buildEventChip(brightness, event['category'] as String, AppColors.accentGreen(brightness)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEventChip(Brightness brightness, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        label.toUpperCase(),
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     final days = _getDaysInMonth(_selectedDate);
 
     return Scaffold(
-      appBar: CustomAppBar(title: 'Islamic Calendar', brightness: brightness),
+      appBar: CustomAppBar(
+        title: 'Islamic Calendar',
+        brightness: brightness,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.brightness_2),
+            onPressed: () {
+              locator<NavigationService>().navigateTo<MoonPhaseDetailsView>(
+                MoonPhaseDetailsView(
+                  selectedDate: _selectedDate,
+                ),
+              );
+            },
+            tooltip: 'Moon Phase Details',
+          ),
+        ],
+      ),
       body: Column(
         children: [
           // Header with month/year
@@ -189,6 +514,97 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
               ],
             ),
           ),
+          // Search and Filter Controls
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              children: [
+                // View toggle and search row
+                Row(
+                  children: [
+                    // View toggle
+                    Expanded(
+                      child: SegmentedButton<bool>(
+                        segments: const [
+                          ButtonSegment<bool>(
+                            value: false,
+                            label: Text('Calendar'),
+                            icon: Icon(Icons.calendar_view_month),
+                          ),
+                          ButtonSegment<bool>(
+                            value: true,
+                            label: Text('Events'),
+                            icon: Icon(Icons.list),
+                          ),
+                        ],
+                        selected: {_showEventsList},
+                        onSelectionChanged: (Set<bool> selected) {
+                          setState(() => _showEventsList = selected.first);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // Search bar
+                TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Search Islamic events...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchQuery.isNotEmpty || _selectedEventType != null || _selectedEventCategory != null
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: _clearFilters,
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surface(brightness),
+                  ),
+                  onChanged: (value) {
+                    setState(() => _searchQuery = value);
+                    _searchEvents();
+                  },
+                ),
+                const SizedBox(height: 8),
+                // Filter chips
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      // Event Type filters
+                      ...IslamicEventType.values.map((type) => Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: FilterChip(
+                          label: Text(type.name.toUpperCase()),
+                          selected: _selectedEventType == type,
+                          onSelected: (selected) {
+                            setState(() => _selectedEventType = selected ? type : null);
+                            _searchEvents();
+                          },
+                        ),
+                      )),
+                      const SizedBox(width: 8),
+                      // Event Category filters
+                      ...IslamicEventCategory.values.map((category) => Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: FilterChip(
+                          label: Text(category.name.toUpperCase()),
+                          selected: _selectedEventCategory == category,
+                          onSelected: (selected) {
+                            setState(() => _selectedEventCategory = selected ? category : null);
+                            _searchEvents();
+                          },
+                        ),
+                      )),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
           // Day headers
           Row(
             children:
@@ -207,121 +623,12 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
                     )
                     .toList(),
           ),
-          // Calendar grid
+          // Calendar grid or Events list
           Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.all(8),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                childAspectRatio: 1,
-              ),
-              itemCount: days.length,
-              itemBuilder: (context, index) {
-                final day = days[index];
-                final isCurrentMonth = day.month == _selectedDate.month;
-                final isToday =
-                    day.year == DateTime.now().year &&
-                    day.month == DateTime.now().month &&
-                    day.day == DateTime.now().day;
-                final event = _getIslamicEvent(day);
-                final moonPhase = _getMoonPhase(day);
-
-                return GestureDetector(
-                  onTap: () => _loadPrayerTimesForDay(day),
-                  child: Container(
-                    margin: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color:
-                          _selectedDay != null &&
-                          _selectedDay!.year == day.year &&
-                          _selectedDay!.month == day.month &&
-                          _selectedDay!.day == day.day
-                              ? AppColors.accentGreen(brightness).withValues(alpha: 0.3)
-                              : isToday
-                              ? AppColors.primary(
-                                brightness,
-                              ).withValues(alpha: 0.2)
-                              : isCurrentMonth
-                              ? AppColors.surface(brightness)
-                              : AppColors.surface(
-                                brightness,
-                              ).withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(8),
-                      border:
-                          isToday
-                              ? Border.all(
-                                color: AppColors.primary(brightness),
-                                width: 2,
-                              )
-                              : _selectedDay != null &&
-                                _selectedDay!.year == day.year &&
-                                _selectedDay!.month == day.month &&
-                                _selectedDay!.day == day.day
-                              ? Border.all(
-                                color: AppColors.accentGreen(brightness),
-                                width: 2,
-                              )
-                              : null,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          '${day.day}',
-                          style: TextStyle(
-                            color:
-                                isCurrentMonth
-                                    ? AppColors.textPrimary(brightness)
-                                    : AppColors.textSecondary(brightness),
-                            fontWeight:
-                                isToday ? FontWeight.bold : FontWeight.normal,
-                          ),
-                        ),
-                        if (event.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: AppColors.accentGreen(brightness).withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              event,
-                              style: TextStyle(
-                                fontSize: 8,
-                                color: AppColors.accentGreen(brightness),
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        if (moonPhase.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              moonPhase,
-                              style: const TextStyle(
-                                fontSize: 7,
-                                color: Colors.blue,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+            child: _showEventsList ? _buildEventsListView(brightness) : _buildCalendarView(brightness, days),
           ),
-          // Prayer times display
-          if (_selectedDay != null && _selectedDayPrayers != null)
+          // Prayer times display (only show in calendar view)
+          if (!_showEventsList && _selectedDay != null && _selectedDayPrayers != null)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(

@@ -8,6 +8,7 @@ import 'package:muslim_deen/providers/optimized_providers.dart';
 import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
+import 'package:muslim_deen/services/navigation_service.dart';
 
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/views/settings_view.dart';
@@ -204,12 +205,9 @@ class _OptimizedPrayerListItemState
 
   /// Navigate to settings
   void _navigateToSettings(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (context) => const SettingsView(scrollToNotifications: true),
-        settings: const RouteSettings(name: '/settings'),
-      ),
+    locator<NavigationService>().navigateTo<void>(
+      const SettingsView(scrollToNotifications: true),
+      routeName: '/settings',
     ).then((_) {
       widget.onRefresh?.call();
     });

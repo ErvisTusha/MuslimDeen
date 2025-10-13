@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:adhan_dart/adhan_dart.dart' as adhan;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import 'package:muslim_deen/models/app_settings.dart';
 import 'package:muslim_deen/providers/service_providers.dart';
+import 'package:muslim_deen/services/dhikr_reminder_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
@@ -17,6 +17,7 @@ mixin NotificationSchedulingMixin on Notifier<AppSettings> {
   NotificationService get _notificationService => ref.read(notificationServiceProvider);
   LoggerService get _logger => ref.read(loggerServiceProvider);
   PrayerService get _prayerService => ref.read(prayerServiceProvider);
+  DhikrReminderService get _dhikrReminderService => ref.read(dhikrReminderServiceProvider);
 
   bool get areNotificationsBlocked => _notificationService.isBlocked;
 
@@ -251,50 +252,17 @@ mixin NotificationSchedulingMixin on Notifier<AppSettings> {
 
   Future<void> scheduleDhikrReminders() async {
     try {
-      await _cancelDhikrReminders();
-
-      final now = DateTime.now();
-      final nextReminderTime = now.add(
-        Duration(hours: state.dhikrReminderInterval),
-      );
-
-      await _notificationService.scheduleTesbihNotification(
-        id: 9999,
-        localizedTitle: 'Dhikr Reminder',
-        localizedBody:
-            '🤲 Time for your dhikr. Remember Allah with a peaceful heart.',
-        scheduledTime: nextReminderTime,
-        isEnabled: true,
-        payload: jsonEncode({
-          'type': 'dhikr_reminder',
-          'intervalHours': state.dhikrReminderInterval,
-          'scheduledTime': nextReminderTime.toIso8601String(),
-        }),
-      );
+      await _dhikrReminderService.scheduleDhikrReminders(state.dhikrReminderInterval);
 
       _logger.info(
-        'Dhikr reminder scheduled',
+        'Dhikr reminders scheduled via DhikrReminderService',
         data: {
-          'nextReminder': nextReminderTime.toIso8601String(),
           'intervalHours': state.dhikrReminderInterval,
         },
       );
     } catch (e, s) {
       _logger.error(
-        'Error scheduling dhikr reminders',
-        error: e,
-        stackTrace: s,
-      );
-    }
-  }
-
-  Future<void> _cancelDhikrReminders() async {
-    try {
-      await _notificationService.cancelNotification(9999);
-      _logger.info('Dhikr reminders cancelled');
-    } catch (e, s) {
-      _logger.error(
-        'Error cancelling dhikr reminders',
+        'Error scheduling dhikr reminders via DhikrReminderService',
         error: e,
         stackTrace: s,
       );
