@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:muslim_deen/models/app_settings.dart';
 import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/providers/settings_notifier.dart';
+import 'package:muslim_deen/providers/settings_prayer_mixin.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
@@ -1330,12 +1331,12 @@ class _PrayerTimeAdjustmentsDialogState
       },
     );
 
-    await widget.notifier.updateFajrOffset(fajrOffset);
-    await widget.notifier.updateSunriseOffset(sunriseOffset);
-    await widget.notifier.updateDhuhrOffset(dhuhrOffset);
-    await widget.notifier.updateAsrOffset(asrOffset);
-    await widget.notifier.updateMaghribOffset(maghribOffset);
-    await widget.notifier.updateIshaOffset(ishaOffset);
+    await widget.notifier.updatePrayerOffset(PrayerType.fajr, fajrOffset);
+    await widget.notifier.updatePrayerOffset(PrayerType.sunrise, sunriseOffset);
+    await widget.notifier.updatePrayerOffset(PrayerType.dhuhr, dhuhrOffset);
+    await widget.notifier.updatePrayerOffset(PrayerType.asr, asrOffset);
+    await widget.notifier.updatePrayerOffset(PrayerType.maghrib, maghribOffset);
+    await widget.notifier.updatePrayerOffset(PrayerType.isha, ishaOffset);
 
     if (mounted) {
       Navigator.of(context).pop();

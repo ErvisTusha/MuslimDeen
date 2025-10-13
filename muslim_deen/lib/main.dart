@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +11,7 @@ import 'package:muslim_deen/services/error_handler_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
+import 'package:muslim_deen/views/fasting_tracker_view.dart';
 import 'package:muslim_deen/views/hadith_view.dart';
 import 'package:muslim_deen/views/home_view.dart';
 import 'package:muslim_deen/views/islamic_calendar_view.dart';
@@ -17,11 +19,22 @@ import 'package:muslim_deen/views/mosque_view.dart';
 import 'package:muslim_deen/views/qibla_view.dart';
 import 'package:muslim_deen/views/settings_view.dart';
 import 'package:muslim_deen/views/tesbih_view.dart';
+import 'package:muslim_deen/views/zakat_calculator_view.dart';
 import 'package:muslim_deen/widgets/error_boundary.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await setupLocator();
+
+  try {
+    await setupLocator();
+  } catch (e, s) {
+    // If service locator fails, we can't use the logger, so print to console
+    debugPrint('Failed to setup service locator: $e');
+    debugPrint('Stack trace: $s');
+    // Try to run the app anyway with minimal setup
+    runApp(const ErrorApp());
+    return;
+  }
 
   final List<Future<void>> startupFutures = [
     _requestPermissions(),
@@ -42,6 +55,7 @@ Future<void> main() async {
       error: e,
       stackTrace: s,
     );
+    // Continue anyway - don't let startup failures crash the app
   }
 
   FlutterError.onError = (details) {
@@ -286,6 +300,8 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     SettingsView.new,
     HadithView.new,
     IslamicCalendarView.new,
+    FastingTrackerView.new,
+    ZakatCalculatorView.new,
   ];
 
   // Optimized: Weak reference caching to prevent memory leaks
@@ -299,6 +315,8 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     4: 'Settings',
     5: 'Hadith',
     6: 'Calendar',
+    7: 'Fasting',
+    8: 'Zakat',
   };
 
   static const List<_NavItemData> _navItems = [
@@ -372,7 +390,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   }
 
   void _onOverflowItemTapped(int index) {
-    // Overflow items are at indices 4, 5, 6 (Settings, Hadith, Calendar)
+    // Overflow items are at indices 4, 5, 6, 7, 8 (Settings, Hadith, Calendar, Fasting, Zakat)
     final actualIndex = index + 4; // Add 4 to get the real index
 
     if (actualIndex == _selectedIndex) return; // Prevent unnecessary rebuilds
@@ -654,6 +672,46 @@ class _OverflowMenuButton extends StatelessWidget {
                   ],
                 ),
               ),
+              PopupMenuItem<int>(
+                value: 3, // Fasting
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.restaurant_outlined,
+                      color: AppColors.iconInactive(brightness),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Fasting Tracker',
+                      style: TextStyle(
+                        color: AppColors.textPrimary(brightness),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem<int>(
+                value: 4, // Zakat
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.account_balance_wallet_outlined,
+                      color: AppColors.iconInactive(brightness),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Zakat Calculator',
+                      style: TextStyle(
+                        color: AppColors.textPrimary(brightness),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -695,6 +753,57 @@ class _OverflowMenuButton extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Fallback app shown when service locator initialization fails
+class ErrorApp extends StatelessWidget {
+  const ErrorApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Colors.red,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'App Initialization Failed',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'The app failed to start properly. Please try restarting the app.',
+                  style: TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: () {
+                    // Try to restart the app
+                    main();
+                  },
+                  child: const Text('Retry'),
                 ),
               ],
             ),

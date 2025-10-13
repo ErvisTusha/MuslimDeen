@@ -44,7 +44,7 @@ class BatchOperation {
 /// Service to handle local SQLite database operations
 class DatabaseService {
   static const String _databaseName = 'muslim_deen.db';
-  static const int _databaseVersion = 2;
+  static const int _databaseVersion = 4;
   static const int _maxConnections = 3;
   static const Duration _slowQueryThreshold = Duration(milliseconds: 100);
 
@@ -66,22 +66,30 @@ class DatabaseService {
     if (_isInitialized) return;
 
     try {
+      // Initialize database factory based on platform
       if (kIsWeb) {
         databaseFactory = databaseFactoryFfiWeb;
       }
+      // For Android/iOS, use default sqflite factory
+
       final databasesPath = await getDatabasesPath();
       final path = join(databasesPath, _databaseName);
+
+      _logger.info('Initializing database at path: $path');
 
       _database = await openDatabase(
         path,
         version: _databaseVersion,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
+        onOpen: (db) {
+          _logger.info('Database opened successfully');
+        },
       );
 
       _isInitialized = true;
       _activeConnections = 1;
-      
+
       // Start cleanup timer for old metrics
       _startCleanupTimer();
 
@@ -156,9 +164,25 @@ class DatabaseService {
       )
     ''');
 
+    await db.execute('''
+      CREATE TABLE fasting_records (
+        id TEXT PRIMARY KEY,
+        date TEXT NOT NULL,
+        type INTEGER NOT NULL,
+        status INTEGER NOT NULL,
+        startTime TEXT,
+        endTime TEXT,
+        notes TEXT,
+        isRamadan INTEGER NOT NULL DEFAULT 0,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL
+      )
+    ''');
+
     // Add indexes for better performance
     await db.execute('CREATE INDEX idx_prayer_history_date ON prayer_history(date)');
     await db.execute('CREATE INDEX idx_tasbih_history_date ON tasbih_history(date)');
+    await db.execute('CREATE INDEX idx_fasting_records_date ON fasting_records(date)');
     await db.execute('CREATE INDEX idx_settings_key ON settings(key)');
 
     _logger.info('Database tables and indexes created successfully');
@@ -172,6 +196,57 @@ class DatabaseService {
       await db.execute('CREATE INDEX idx_tasbih_history_date ON tasbih_history(date)');
       await db.execute('CREATE INDEX idx_settings_key ON settings(key)');
       _logger.info('Database indexes added in version 2');
+    }
+    if (oldVersion < 3) {
+      // Add fasting_records table
+      await db.execute('''
+        CREATE TABLE fasting_records (
+          id TEXT PRIMARY KEY,
+          date TEXT NOT NULL,
+          type INTEGER NOT NULL,
+          status INTEGER NOT NULL,
+          startTime TEXT,
+          endTime TEXT,
+          notes TEXT,
+          isRamadan INTEGER NOT NULL DEFAULT 0,
+          createdAt TEXT NOT NULL,
+          updatedAt TEXT NOT NULL
+        )
+      ''');
+      await db.execute('CREATE INDEX idx_fasting_records_date ON fasting_records(date)');
+      _logger.info('Fasting records table added in version 3');
+    }
+    if (oldVersion < 4) {
+      // Check if fasting_records table exists and has the wrong schema
+      final tables = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='fasting_records'");
+      if (tables.isNotEmpty) {
+        // Check the schema of the existing table
+        final schema = await db.rawQuery("PRAGMA table_info(fasting_records)");
+        final hasWrongSchema = schema.any((col) => col['name'] == 'fasting_type' || col['name'] == 'created_at');
+
+        if (hasWrongSchema) {
+          // Drop and recreate with correct schema (data will be lost, but this fixes the schema issue)
+          await db.execute('DROP TABLE fasting_records');
+          await db.execute('''
+            CREATE TABLE fasting_records (
+              id TEXT PRIMARY KEY,
+              date TEXT NOT NULL,
+              type INTEGER NOT NULL,
+              status INTEGER NOT NULL,
+              startTime TEXT,
+              endTime TEXT,
+              notes TEXT,
+              isRamadan INTEGER NOT NULL DEFAULT 0,
+              createdAt TEXT NOT NULL,
+              updatedAt TEXT NOT NULL
+            )
+          ''');
+          _logger.info('Fasting records table recreated with correct schema in version 4');
+        } else {
+          _logger.info('Fasting records table already has correct schema');
+        }
+      }
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_fasting_records_date ON fasting_records(date)');
     }
     _logger.info('Database upgraded from $oldVersion to $newVersion');
   }
@@ -357,9 +432,86 @@ class DatabaseService {
     _logger.info('Batch inserted ${operations.length} tasbih history records');
   }
 
-  /// Get database performance metrics
-  List<DatabaseMetrics> getMetrics() {
-    return List.unmodifiable(_metricsHistory);
+  /// Insert or update fasting record
+  Future<void> saveFastingRecord(String date, String fastingType, String status, {String? notes}) async {
+    await _executeWithTracking('saveFastingRecord', () async {
+      final db = _getDatabase();
+      final now = DateTime.now().millisecondsSinceEpoch;
+
+      return await db.insert('fasting_records', {
+        'date': date,
+        'fasting_type': fastingType,
+        'status': status,
+        'notes': notes,
+        'created_at': now,
+        'updated_at': now,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    });
+
+    _logger.debug('Fasting record saved for date: $date');
+  }
+
+  /// Get fasting record for a specific date
+  Future<Map<String, dynamic>?> getFastingRecord(String date) async {
+    return await _executeWithTracking('getFastingRecord', () async {
+      final db = _getDatabase();
+      final result = await db.query(
+        'fasting_records',
+        where: 'date = ?',
+        whereArgs: [date],
+        limit: 1,
+      );
+
+      return result.isNotEmpty ? result.first : null;
+    });
+  }
+
+  /// Get all fasting records within a date range
+  Future<List<Map<String, dynamic>>> getFastingRecordsInRange(DateTime startDate, DateTime endDate) async {
+    return await _executeWithTracking('getFastingRecordsInRange', () async {
+      final db = _getDatabase();
+      final result = await db.query(
+        'fasting_records',
+        where: 'date >= ? AND date <= ?',
+        whereArgs: [startDate.toIso8601String().split('T')[0], endDate.toIso8601String().split('T')[0]],
+        orderBy: 'date ASC',
+      );
+
+      return result;
+    });
+  }
+
+  /// Get fasting statistics
+  Future<Map<String, dynamic>> getFastingStatistics() async {
+    return await _executeWithTracking('getFastingStatistics', () async {
+      final db = _getDatabase();
+      final result = await db.rawQuery('''
+        SELECT 
+          COUNT(*) as total_days,
+          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_days,
+          SUM(CASE WHEN status = 'broken' THEN 1 ELSE 0 END) as broken_days,
+          SUM(CASE WHEN fasting_type = 'ramadan' THEN 1 ELSE 0 END) as ramadan_days
+        FROM fasting_records
+      ''');
+
+      return result.isNotEmpty ? result.first : {};
+    });
+  }
+
+  /// Execute raw SQL query with performance tracking
+  Future<dynamic> executeQuery(String sql, [List<dynamic>? arguments]) async {
+    return await _executeWithTracking('executeQuery', () async {
+      final db = _getDatabase();
+      return await db.rawQuery(sql, arguments);
+    });
+  }
+
+  /// Execute raw SQL command with performance tracking
+  Future<void> executeCommand(String sql, [List<dynamic>? arguments]) async {
+    await _executeWithTracking('executeCommand', () async {
+      final db = _getDatabase();
+      return await db.execute(sql, arguments);
+    });
   }
 
   /// Get average query time for the last N operations

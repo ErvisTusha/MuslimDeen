@@ -16,6 +16,7 @@ import 'package:muslim_deen/models/custom_exceptions.dart';
 import 'package:muslim_deen/models/prayer_display_info_data.dart';
 import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/fasting_service.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
@@ -31,6 +32,7 @@ import 'package:muslim_deen/widgets/loading_error_state_builder.dart';
 import 'package:muslim_deen/widgets/prayer_countdown_timer.dart';
 import 'package:muslim_deen/widgets/prayer_times_section.dart';
 import 'package:muslim_deen/widgets/ramadan_countdown_banner.dart';
+import 'package:muslim_deen/widgets/ramadan_fasting_checkbox.dart';
 
 /// HomeView displays prayer times and manages prayer notifications.
 ///
@@ -51,7 +53,8 @@ class _HomeViewState extends ConsumerState<HomeView>
   final PrayerService _prayerService = locator<PrayerService>();
   final NotificationService _notificationService =
       locator<NotificationService>();
-  final WidgetService _widgetService = locator<WidgetService>();
+  WidgetService? _widgetService;
+  FastingService? _fastingService;
   final LoggerService _logger = locator<LoggerService>();
   final ScrollController _scrollController = ScrollController();
   static const double _prayerItemHeight = 80.0;
@@ -85,12 +88,22 @@ class _HomeViewState extends ConsumerState<HomeView>
   String? _lastNextPrayer;
   static const Duration _smartRefreshInterval = Duration(minutes: 5); // Check every 5 minutes instead of 1
 
+  Future<void> _initializeServices() async {
+    try {
+      _widgetService = await locator.getAsync<WidgetService>();
+      _fastingService = await locator.getAsync<FastingService>();
+    } catch (e) {
+      _logger.error('Failed to initialize services', error: e);
+    }
+  }
+
   @override
   bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
+    _initializeServices();
     _logger.info('HomeView initialized');
     WidgetsBinding.instance.addObserver(this);
 
@@ -792,9 +805,11 @@ class _HomeViewState extends ConsumerState<HomeView>
     adhan.PrayerTimes prayerTimes,
     String? locationName,
   ) async {
+    if (_widgetService == null) return;
+
     try {
       final appSettings = ref.read(settingsProvider);
-      await _widgetService.updateAllWidgets(
+      await _widgetService!.updateAllWidgets(
         appSettings: appSettings,
         prayerTimes: prayerTimes,
         locationName: locationName,
@@ -955,6 +970,27 @@ class _HomeViewState extends ConsumerState<HomeView>
     });
   }
 
+  /// Check if it's currently Ramadan
+  bool _isRamadan() {
+    if (_fastingService == null) return false;
+    final ramadanInfo = _fastingService!.getRamadanCountdown();
+    return ramadanInfo['isRamadan'] == true;
+  }
+
+  /// Check if current time is after Maghrib prayer
+  bool _isAfterMaghrib() {
+    if (_prayerTimes == null || _prayerTimes!.maghrib == null) return false;
+
+    final now = DateTime.now();
+    final maghribTime = _prayerTimes!.maghrib!;
+
+    // Create DateTime objects for comparison
+    final nowTime = DateTime(0, 0, 0, now.hour, now.minute);
+    final maghribDateTime = DateTime(0, 0, 0, maghribTime.hour, maghribTime.minute);
+
+    return nowTime.isAfter(maghribDateTime);
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
@@ -1087,6 +1123,11 @@ class _HomeViewState extends ConsumerState<HomeView>
           colors,
         ),
         const RamadanCountdownBanner(),
+        if (_isRamadan())
+          RamadanFastingCheckbox(
+            fastingService: _fastingService,
+            isAfterMaghrib: _isAfterMaghrib(),
+          ),
         _buildCurrentNextPrayerSection(isLoading, colors),
         PrayerTimesSection(
           isLoading: isLoading,

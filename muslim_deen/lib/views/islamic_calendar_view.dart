@@ -1,19 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hijri/hijri_calendar.dart';
 import 'package:intl/intl.dart';
+import 'package:muslim_deen/providers/providers.dart';
+import 'package:muslim_deen/providers/service_providers.dart';
+import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/islamic_events_service.dart';
+import 'package:muslim_deen/services/moon_phases_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/widgets/custom_app_bar.dart';
 
-class IslamicCalendarView extends StatefulWidget {
+class IslamicCalendarView extends ConsumerStatefulWidget {
   const IslamicCalendarView({super.key});
 
   @override
-  State<IslamicCalendarView> createState() => _IslamicCalendarViewState();
+  ConsumerState<IslamicCalendarView> createState() => _IslamicCalendarViewState();
 }
 
-class _IslamicCalendarViewState extends State<IslamicCalendarView> {
+class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
   late DateTime _selectedDate;
   late HijriCalendar _selectedHijriDate;
+  DateTime? _selectedDay;
+  Map<String, DateTime>? _selectedDayPrayers;
+
+  final IslamicEventsService _eventsService = locator<IslamicEventsService>();
+  final MoonPhasesService _moonPhasesService = locator<MoonPhasesService>();
+
+  List<Map<String, dynamic>> _monthlyEvents = [];
+  Map<DateTime, String> _moonPhases = {};
 
   static const List<String> _islamicMonths = [
     'Muharram',
@@ -35,6 +49,33 @@ class _IslamicCalendarViewState extends State<IslamicCalendarView> {
     super.initState();
     _selectedDate = DateTime.now();
     _selectedHijriDate = HijriCalendar.fromDate(_selectedDate);
+    _loadMonthlyData();
+  }
+
+  Future<void> _loadMonthlyData() async {
+    try {
+      // Load Islamic events for the month
+      final events = await _eventsService.getEventsForMonth(
+        _selectedDate.year,
+        _selectedDate.month,
+      );
+      final eventMaps = events.map((event) => {
+        'date': event.gregorianDate?.toIso8601String() ?? event.getGregorianDateForYear(_selectedDate.year).toIso8601String(),
+        'name': event.title,
+        'type': event.type.name,
+        'description': event.description,
+      }).toList();
+      setState(() => _monthlyEvents = eventMaps);
+
+      // Load moon phases for the month
+      final moonPhases = await _moonPhasesService.getMoonPhasesForMonth(
+        _selectedDate.year,
+        _selectedDate.month,
+      );
+      setState(() => _moonPhases = moonPhases);
+    } catch (e) {
+      // Handle error silently for now
+    }
   }
 
   void _changeMonth(int delta) {
@@ -45,6 +86,27 @@ class _IslamicCalendarViewState extends State<IslamicCalendarView> {
         1,
       );
       _selectedHijriDate = HijriCalendar.fromDate(_selectedDate);
+      _selectedDay = null;
+      _selectedDayPrayers = null;
+    });
+    _loadMonthlyData();
+  }
+
+  Future<void> _loadPrayerTimesForDay(DateTime day) async {
+    final prayerService = ref.read(prayerServiceProvider);
+    final settings = ref.read(settingsProvider);
+
+    final prayerTimes = await prayerService.calculatePrayerTimesForDate(day, settings);
+    setState(() {
+      _selectedDay = day;
+      _selectedDayPrayers = {
+        'Fajr': prayerTimes.fajr!,
+        'Sunrise': prayerTimes.sunrise!,
+        'Dhuhr': prayerTimes.dhuhr!,
+        'Asr': prayerTimes.asr!,
+        'Maghrib': prayerTimes.maghrib!,
+        'Isha': prayerTimes.isha!,
+      };
     });
   }
 
@@ -73,13 +135,20 @@ class _IslamicCalendarViewState extends State<IslamicCalendarView> {
   }
 
   String _getIslamicEvent(DateTime date) {
-    final hijri = HijriCalendar.fromDate(date);
-    // Simple events - in a real app, this would be more comprehensive
-    if (hijri.hMonth == 1 && hijri.hDay == 1) return 'Islamic New Year';
-    if (hijri.hMonth == 9 && hijri.hDay == 1) return 'Ramadan Begins';
-    if (hijri.hMonth == 10 && hijri.hDay == 1) return 'Eid al-Fitr';
-    if (hijri.hMonth == 12 && hijri.hDay == 10) return 'Eid al-Adha';
+    // Check loaded events for this date
+    for (final event in _monthlyEvents) {
+      final eventDate = DateTime.parse(event['date'] as String);
+      if (eventDate.year == date.year &&
+          eventDate.month == date.month &&
+          eventDate.day == date.day) {
+        return event['name'] as String;
+      }
+    }
     return '';
+  }
+
+  String _getMoonPhase(DateTime date) {
+    return _moonPhases[date] ?? '';
   }
 
   @override
@@ -155,59 +224,146 @@ class _IslamicCalendarViewState extends State<IslamicCalendarView> {
                     day.month == DateTime.now().month &&
                     day.day == DateTime.now().day;
                 final event = _getIslamicEvent(day);
+                final moonPhase = _getMoonPhase(day);
 
-                return Container(
-                  margin: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color:
-                        isToday
-                            ? AppColors.primary(
-                              brightness,
-                            ).withValues(alpha: 0.2)
-                            : isCurrentMonth
-                            ? AppColors.surface(brightness)
-                            : AppColors.surface(
-                              brightness,
-                            ).withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(8),
-                    border:
-                        isToday
-                            ? Border.all(
-                              color: AppColors.primary(brightness),
-                              width: 2,
-                            )
-                            : null,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '${day.day}',
-                        style: TextStyle(
-                          color:
-                              isCurrentMonth
-                                  ? AppColors.textPrimary(brightness)
-                                  : AppColors.textSecondary(brightness),
-                          fontWeight:
-                              isToday ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
-                      if (event.isNotEmpty)
+                return GestureDetector(
+                  onTap: () => _loadPrayerTimesForDay(day),
+                  child: Container(
+                    margin: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color:
+                          _selectedDay != null &&
+                          _selectedDay!.year == day.year &&
+                          _selectedDay!.month == day.month &&
+                          _selectedDay!.day == day.day
+                              ? AppColors.accentGreen(brightness).withValues(alpha: 0.3)
+                              : isToday
+                              ? AppColors.primary(
+                                brightness,
+                              ).withValues(alpha: 0.2)
+                              : isCurrentMonth
+                              ? AppColors.surface(brightness)
+                              : AppColors.surface(
+                                brightness,
+                              ).withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(8),
+                      border:
+                          isToday
+                              ? Border.all(
+                                color: AppColors.primary(brightness),
+                                width: 2,
+                              )
+                              : _selectedDay != null &&
+                                _selectedDay!.year == day.year &&
+                                _selectedDay!.month == day.month &&
+                                _selectedDay!.day == day.day
+                              ? Border.all(
+                                color: AppColors.accentGreen(brightness),
+                                width: 2,
+                              )
+                              : null,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
                         Text(
-                          event,
+                          '${day.day}',
                           style: TextStyle(
-                            fontSize: 8,
-                            color: AppColors.accentGreen(brightness),
-                            fontWeight: FontWeight.bold,
+                            color:
+                                isCurrentMonth
+                                    ? AppColors.textPrimary(brightness)
+                                    : AppColors.textSecondary(brightness),
+                            fontWeight:
+                                isToday ? FontWeight.bold : FontWeight.normal,
                           ),
-                          textAlign: TextAlign.center,
                         ),
-                    ],
+                        if (event.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: AppColors.accentGreen(brightness).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              event,
+                              style: TextStyle(
+                                fontSize: 8,
+                                color: AppColors.accentGreen(brightness),
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        if (moonPhase.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              moonPhase,
+                              style: const TextStyle(
+                                fontSize: 7,
+                                color: Colors.blue,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 );
               },
             ),
           ),
+          // Prayer times display
+          if (_selectedDay != null && _selectedDayPrayers != null)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surface(brightness),
+                border: Border(
+                  top: BorderSide(
+                    color: AppColors.surface(brightness).withValues(alpha: 0.5),
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Prayer Times - ${DateFormat('MMM dd, yyyy').format(_selectedDay!)}',
+                    style: AppTextStyles.sectionTitle(brightness),
+                  ),
+                  const SizedBox(height: 8),
+                  ..._selectedDayPrayers!.entries.map(
+                    (entry) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            entry.key,
+                            style: AppTextStyles.prayerTime(brightness),
+                          ),
+                          Text(
+                            DateFormat('HH:mm').format(entry.value),
+                            style: AppTextStyles.prayerTime(brightness).copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

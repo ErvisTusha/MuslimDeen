@@ -1,15 +1,20 @@
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 
 import 'package:muslim_deen/services/cache_service.dart';
 import 'package:muslim_deen/services/compass_service.dart';
 import 'package:muslim_deen/services/database_service.dart';
 import 'package:muslim_deen/services/dhikr_reminder_service.dart';
 import 'package:muslim_deen/services/error_handler_service.dart';
+import 'package:muslim_deen/services/fasting_service.dart';
+import 'package:muslim_deen/services/hadith_service.dart';
+import 'package:muslim_deen/services/islamic_events_service.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/map_service.dart';
+import 'package:muslim_deen/services/moon_phases_service.dart';
 import 'package:muslim_deen/services/navigation_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
 import 'package:muslim_deen/services/prayer_history_service.dart';
@@ -18,7 +23,7 @@ import 'package:muslim_deen/services/prayer_times_cache.dart';
 import 'package:muslim_deen/services/storage_service.dart';
 import 'package:muslim_deen/services/tasbih_history_service.dart';
 import 'package:muslim_deen/services/widget_service.dart';
-import 'package:muslim_deen/services/hadith_service.dart';
+import 'package:muslim_deen/services/zakat_calculator_service.dart';
 
 final GetIt locator = GetIt.instance;
 
@@ -27,15 +32,35 @@ SharedPreferences? _sharedPrefsCache;
 
 /// Initializes the service locator with optimized loading
 Future<void> setupLocator({bool testing = false}) async {
-  // Pre-load SharedPreferences for better performance
-  _sharedPrefsCache ??= await SharedPreferences.getInstance();
+  try {
+    // Pre-load SharedPreferences for better performance
+    _sharedPrefsCache ??= await SharedPreferences.getInstance();
+  } catch (e) {
+    // If SharedPreferences fails, continue anyway
+    debugPrint('Failed to load SharedPreferences: $e');
+  }
 
-  _registerServices(testing);
+  try {
+    _registerServices(testing);
+  } catch (e) {
+    debugPrint('Failed to register services: $e');
+    rethrow;
+  }
 
-  await _initializeCriticalServices();
+  try {
+    await _initializeCriticalServices();
+  } catch (e) {
+    debugPrint('Failed to initialize critical services: $e');
+    rethrow;
+  }
 
   // Use batched initialization for better performance
-  await _initializeHighPriorityServicesBatch(testing);
+  try {
+    await _initializeHighPriorityServicesBatch(testing);
+  } catch (e) {
+    debugPrint('Failed to initialize high priority services: $e');
+    // Continue anyway - don't let this crash the app
+  }
 
   _scheduleRemainingServiceInitialization();
 }
@@ -53,6 +78,8 @@ void _registerServices(bool testing) {
   locator.registerLazySingleton<DhikrReminderService>(DhikrReminderService.new);
   locator.registerLazySingleton<TasbihHistoryService>(TasbihHistoryService.new);
   locator.registerLazySingleton<HadithService>(HadithService.new);
+  locator.registerLazySingleton<MoonPhasesService>(MoonPhasesService.new);
+  locator.registerLazySingleton<IslamicEventsService>(IslamicEventsService.new);
 
   if (!testing) {
     locator.registerLazySingleton<NotificationService>(NotificationService.new);
@@ -93,19 +120,50 @@ void _registerServices(bool testing) {
     await locator.isReady<PrayerService>();
     return WidgetService();
   });
+
+    /// FastingService depends on DatabaseService
+  locator.registerLazySingletonAsync<FastingService>(() async {
+    final databaseService = await locator.getAsync<DatabaseService>();
+    final service = FastingService(databaseService);
+    await service.init();
+    return service;
+  });
+
+  /// ZakatCalculatorService depends on StorageService
+  locator.registerLazySingletonAsync<ZakatCalculatorService>(() async {
+    final storageService = locator<StorageService>();
+    final service = ZakatCalculatorService(storageService);
+    await service.init();
+    return service;
+  });
 }
 
 /// Initialize critical services required for app to start
 Future<void> _initializeCriticalServices() async {
   final stopwatch = Stopwatch()..start();
 
-  await locator<DatabaseService>().init();
-  await locator<StorageService>().init();
+  try {
+    await locator<DatabaseService>().init();
+  } catch (e) {
+    debugPrint('Failed to initialize DatabaseService: $e');
+    rethrow;
+  }
+
+  try {
+    await locator<StorageService>().init();
+  } catch (e) {
+    debugPrint('Failed to initialize StorageService: $e');
+    // Continue anyway - storage is not critical
+  }
 
   stopwatch.stop();
-  locator<LoggerService>().info(
-    'Critical services initialized in ${stopwatch.elapsedMilliseconds}ms',
-  );
+  try {
+    locator<LoggerService>().info(
+      'Critical services initialized in ${stopwatch.elapsedMilliseconds}ms',
+    );
+  } catch (e) {
+    debugPrint('Logger not available for critical services message: $e');
+  }
 }
 
 /// Initialize high priority services in optimized batches
@@ -124,6 +182,16 @@ Future<void> _initializeHighPriorityServicesBatch(bool testing) async {
 
   // Services that depend on PrayerTimesCache
   await locator.isReady<PrayerService>();
+
+  // Initialize new services
+  await Future.wait([
+    locator.isReady<FastingService>(),
+    locator.isReady<ZakatCalculatorService>(),
+  ]);
+
+  // Initialize IslamicEventsService and MoonPhasesService (synchronous)
+  await locator<IslamicEventsService>().init();
+  await locator<MoonPhasesService>().init();
 
   // Initialize WidgetService
   await locator.isReady<WidgetService>();
