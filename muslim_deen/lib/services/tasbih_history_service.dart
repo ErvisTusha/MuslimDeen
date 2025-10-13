@@ -146,7 +146,7 @@ class TasbihHistoryService {
       // Use transaction for atomic update
       await _database.transaction((txn) async {
         // Get existing counts for today
-        final todayData = await _database.getTasbihHistory(dateKey);
+        final todayData = await _database.getTasbihHistory(dateKey, txn: txn);
         todayData[dhikrType] = (todayData[dhikrType] ?? 0) + count;
 
         // Batch update all dhikr types for today
@@ -154,7 +154,7 @@ class TasbihHistoryService {
           dateKey: todayData,
         };
         
-        await _database.batchInsertTasbihHistory(batchData);
+        await _database.batchInsertTasbihHistory(batchData, txn: txn);
       });
 
       // Invalidate caches since tasbih data changed
@@ -182,7 +182,7 @@ class TasbihHistoryService {
       // Use transaction for atomic update
       await _database.transaction((txn) async {
         // Get existing counts for today
-        final todayData = await _database.getTasbihHistory(dateKey);
+        final todayData = await _database.getTasbihHistory(dateKey, txn: txn);
         
         // Update counts
         for (final entry in counts.entries) {
@@ -194,7 +194,7 @@ class TasbihHistoryService {
           dateKey: todayData,
         };
         
-        await _database.batchInsertTasbihHistory(batchData);
+        await _database.batchInsertTasbihHistory(batchData, txn: txn);
       });
 
       // Invalidate caches since tasbih data changed

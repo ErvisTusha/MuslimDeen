@@ -37,7 +37,6 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   int _count = 0;
   String _currentDhikr = 'Subhanallah';
   bool _vibrationEnabled = true;
-  bool _soundEnabled = false;
   bool _dhikrAudioEnabled = false; // New setting for dhikr pronunciation audio
   int _target = 33;
 
@@ -335,8 +334,6 @@ class _TesbihViewState extends ConsumerState<TesbihView>
       int? storedTarget = _storageService.getData('tasbih_target') as int?;
       final bool? storedVibration =
           _storageService.getData('vibration_enabled') as bool?;
-      final bool? storedSound =
-          _storageService.getData('sound_enabled') as bool?;
       final bool? storedDhikrAudio =
           _storageService.getData('dhikr_audio_enabled') as bool?;
       final int? storedCount =
@@ -384,7 +381,6 @@ class _TesbihViewState extends ConsumerState<TesbihView>
       setState(() {
         _currentDhikr = storedDhikr!;
         _vibrationEnabled = storedVibration ?? true;
-        _soundEnabled = storedSound ?? false;
         _dhikrAudioEnabled = storedDhikrAudio ?? false;
         _isCustomTarget = isCustom ?? false;
 
@@ -405,10 +401,6 @@ class _TesbihViewState extends ConsumerState<TesbihView>
         _dhikrTransitionDelay = transitionDelay ?? 1500;
       });
 
-      if (_soundEnabled) {
-        _initializeAudioPlayers();
-      }
-
       _logger.info('Preferences loaded successfully');
     } catch (e, s) {
       _logger.error(
@@ -424,12 +416,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     }
   }
 
-  void _initializeAudioPlayers() {
-    if (_soundEnabled) {
-      // AudioPlayerService is a singleton and handles its own initialization
-      // No need to create new instances here
-    }
-  }
+
 
   Future<void> _savePreferences() async {
     try {
@@ -437,7 +424,6 @@ class _TesbihViewState extends ConsumerState<TesbihView>
 
       final Map<String, dynamic> dataToSave = {
         'vibration_enabled': _vibrationEnabled,
-        'sound_enabled': _soundEnabled,
         'dhikr_audio_enabled': _dhikrAudioEnabled,
         'current_dhikr': _currentDhikr,
         'tasbih_target': _target,
@@ -476,10 +462,6 @@ class _TesbihViewState extends ConsumerState<TesbihView>
 
     if (_vibrationEnabled) {
       _triggerHapticFeedback();
-    }
-
-    if (_soundEnabled) {
-      await _playCounterSound();
     }
 
     if (_count == _target) {
@@ -523,7 +505,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     final nextIndex = (currentIndex + 1) % _dhikrOrder.length;
     final nextDhikr = _dhikrOrder[nextIndex];
 
-    if (_soundEnabled) {
+    if (_dhikrAudioEnabled) {
       await _playDhikrSound(nextDhikr);
 
       if (!mounted) {
@@ -609,41 +591,12 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     }
   }
 
-  Future<void> _playCounterSound() async {
-    if (!_soundEnabled || _isAudioPlaying) return;
 
-    try {
-      _isAudioPlaying = true;
-      await _audioService.playCounterSound();
-
-      // Set a timeout to reset the playing state
-      final completeTimer = Timer(const Duration(seconds: 3), () {
-        if (_isAudioPlaying) {
-          _isAudioPlaying = false;
-        }
-      });
-
-      // Since AudioPlayerService handles completion internally, we use a simpler approach
-      Future.delayed(const Duration(seconds: 3), () {
-        completeTimer.cancel();
-        if (mounted) {
-          setState(() {
-            _isAudioPlaying = false;
-          });
-        } else {
-          _isAudioPlaying = false;
-        }
-      });
-    } catch (e, s) {
-      _isAudioPlaying = false;
-      _logger.error('Error playing tesbih sound', error: e, stackTrace: s);
-    }
-  }
 
   Future<void> _setDhikr(String dhikr) async {
     if (dhikr == _currentDhikr || _isInDhikrTransition) return;
 
-    if (_soundEnabled && _isAudioPlaying) {
+    if (_dhikrAudioEnabled && _isAudioPlaying) {
       await _stopAllAudio();
     }
 
@@ -1122,52 +1075,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
           },
           colors.brightness,
         ),
-        Divider(color: AppColors.borderColor(colors.brightness), height: 1),
-        _buildToggleOption("Sound", Icons.volume_up_rounded, _soundEnabled, (
-          value,
-        ) {
-          if (!mounted) return;
 
-          if (value && !_soundEnabled) {
-            _initializeAudioPlayers();
-          }
-
-          setState(() => _soundEnabled = value);
-          _savePreferences().catchError((Object e, StackTrace? s) {
-            _logger.error(
-              "Error saving sound preference",
-              error: e,
-              stackTrace: s,
-            );
-            if (mounted) {
-              _showErrorSnackBar(
-                "Failed to save sound preference. Please try again.",
-              );
-            }
-          });
-        }, colors.brightness),
-        Divider(color: AppColors.borderColor(colors.brightness), height: 1),
-        _buildToggleOption(
-          "Notifications",
-          Icons.notifications_active_rounded,
-          ref.watch(tesbihReminderProvider).reminderEnabled,
-          (value) async {
-            ref.read(tesbihReminderProvider.notifier).toggleReminder(value);
-          },
-          colors.brightness,
-          trailing:
-              ref.watch(tesbihReminderProvider).reminderEnabled &&
-                      ref.watch(tesbihReminderProvider).reminderTime != null
-                  ? Text(
-                    ref
-                        .watch(tesbihReminderProvider)
-                        .reminderTime!
-                        .format(context),
-                    style: AppTextStyles.label(colors.brightness),
-                  )
-                  : null,
-        ),
-        Divider(color: AppColors.borderColor(colors.brightness), height: 1),
         _buildToggleOption(
           "Dhikr Pronunciation",
           Icons.record_voice_over_rounded,
@@ -1189,6 +1097,27 @@ class _TesbihViewState extends ConsumerState<TesbihView>
             });
           },
           colors.brightness,
+        ),
+        Divider(color: AppColors.borderColor(colors.brightness), height: 1),
+        _buildToggleOption(
+          "Notifications",
+          Icons.notifications_active_rounded,
+          ref.watch(tesbihReminderProvider).reminderEnabled,
+          (value) async {
+            ref.read(tesbihReminderProvider.notifier).toggleReminder(value);
+          },
+          colors.brightness,
+          trailing:
+              ref.watch(tesbihReminderProvider).reminderEnabled &&
+                      ref.watch(tesbihReminderProvider).reminderTime != null
+                  ? Text(
+                    ref
+                        .watch(tesbihReminderProvider)
+                        .reminderTime!
+                        .format(context),
+                    style: AppTextStyles.label(colors.brightness),
+                  )
+                  : null,
         ),
         Divider(color: AppColors.borderColor(colors.brightness), height: 1),
       ],

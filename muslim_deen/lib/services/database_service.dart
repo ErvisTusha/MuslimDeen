@@ -395,8 +395,9 @@ class DatabaseService {
 
   /// Batch insert tasbih history for multiple dates and types
   Future<void> batchInsertTasbihHistory(
-    Map<String, Map<String, int>> tasbihData,
-  ) async {
+    Map<String, Map<String, int>> tasbihData, {
+    Transaction? txn,
+  }) async {
     if (tasbihData.isEmpty) return;
     
     final operations = <BatchOperation>[];
@@ -419,7 +420,8 @@ class DatabaseService {
       }
     }
     
-    await transaction((txn) async {
+    if (txn != null) {
+      // Use provided transaction
       for (final op in operations) {
         await txn.insert(
           'tasbih_history',
@@ -427,7 +429,18 @@ class DatabaseService {
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
       }
-    });
+    } else {
+      // Start new transaction
+      await transaction((txn) async {
+        for (final op in operations) {
+          await txn.insert(
+            'tasbih_history',
+            op.data,
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+      });
+    }
     
     _logger.info('Batch inserted ${operations.length} tasbih history records');
   }
@@ -667,9 +680,9 @@ class DatabaseService {
   }
 
   /// Get tasbih counts for a specific date with performance tracking
-  Future<Map<String, int>> getTasbihHistory(String date) async {
+  Future<Map<String, int>> getTasbihHistory(String date, {Transaction? txn}) async {
     return await _executeWithTracking('getTasbihHistory', () async {
-      final db = _getDatabase();
+      final db = txn ?? _getDatabase();
       final result = await db.query(
         'tasbih_history',
         where: 'date = ?',

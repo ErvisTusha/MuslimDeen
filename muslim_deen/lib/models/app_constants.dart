@@ -44,9 +44,6 @@ class AppConstants {
   static const int defaultAnimationDurationMs = 200;
   static const int defaultTransitionDelayMs = 1500;
 
-  // File paths
-  static const String tesbihCounterSound = 'audio/click.mp3';
-
   // Default target values
   static const int defaultTesbihTarget = 33;
   static const int defaultDhikrTransitionDelay = 1500;

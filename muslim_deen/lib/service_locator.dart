@@ -182,6 +182,13 @@ Future<void> _initializeCriticalServices() async {
     // Continue anyway - storage is not critical
   }
 
+  try {
+    await locator<AudioPlayerService>().init();
+  } catch (e) {
+    debugPrint('Failed to initialize AudioPlayerService: $e');
+    // Continue anyway - audio is not critical
+  }
+
   stopwatch.stop();
   try {
     locator<LoggerService>().info(
