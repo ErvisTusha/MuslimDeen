@@ -102,14 +102,32 @@ class MuslimDeenApp extends StatelessWidget {
       builder: (context, ref, _) {
         final settingsState = ref.watch(settingsProvider);
 
+        final currentLocale = const Locale('en', 'US'); // Default to English for now
+        
         return MaterialApp(
           title: 'Muslim Deen',
           theme: _buildLightTheme(),
           darkTheme: _buildDarkTheme(),
           themeMode: settingsState.themeMode,
-          home: const MainScreen(),
+          home: Directionality(
+            textDirection: TextDirection.ltr, // Default to LTR for now
+            child: const MainScreen(),
+          ),
+          locale: currentLocale,
           navigatorKey: locator<NavigationService>().navigatorKey,
           navigatorObservers: [_NavigationObserver()],
+          // Add RTL support for scroll views and other directional elements
+          builder: (context, child) {
+            return MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: TextScaler.linear(1.0), // Ensure consistent text scaling
+              ),
+              child: Directionality(
+                textDirection: TextDirection.ltr, // Default to LTR for now
+                child: child!,
+              ),
+            );
+          },
         );
       },
     );
@@ -764,6 +782,8 @@ class _OverflowMenuButton extends StatelessWidget {
     );
   }
 }
+
+
 
 /// Fallback app shown when service locator initialization fails
 class ErrorApp extends StatelessWidget {
