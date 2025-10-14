@@ -349,6 +349,11 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView> {
               color: AppColors.accentGreen,
             ),
           ),
+          const SizedBox(height: 4),
+          Text(
+            '(Estimate based on approximate market prices. Please verify with a local source.)',
+            style: AppTextStyles.label(brightness).copyWith(fontSize: 10),
+          ),
         ],
       ),
     );

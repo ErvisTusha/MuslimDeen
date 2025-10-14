@@ -138,5 +138,16 @@
     "root_cause": "The success handler called the generic `_loadData()` method instead of performing a more targeted local state update.",
     "fix_summary": "Refactored `_markFastAsCompleted` to optimistically update the local state. It now only re-fetches the statistics and updates the specific record in the local list, avoiding a full data reload.",
     "patch_file": "patches/0004-fix-fasting-tracker-ux.patch"
+  },
+  {
+    "id": "MD-QA-009",
+    "title": "Hardcoded and Stale Nisab Value in Zakat Calculator",
+    "status": "Mitigated",
+    "severity": "Critical",
+    "description": "The Zakat calculator uses a Nisab threshold derived from hardcoded gold and silver prices. These values do not update automatically and will become stale, leading to incorrect Zakat calculations. This is a critical correctness issue for a financial feature.",
+    "code_pointer": "lib/services/zakat_calculator_service.dart, _loadMarketPrices()",
+    "root_cause": "The service layer contains placeholder values for gold and silver prices and lacks a mechanism to fetch live market data from a financial API.",
+    "fix_summary": "A full fix requires integrating a live financial data API. As a temporary mitigation, a disclaimer was added to the UI in `zakat_calculator_view.dart` to inform the user that the calculated Nisab is an estimate and should be verified with a local, reliable source.",
+    "patch_file": "patches/0005-add-zakat-nisab-disclaimer.patch"
   }
 ]
