@@ -450,13 +450,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: [
-          for (int i = 0; i < _widgetBuilders.length; i++)
-            _cachedWidgets[i] ??= _widgetBuilders[i](),
-        ],
-      ),
+      body: _cachedWidgets[_selectedIndex] ??= _widgetBuilders[_selectedIndex](),
       bottomNavigationBar: _buildBottomNavigationBar(context),
     );
   }

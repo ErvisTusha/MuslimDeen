@@ -40,15 +40,7 @@ class LocationPermissionHelper {
 
   /// Validate location prerequisites and return appropriate error message
   static Future<LocationValidationResult> validateLocationAccess() async {
-    final hasPermission = await hasLocationPermission();
-    if (!hasPermission) {
-      return LocationValidationResult(
-        isValid: false,
-        errorMessage:
-            'Location permission denied. Please enable it in settings.',
-      );
-    }
-
+    // 1. Check if location services are enabled
     final isServiceEnabled = await isLocationServiceEnabled();
     if (!isServiceEnabled) {
       return LocationValidationResult(
@@ -57,6 +49,29 @@ class LocationPermissionHelper {
       );
     }
 
+    // 2. Check permission status
+    var permission = await Geolocator.checkPermission();
+
+    // 3. If denied, request it
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return LocationValidationResult(
+          isValid: false,
+          errorMessage: 'Location permission is required to find the Qibla direction.',
+        );
+      }
+    }
+
+    // 4. If denied forever, show error
+    if (permission == LocationPermission.deniedForever) {
+      return LocationValidationResult(
+        isValid: false,
+        errorMessage: 'Location permission is permanently denied. Please enable it in your device settings.',
+      );
+    }
+
+    // 5. If granted, return success
     return LocationValidationResult(isValid: true);
   }
 }

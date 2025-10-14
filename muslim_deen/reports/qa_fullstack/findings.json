@@ -39,12 +39,60 @@
       "adb shell cat /storage/emulated/0/window_dump.xml"
     ],
     "evidence": {
-      "before": "content-desc ending in '...count: 0 of 1. Tap to increment.'",
-      "after": "content-desc ending in '...count: 0 of 33. Tap to increment.'"
+      "before": "content-desc='0%, 0\nTarget: 1'",
+      "after": "content-desc='0 / 33, Tasbih counter. Current count: 0 of 33. Tap to increment.'"
     },
     "code_pointer": "lib/views/tesbih_view.dart, _buildCounterSection()",
     "root_cause": "The parent `GestureDetector` for the counter lacked a semantic label, causing the accessibility service to aggregate the labels of its children (a `CircularProgressIndicator` and multiple `Text` widgets) into a confusing string.",
     "fix_summary": "Wrapped the `Stack` widget inside the counter's `GestureDetector` with a `Semantics` widget. This provides a single, clear, and descriptive label for the entire element and excludes the child semantics from being read individually.",
     "patch_file": "patches/0001-fix-tasbih-target-and-a11y.patch"
+  },
+  {
+    "id": "MD-QA-003",
+    "title": "Premature Initialization of Views Breaks Permission Flow",
+    "status": "Fixed",
+    "severity": "High",
+    "description": "All views in the main navigation `IndexedStack` are initialized on app startup. This causes `QiblaView` to request location permissions in the background before the user navigates to it, leading to a broken and confusing user experience.",
+    "adb_steps": [
+      "adb shell pm revoke com.example.muslim_deen android.permission.ACCESS_FINE_LOCATION",
+      "adb shell am force-stop com.example.muslim_deen",
+      "adb shell am start -n com.example.muslim_deen/.MainActivity",
+      "# Permission dialog appears in background, user is unaware.",
+      "sleep 5",
+      "adb shell input tap 357 2088",
+      "# App fails to navigate to Qibla view correctly."
+    ],
+    "evidence": {
+      "before": "Permission dialog is triggered invisibly on app start. Navigating to Qibla view fails to show the view or re-trigger the dialog.",
+      "after": "(Post-fix) Permission dialog is triggered only after tapping the Qibla navigation icon."
+    },
+    "code_pointer": "lib/main.dart, _MainScreenState.build()",
+    "root_cause": "The `IndexedStack` widget builds all its children at once, causing `initState` and associated permission requests to fire prematurely for non-visible views.",
+    "fix_summary": "Replaced the `IndexedStack` with a direct widget builder (`_cachedWidgets[_selectedIndex] ??= _widgetBuilders[_selectedIndex]()`) that only builds and initializes a view when it is first selected for display.",
+    "patch_file": "patches/0002-fix-qibla-permission-flow.patch"
+  },
+  {
+    "id": "MD-QA-004",
+    "title": "Poor UX on Location Permission Denial",
+    "status": "Fixed",
+    "severity": "Medium",
+    "description": "When location permission is requested and the user denies it, the app does not provide clear feedback, leaving the user on the previous screen. The helper class only checked for permission but did not handle the request/response flow.",
+    "adb_steps": [
+      "# With fix for MD-QA-003 applied",
+      "adb shell pm revoke com.example.muslim_deen android.permission.ACCESS_FINE_LOCATION",
+      "adb shell am force-stop com.example.muslim_deen",
+      "adb shell am start -n com.example.muslim_deen/.MainActivity",
+      "adb shell input tap 357 2088",
+      "# Deny the dialog using keyevents",
+      "# Observe the UI for an error message."
+    ],
+    "evidence": {
+      "before": "App remains on the previous screen with no feedback.",
+      "after": "(Post-fix) Qibla view displays an error message: 'Location permission is required to find the Qibla direction.'"
+    },
+    "code_pointer": "lib/services/location_permission_helper.dart, validateLocationAccess()",
+    "root_cause": "The `validateLocationAccess` method only checked the current permission status and returned a generic error. It did not actively request the permission or handle the different denial states (`denied` vs. `deniedForever`).",
+    "fix_summary": "Rewrote `validateLocationAccess` to include a call to `Geolocator.requestPermission()`. The method now returns different, more specific error messages based on the user's response, allowing the UI to give better feedback.",
+    "patch_file": "patches/0002-fix-qibla-permission-flow.patch"
   }
 ]
