@@ -94,5 +94,27 @@
     "root_cause": "The `validateLocationAccess` method only checked the current permission status and returned a generic error. It did not actively request the permission or handle the different denial states (`denied` vs. `deniedForever`).",
     "fix_summary": "Rewrote `validateLocationAccess` to include a call to `Geolocator.requestPermission()`. The method now returns different, more specific error messages based on the user's response, allowing the UI to give better feedback.",
     "patch_file": "patches/0002-fix-qibla-permission-flow.patch"
+  },
+  {
+    "id": "MD-QA-005",
+    "title": "Silent Error Handling in Islamic Calendar",
+    "status": "Fixed",
+    "severity": "Medium",
+    "description": "In the Islamic Calendar view, if loading monthly events or moon phases fails (e.g., due to a network error or data parsing issue), the error is caught but handled silently. The user sees an empty calendar with no indication that data failed to load.",
+    "code_pointer": "lib/views/islamic_calendar_view.dart, _loadMonthlyData()",
+    "root_cause": "The `try-catch` block responsible for loading monthly data had an empty `catch` block, preventing any user-facing error feedback.",
+    "fix_summary": "Added logic to the `catch` block to set an `_errorMessage` in the widget's state. This message is then displayed to the user, informing them of the failure.",
+    "patch_file": "patches/0003-fix-islamic-calendar-ux.patch"
+  },
+  {
+    "id": "MD-QA-006",
+    "title": "Inefficient Event Filtering in Islamic Calendar",
+    "status": "Fixed",
+    "severity": "Low",
+    "description": "When filtering events by type or category, the view re-fetches all events for the month from the `IslamicEventsService` instead of filtering the list of events already held in memory.",
+    "code_pointer": "lib/views/islamic_calendar_view.dart, _searchEvents()",
+    "root_cause": "The filtering logic did not utilize the `_monthlyEvents` state variable and instead made a redundant async call for data that was already available.",
+    "fix_summary": "Refactored the `_searchEvents` method to perform filtering on the in-memory `_monthlyEvents` list when no search query is present, avoiding the unnecessary service call and improving performance.",
+    "patch_file": "patches/0003-fix-islamic-calendar-ux.patch"
   }
 ]
