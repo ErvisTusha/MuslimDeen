@@ -635,23 +635,34 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
                       if (_errorMessage != null)
                         Container(
                           width: double.infinity,
-                          color: Colors.red.withOpacity(0.06),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          color: Colors.red.withValues(alpha: 0.06),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                           child: Row(
                             children: [
-                              const Icon(Icons.error_outline, color: Colors.redAccent),
+                              const Icon(
+                                Icons.error_outline,
+                                color: Colors.redAccent,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   _errorMessage!,
-                                  style: AppTextStyles.prayerTime(brightness).copyWith(
+                                  style: AppTextStyles.prayerTime(
+                                    brightness,
+                                  ).copyWith(
                                     color: Colors.redAccent,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.close, color: Colors.redAccent),
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.redAccent,
+                                ),
                                 onPressed: () {
                                   setState(() => _errorMessage = null);
                                 },
