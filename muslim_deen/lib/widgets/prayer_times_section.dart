@@ -123,9 +123,8 @@ class PrayerTimesSection extends StatelessWidget {
       ),
       boxShadow: [
         BoxShadow(
-          color: AppColors.shadowColor(
-            colors.brightness,
-          ).withAlpha(colors.isDarkMode ? 20 : 40),
+          color: AppColors.shadowColor
+              .withAlpha(colors.isDarkMode ? 20 : 40),
           spreadRadius: 0,
           blurRadius: 4,
           offset: const Offset(0, 1),

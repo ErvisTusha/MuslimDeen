@@ -61,13 +61,13 @@ class SettingsListItem extends StatelessWidget {
         border: Border.all(color: AppColors.borderColor(brightness)),
       ),
       child: ListTile(
-        leading: Icon(icon, color: AppColors.iconInactive(brightness)),
+        leading: Icon(icon, color: AppColors.iconInactive),
         title: Text(title, style: AppTextStyles.prayerName(brightness)),
         subtitle: Text(subtitle, style: AppTextStyles.label(brightness)),
         trailing: Icon(
           Icons.arrow_forward_ios,
           size: 16,
-          color: AppColors.iconInactive(brightness),
+          color: AppColors.iconInactive,
         ),
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

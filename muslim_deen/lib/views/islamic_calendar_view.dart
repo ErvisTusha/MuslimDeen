@@ -254,7 +254,7 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
                   _selectedDay!.year == day.year &&
                   _selectedDay!.month == day.month &&
                   _selectedDay!.day == day.day
-                      ? AppColors.accentGreen(brightness).withValues(alpha: 0.3)
+                      ? AppColors.accentGreen.withValues(alpha: 0.3)
                       : isToday
                       ? AppColors.primary(
                         brightness,
@@ -276,7 +276,7 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
                         _selectedDay!.month == day.month &&
                         _selectedDay!.day == day.day
                       ? Border.all(
-                        color: AppColors.accentGreen(brightness),
+                        color: AppColors.accentGreen,
                         width: 2,
                       )
                       : null,
@@ -299,14 +299,14 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
                     decoration: BoxDecoration(
-                      color: AppColors.accentGreen(brightness).withValues(alpha: 0.2),
+                      color: AppColors.accentGreen.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       event,
                       style: TextStyle(
                         fontSize: 8,
-                        color: AppColors.accentGreen(brightness),
+                        color: AppColors.accentGreen,
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
@@ -397,13 +397,13 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.accentGreen(brightness).withValues(alpha: 0.1),
+                        color: AppColors.accentGreen.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         DateFormat('MMM dd').format(eventDate),
                         style: TextStyle(
-                          color: AppColors.accentGreen(brightness),
+                          color: AppColors.accentGreen,
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
@@ -430,7 +430,7 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
                   children: [
                     _buildEventChip(brightness, event['type'] as String, AppColors.primary(brightness)),
                     const SizedBox(width: 8),
-                    _buildEventChip(brightness, event['category'] as String, AppColors.accentGreen(brightness)),
+                    _buildEventChip(brightness, event['category'] as String, AppColors.accentGreen),
                   ],
                 ),
               ],
@@ -474,9 +474,7 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
             icon: const Icon(Icons.brightness_2),
             onPressed: () {
               locator<NavigationService>().navigateTo<MoonPhaseDetailsView>(
-                MoonPhaseDetailsView(
-                  selectedDate: _selectedDate,
-                ),
+                MoonPhaseDetailsView(),
               );
             },
             tooltip: 'Moon Phase Details',

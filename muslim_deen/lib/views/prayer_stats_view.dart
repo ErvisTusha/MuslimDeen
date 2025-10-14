@@ -191,7 +191,7 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
       decoration: BoxDecoration(
         color: AppColors.surface(brightness),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider(brightness), width: 1),
+        border: Border.all(color: AppColors.divider, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -216,7 +216,7 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
               Expanded(
                 child: LinearProgressIndicator(
                   value: _weeklyCompletionRate,
-                  backgroundColor: AppColors.divider(brightness),
+                  backgroundColor: AppColors.divider,
                   valueColor: AlwaysStoppedAnimation<Color>(
                     AppColors.primary(brightness),
                   ),
@@ -257,7 +257,7 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
       decoration: BoxDecoration(
         color: AppColors.surface(brightness),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider(brightness), width: 1),
+        border: Border.all(color: AppColors.divider, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,7 +289,7 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
             );
           }),
           const SizedBox(height: 12),
-          Divider(color: AppColors.divider(brightness)),
+          Divider(color: AppColors.divider),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -323,7 +323,7 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
     decoration: BoxDecoration(
       color: AppColors.surface(brightness),
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: AppColors.divider(brightness), width: 1),
+      border: Border.all(color: AppColors.divider, width: 1),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -348,7 +348,7 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
             Expanded(
               child: LinearProgressIndicator(
                 value: _consistencyScore,
-                backgroundColor: AppColors.divider(brightness),
+                backgroundColor: AppColors.divider,
                 valueColor: AlwaysStoppedAnimation<Color>(scoreColor),
               ),
             ),
@@ -379,7 +379,7 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
       decoration: BoxDecoration(
         color: AppColors.surface(brightness),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider(brightness), width: 1),
+        border: Border.all(color: AppColors.divider, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,7 +424,7 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
     decoration: BoxDecoration(
       color: AppColors.surface(brightness),
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: AppColors.divider(brightness), width: 1),
+      border: Border.all(color: AppColors.divider, width: 1),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -477,7 +477,7 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
       decoration: BoxDecoration(
         color: AppColors.surface(brightness),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider(brightness), width: 1),
+        border: Border.all(color: AppColors.divider, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -511,7 +511,7 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
     decoration: BoxDecoration(
       color: AppColors.surface(brightness),
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: AppColors.divider(brightness), width: 1),
+      border: Border.all(color: AppColors.divider, width: 1),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,

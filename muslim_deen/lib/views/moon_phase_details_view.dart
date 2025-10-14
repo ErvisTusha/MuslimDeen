@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/moon_phases_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
@@ -16,6 +17,7 @@ class MoonPhaseDetailsView extends StatefulWidget {
 class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
   final MoonPhasesService _moonService = locator<MoonPhasesService>();
 
+  late DateTime _selectedDate;
   MoonPhaseInfo? _currentPhase;
   List<MoonPhaseInfo> _upcomingPhases = [];
   bool _isLoading = true;
@@ -23,6 +25,8 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
   @override
   void initState() {
     super.initState();
+    final baseDate = widget.selectedDate ?? DateTime.now();
+    _selectedDate = DateTime(baseDate.year, baseDate.month, baseDate.day);
     _loadMoonPhaseData();
   }
 
@@ -30,29 +34,92 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
     setState(() => _isLoading = true);
 
     try {
-      final targetDate = widget.selectedDate ?? DateTime.now();
-      final currentPhase = _moonService.calculateMoonPhase(targetDate);
+      await _moonService.init();
+      final currentPhase = _moonService.calculateMoonPhase(_selectedDate);
+      final upcoming = _calculateUpcomingSignificantPhases(_selectedDate);
 
-      // Get upcoming phases for the next 30 days
-      final endDate = targetDate.add(const Duration(days: 30));
-      final allPhases = _moonService.getMoonPhasesForRange(targetDate, endDate);
-
-      // Filter to significant phases only
-      final upcomingPhases = allPhases.where((phase) =>
-        phase.phase == MoonPhase.newMoon ||
-        phase.phase == MoonPhase.fullMoon ||
-        phase.phase == MoonPhase.firstQuarter ||
-        phase.phase == MoonPhase.lastQuarter
-      ).take(4).toList();
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _currentPhase = currentPhase;
-        _upcomingPhases = upcomingPhases;
+        _upcomingPhases = upcoming;
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
       setState(() => _isLoading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Failed to load moon phase data'),
+          backgroundColor: AppColors.error(Theme.of(context).brightness),
+        ),
+      );
     }
+  }
+
+  List<MoonPhaseInfo> _calculateUpcomingSignificantPhases(DateTime start) {
+    final rangeStart = DateTime(start.year, start.month, start.day).add(const Duration(days: 1));
+    final rangeEnd = rangeStart.add(const Duration(days: 60));
+    final phases = _moonService.getMoonPhasesForRange(rangeStart, rangeEnd);
+
+    final List<MoonPhaseInfo> upcoming = [];
+    for (final phase in phases) {
+      if (!_isSignificantPhase(phase.phase)) {
+        continue;
+      }
+
+      final alreadyCaptured = upcoming.any(
+        (entry) => entry.phase == phase.phase && _isSameDay(entry.date, phase.date),
+      );
+
+      if (!alreadyCaptured) {
+        upcoming.add(phase);
+      }
+
+      if (upcoming.length >= 6) {
+        break;
+      }
+    }
+
+    return upcoming;
+  }
+
+  bool _isSignificantPhase(MoonPhase phase) {
+    return phase == MoonPhase.newMoon ||
+        phase == MoonPhase.fullMoon ||
+        phase == MoonPhase.firstQuarter ||
+        phase == MoonPhase.lastQuarter;
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  Future<void> _selectDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(_selectedDate.year - 1),
+      lastDate: DateTime(_selectedDate.year + 1),
+    );
+
+    if (picked == null) {
+      return;
+    }
+
+    final normalized = DateTime(picked.year, picked.month, picked.day);
+    if (_isSameDay(normalized, _selectedDate)) {
+      return;
+    }
+
+    setState(() => _selectedDate = normalized);
+    _loadMoonPhaseData();
   }
 
   @override
@@ -60,293 +127,396 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
     final brightness = Theme.of(context).brightness;
 
     return Scaffold(
+      backgroundColor: AppColors.background(brightness),
       appBar: CustomAppBar(
         title: 'Moon Phase Details',
         brightness: brightness,
+        actions: [
+          IconButton(
+            onPressed: _selectDate,
+            icon: const Icon(Icons.calendar_month),
+          ),
+        ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(
+                color: AppColors.accentGreen,
+              ),
+            )
           : RefreshIndicator(
-            onRefresh: _loadMoonPhaseData,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (_currentPhase != null) ...[
+              onRefresh: _loadMoonPhaseData,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     _buildCurrentPhaseCard(brightness),
                     const SizedBox(height: 24),
+                    _buildIslamicSignificanceSection(brightness),
+                    const SizedBox(height: 24),
+                    _buildUpcomingPhasesSection(brightness),
+                    const SizedBox(height: 24),
+                    _buildMoonPhaseGuide(brightness),
                   ],
-                  _buildUpcomingPhasesCard(brightness),
-                  const SizedBox(height: 24),
-                  _buildMoonPhaseGuideCard(brightness),
-                ],
+                ),
               ),
             ),
-          ),
     );
   }
 
   Widget _buildCurrentPhaseCard(Brightness brightness) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            _currentPhase!.displayColor.withAlpha(200),
-            _currentPhase!.displayColor.withAlpha(150),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: _currentPhase!.displayColor.withAlpha(50),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    if (_currentPhase == null) {
+      return Card(
+        color: AppColors.surface(brightness),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'No moon phase data available',
+            style: AppTextStyles.bodyMedium(brightness),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(50),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
+        ),
+      );
+    }
+
+    final isToday = _isSameDay(_selectedDate, DateTime.now());
+    final isSignificant = _isSignificantPhase(_currentPhase!.phase);
+    final accent = AppColors.accentGreen;
+
+    return Card(
+      elevation: 4,
+      color: AppColors.surface(brightness),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
                   _currentPhase!.icon,
-                  color: Colors.white,
-                  size: 40,
+                  size: 48,
+                  color: accent,
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  _currentPhase!.phaseName,
+                  style: AppTextStyles.headlineSmall(brightness).copyWith(color: accent),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isToday
+                  ? 'Current moon phase'
+                  : 'Moon phase on ${DateFormat('MMMM d, yyyy').format(_selectedDate)}',
+              style: AppTextStyles.titleMedium(brightness),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Illumination: ${(_currentPhase!.illumination * 100).toStringAsFixed(1)}%',
+              style: AppTextStyles.bodyLarge(brightness),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _currentPhase!.description,
+              style: AppTextStyles.bodyMedium(brightness),
+              textAlign: TextAlign.center,
+            ),
+            if (isSignificant) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: accent.withAlpha((0.12 * 255).round()),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: accent.withAlpha((0.3 * 255).round())),
+                ),
+                child: Text(
+                  'Significant phase',
+                  style: AppTextStyles.labelMedium(brightness).copyWith(color: accent),
                 ),
               ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIslamicSignificanceSection(Brightness brightness) {
+    final info = _getIslamicSignificance(_currentPhase?.phase);
+
+    return Card(
+      color: AppColors.surface(brightness),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.mosque, color: AppColors.accentGreen, size: 24),
+                const SizedBox(width: 12),
+                Text('Islamic significance', style: AppTextStyles.titleLarge(brightness)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              info.description,
+              style: AppTextStyles.bodyMedium(brightness),
+            ),
+            if (info.practices.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text('Recommended practices', style: AppTextStyles.titleSmall(brightness)),
+              const SizedBox(height: 8),
+              ...info.practices.map(
+                (practice) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.stars, size: 16, color: AppColors.accentGreen),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          practice,
+                          style: AppTextStyles.bodySmall(brightness),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUpcomingPhasesSection(Brightness brightness) {
+    return Card(
+      color: AppColors.surface(brightness),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Upcoming significant phases', style: AppTextStyles.titleLarge(brightness)),
+            const SizedBox(height: 12),
+            if (_upcomingPhases.isEmpty)
+              Text(
+                'No significant phases in the next 60 days.',
+                style: AppTextStyles.bodySmall(brightness),
+              )
+            else
+              ..._upcomingPhases.map(
+                (phase) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: phase.displayColor.withAlpha((0.15 * 255).round()),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          phase.icon,
+                          color: phase.displayColor,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              phase.phaseName,
+                              style: AppTextStyles.titleSmall(brightness),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              DateFormat('MMMM d, yyyy').format(phase.date),
+                              style: AppTextStyles.bodySmall(brightness),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        '${(phase.illumination * 100).toStringAsFixed(1)}%',
+                        style: AppTextStyles.bodySmall(brightness),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMoonPhaseGuide(Brightness brightness) {
+    return Card(
+      color: AppColors.surface(brightness),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Moon phase guide', style: AppTextStyles.titleLarge(brightness)),
+            const SizedBox(height: 16),
+            ..._phaseGuideEntries().map(
+              (entry) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Current Phase',
-                      style: AppTextStyles.dateSecondary(brightness).copyWith(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _currentPhase!.phaseName,
-                      style: AppTextStyles.sectionTitle(brightness).copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 28,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${(_currentPhase!.illumination * 100).toStringAsFixed(1)}% Illuminated',
-                      style: AppTextStyles.dateSecondary(brightness).copyWith(
-                        color: Colors.white70,
-                        fontSize: 14,
+                    Icon(entry.icon, size: 24, color: AppColors.accentGreen),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(entry.name, style: AppTextStyles.titleSmall(brightness)),
+                          const SizedBox(height: 4),
+                          Text(entry.description, style: AppTextStyles.bodySmall(brightness)),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Text(
-            _currentPhase!.description,
-            style: AppTextStyles.prayerName(brightness).copyWith(
-              color: Colors.white,
-              height: 1.5,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildUpcomingPhasesCard(Brightness brightness) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surface(brightness),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider(brightness), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Upcoming Moon Phases',
-            style: AppTextStyles.sectionTitle(brightness),
-          ),
-          const SizedBox(height: 16),
-          if (_upcomingPhases.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Text(
-                  'No upcoming significant moon phases found',
-                  style: AppTextStyles.dateSecondary(brightness),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            )
-          else
-            ..._upcomingPhases.map((phase) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: phase.displayColor.withAlpha(50),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      phase.icon,
-                      color: phase.displayColor,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          phase.phaseName,
-                          style: AppTextStyles.prayerName(brightness).copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          '${phase.date.day}/${phase.date.month}/${phase.date.year}',
-                          style: AppTextStyles.dateSecondary(brightness),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    '${(phase.illumination * 100).toStringAsFixed(0)}%',
-                    style: AppTextStyles.prayerName(brightness).copyWith(
-                      color: phase.displayColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            )),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMoonPhaseGuideCard(Brightness brightness) {
-    final phases = [
-      (MoonPhase.newMoon, 'New Moon', 'Invisible from Earth'),
-      (MoonPhase.waxingCrescent, 'Waxing Crescent', 'Thin crescent after sunset'),
-      (MoonPhase.firstQuarter, 'First Quarter', 'Half illuminated'),
-      (MoonPhase.waxingGibbous, 'Waxing Gibbous', 'More than half lit'),
-      (MoonPhase.fullMoon, 'Full Moon', 'Fully illuminated'),
-      (MoonPhase.waningGibbous, 'Waning Gibbous', 'More than half lit'),
-      (MoonPhase.lastQuarter, 'Last Quarter', 'Half illuminated'),
-      (MoonPhase.waningCrescent, 'Waning Crescent', 'Thin crescent before sunrise'),
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surface(brightness),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider(brightness), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Moon Phase Guide',
-            style: AppTextStyles.sectionTitle(brightness),
-          ),
-          const SizedBox(height: 16),
-          ...phases.map((phaseData) {
-            // Create a temporary MoonPhaseInfo for display
-            final displayPhase = MoonPhaseInfo(
-              phase: phaseData.$1,
-              illumination: 0.5,
-              date: DateTime.now(),
-              phaseName: phaseData.$2,
-              description: phaseData.$3,
-              icon: _getPhaseIcon(phaseData.$1),
-            );
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: displayPhase.displayColor.withAlpha(50),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      displayPhase.icon,
-                      color: displayPhase.displayColor,
-                      size: 16,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          phaseData.$2,
-                          style: AppTextStyles.prayerName(brightness).copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        Text(
-                          phaseData.$3,
-                          style: AppTextStyles.dateSecondary(brightness).copyWith(
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  IconData _getPhaseIcon(MoonPhase phase) {
+  IslamicSignificance _getIslamicSignificance(MoonPhase? phase) {
     switch (phase) {
       case MoonPhase.newMoon:
-        return Icons.brightness_2;
-      case MoonPhase.waxingCrescent:
-      case MoonPhase.waningCrescent:
-        return Icons.brightness_3;
-      case MoonPhase.firstQuarter:
-      case MoonPhase.lastQuarter:
-        return Icons.brightness_4;
-      case MoonPhase.waxingGibbous:
-      case MoonPhase.waningGibbous:
-        return Icons.brightness_5;
+        return const IslamicSignificance(
+          description: 'The new moon marks the beginning of an Islamic month and is traditionally observed to confirm Ramadan, Shawwal, and other significant months.',
+          practices: [
+            'Observe the sky for the Hilal',
+            'Reaffirm intentions for the new month',
+            'Reflect on upcoming spiritual goals',
+          ],
+        );
       case MoonPhase.fullMoon:
-        return Icons.brightness_7;
+        return const IslamicSignificance(
+          description: 'The full moon occurs around the 14th and 15th of the Islamic month, a time associated with increased blessings and optional fasting days.',
+          practices: [
+            'Consider the Ayam al-Bid fasting (13th, 14th, 15th)',
+            'Increase night prayers and reflection',
+            'Share meals or charity with the community',
+          ],
+        );
+      case MoonPhase.firstQuarter:
+        return const IslamicSignificance(
+          description: 'The first quarter aligns with the earlier part of the month, encouraging balanced routines and steady acts of worship.',
+          practices: [
+            'Maintain consistent daily prayers',
+            'Plan charitable giving for the month',
+          ],
+        );
+      case MoonPhase.lastQuarter:
+        return const IslamicSignificance(
+          description: 'The last quarter often overlaps with the final third of the month, signalling preparation for closing acts of worship, especially during Ramadan.',
+          practices: [
+            'Intensify supplications and remembrance',
+            'Seek Laylat al-Qadr in Ramadan',
+            'Consider I\'tikaf if possible',
+          ],
+        );
+      default:
+        return const IslamicSignificance(
+          description: 'Each lunar phase is a reminder of the Islamic lunar calendar and offers an opportunity to align worship with the natural cycles created by Allah.',
+          practices: [
+            'Track the Hijri calendar for key events',
+            'Schedule family learning around lunar phases',
+            'Use moonlight as a moment for reflection and gratitude',
+          ],
+        );
     }
   }
+
+  List<_PhaseGuideEntry> _phaseGuideEntries() {
+    return const [
+      _PhaseGuideEntry(
+        name: 'New Moon',
+        icon: Icons.brightness_2,
+        description: 'Moon positioned between Earth and Sun; generally not visible. Marks the start of the Islamic month.',
+      ),
+      _PhaseGuideEntry(
+        name: 'Waxing Crescent',
+        icon: Icons.brightness_3,
+        description: 'Sliver of moon visible after sunset. Traditionally observed to confirm the new month.',
+      ),
+      _PhaseGuideEntry(
+        name: 'First Quarter',
+        icon: Icons.brightness_4,
+        description: 'Half of the moon illuminated. Visible in the afternoon and early evening.',
+      ),
+      _PhaseGuideEntry(
+        name: 'Waxing Gibbous',
+        icon: Icons.brightness_5,
+        description: 'More than half illuminated and increasing toward the full moon.',
+      ),
+      _PhaseGuideEntry(
+        name: 'Full Moon',
+        icon: Icons.brightness_7,
+        description: 'Moon fully illuminated throughout the night.',
+      ),
+      _PhaseGuideEntry(
+        name: 'Waning Gibbous',
+        icon: Icons.brightness_5,
+        description: 'More than half illuminated but decreasing after the full moon.',
+      ),
+      _PhaseGuideEntry(
+        name: 'Last Quarter',
+        icon: Icons.brightness_4,
+        description: 'Half of the moon illuminated, visible after midnight and in the morning.',
+      ),
+      _PhaseGuideEntry(
+        name: 'Waning Crescent',
+        icon: Icons.brightness_3,
+        description: 'Thin crescent visible before sunrise leading into the next new moon.',
+      ),
+    ];
+  }
+}
+
+class IslamicSignificance {
+  final String description;
+  final List<String> practices;
+
+  const IslamicSignificance({
+    required this.description,
+    required this.practices,
+  });
+}
+
+class _PhaseGuideEntry {
+  final String name;
+  final IconData icon;
+  final String description;
+
+  const _PhaseGuideEntry({
+    required this.name,
+    required this.icon,
+    required this.description,
+  });
 }

@@ -101,13 +101,13 @@ class _RamadanFastingCheckboxState extends State<RamadanFastingCheckbox> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: _isChecked
-              ? AppColors.accentGreen(brightness).withAlpha(100)
+              ? AppColors.accentGreen.withAlpha(100)
               : AppColors.borderColor(brightness),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowColor(brightness),
+            color: AppColors.shadowColor,
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -119,14 +119,14 @@ class _RamadanFastingCheckboxState extends State<RamadanFastingCheckbox> {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: _isChecked
-                  ? AppColors.accentGreen(brightness).withAlpha(50)
+                  ? AppColors.accentGreen.withAlpha(50)
                   : Colors.transparent,
               shape: BoxShape.circle,
             ),
             child: Icon(
               _isChecked ? Icons.check_circle : Icons.radio_button_unchecked,
               color: _isChecked
-                  ? AppColors.accentGreen(brightness)
+                  ? AppColors.accentGreen
                   : AppColors.textSecondary(brightness),
               size: 24,
             ),
@@ -140,7 +140,7 @@ class _RamadanFastingCheckboxState extends State<RamadanFastingCheckbox> {
                   'Ramadan Fast Completed',
                   style: AppTextStyles.sectionTitle(brightness).copyWith(
                     color: _isChecked
-                        ? AppColors.accentGreen(brightness)
+                        ? AppColors.accentGreen
                         : AppColors.textPrimary(brightness),
                   ),
                 ),
@@ -169,7 +169,7 @@ class _RamadanFastingCheckboxState extends State<RamadanFastingCheckbox> {
             Checkbox(
               value: _isChecked,
               onChanged: isEnabled ? (_) => _toggleFast() : null,
-              activeColor: AppColors.accentGreen(brightness),
+              activeColor: AppColors.accentGreen,
               checkColor: Colors.white,
             ),
         ],

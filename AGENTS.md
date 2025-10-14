@@ -10,8 +10,8 @@
 - don't tell what you're doing, show it through code
 - no half-done work, every PR should be shippable
 - Assume full ownership of the codebase. If you see something that can be improved, fix it without waiting for explicit instructions.
-- Generate relevant pre-commit hooks
-
+- Generate relevant pre-commit hooks.
+- if error, warnings, or info ,  logic flaws are found is repeatedly, create rule in AGENTS.md to avoid it in future.
 
 ## Core Responsibilities
 
@@ -28,7 +28,7 @@
 - Zero tolerance for warnings errors or info. 
 
 
-## BluePrint 
-- Update blueprint.md with any new architectural decisions, data flows, or system interactions introduced during development.
+## BluePrint
+- Update blueprint.md, README.md etc with any new architectural decisions, data flows, or system interactions introduced during development.
 - Ensure that the blueprint reflects the current state of the system and is easily understandable for future reference.
 - Review and revise the blueprint regularly to maintain its accuracy and relevance.

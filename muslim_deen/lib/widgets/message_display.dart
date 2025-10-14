@@ -38,7 +38,7 @@ class MessageDisplay extends StatelessWidget {
           border: Border.all(color: defaultBorderColor),
           boxShadow: [
             BoxShadow(
-              color: AppColors.shadowColor(brightness).withValues(alpha: 0.05),
+              color: AppColors.shadowColor.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),

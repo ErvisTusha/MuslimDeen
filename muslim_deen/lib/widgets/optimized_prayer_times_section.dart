@@ -75,9 +75,8 @@ class _OptimizedPrayerTimesSectionState
       ),
       boxShadow: [
         BoxShadow(
-          color: AppColors.shadowColor(
-            widget.colors.brightness,
-          ).withAlpha(widget.colors.isDarkMode ? 20 : 40),
+          color: AppColors.shadowColor
+              .withAlpha(widget.colors.isDarkMode ? 20 : 40),
           spreadRadius: 0,
           blurRadius: 4,
           offset: const Offset(0, 1),

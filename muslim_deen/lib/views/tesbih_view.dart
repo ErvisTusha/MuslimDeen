@@ -254,34 +254,23 @@ class _TesbihViewState extends ConsumerState<TesbihView>
       initialTime:
           ref.read(tesbihReminderProvider).reminderTime ?? TimeOfDay.now(),
       builder: (context, child) {
+        final ColorScheme colorScheme =
+            Theme.of(context).brightness == Brightness.dark
+                ? ColorScheme.dark(
+                  primary: AppColors.primary(Theme.of(context).brightness),
+                  onPrimary: Colors.white,
+                  surface: AppColors.surface(Theme.of(context).brightness),
+                  onSurface: AppColors.textPrimary(Theme.of(context).brightness),
+                )
+                : ColorScheme.light(
+                  primary: AppColors.primary(Theme.of(context).brightness),
+                  onPrimary: AppColors.background(Theme.of(context).brightness),
+                  surface: AppColors.background(Theme.of(context).brightness),
+                  onSurface: AppColors.textPrimary(Theme.of(context).brightness),
+                );
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme:
-                Theme.of(context).brightness == Brightness.dark
-                    ? ColorScheme.dark(
-                      primary: AppColors.accentGreen(
-                        Theme.of(context).brightness,
-                      ),
-                      onPrimary: Colors.white,
-                      surface: AppColors.surface(
-                        Theme.of(context).brightness,
-                      ), // Dark surface for dialog
-                      onSurface: AppColors.textPrimary(
-                        Theme.of(context).brightness,
-                      ),
-                    )
-                    : ColorScheme.light(
-                      primary: AppColors.primary(Theme.of(context).brightness),
-                      onPrimary: AppColors.background(
-                        Theme.of(context).brightness,
-                      ),
-                      surface: AppColors.background(
-                        Theme.of(context).brightness,
-                      ),
-                      onSurface: AppColors.textPrimary(
-                        Theme.of(context).brightness,
-                      ),
-                    ),
+            colorScheme: colorScheme,
             dialogTheme: DialogThemeData(
               backgroundColor:
                   Theme.of(context).brightness == Brightness.dark
@@ -732,7 +721,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
         title: Text("Tasbih", style: AppTextStyles.appTitle(brightness)),
         backgroundColor: AppColors.primary(brightness),
         elevation: 2,
-        shadowColor: AppColors.shadowColor(brightness),
+        shadowColor: AppColors.shadowColor,
         centerTitle: true,
         actions: [
           IconButton(
@@ -769,7 +758,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     return TesbihColors(
       contentSurface: colors.isDarkMode
           ? const Color(0xFF2C2C2C)
-          : AppColors.primaryVariant(colors.brightness),
+          : AppColors.primary(colors.brightness),
       counterCircleBg: colors.isDarkMode
           ? const Color(0xFF3C3C3C)
           : AppColors.background(colors.brightness),
@@ -848,9 +837,8 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                   color: tesbihColors.counterCircleBg,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.shadowColor(
-                        colors.brightness,
-                      ).withAlpha(colors.isDarkMode ? 60 : 128),
+                      color: AppColors.shadowColor
+                          .withAlpha(colors.isDarkMode ? 60 : 128),
                       spreadRadius: 1,
                       blurRadius: 8,
                       offset: const Offset(0, 1),
@@ -950,7 +938,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
             ],
           ),
           const SizedBox(height: 12),
-          _buildToggleGroup(colors),
+          _buildToggleGroup(colors, context),
         ],
       ),
     );
@@ -994,7 +982,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
 
     final Color selectedBgColor =
         isDarkMode
-            ? AppColors.accentGreen(brightness)
+            ? AppColors.accentGreen
             : AppColors.primary(brightness);
     final Color selectedFgColor =
         isDarkMode ? Colors.white : AppColors.background(brightness);
@@ -1002,7 +990,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     final Color unselectedBgColor =
         isDarkMode
             ? const Color(0xFF2C2C2C)
-            : AppColors.primaryVariant(brightness);
+            : AppColors.surfaceVariant(brightness);
     final Color unselectedFgColor =
         isDarkMode
             ? AppColors.textPrimary(brightness)
@@ -1038,7 +1026,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: AppColors.iconInactive(brightness), size: 26),
+            Icon(icon, color: AppColors.iconInactive, size: 26),
             const SizedBox(height: 6),
             Text(
               label,
@@ -1050,7 +1038,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     );
   }
 
-  Widget _buildToggleGroup(UIColors colors) {
+  Widget _buildToggleGroup(UIColors colors, BuildContext context) {
     return Column(
       children: [
         _buildToggleOption(
@@ -1074,6 +1062,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
             });
           },
           colors.brightness,
+          context,
         ),
 
         _buildToggleOption(
@@ -1097,6 +1086,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
             });
           },
           colors.brightness,
+          context,
         ),
         Divider(color: AppColors.borderColor(colors.brightness), height: 1),
         _buildToggleOption(
@@ -1107,6 +1097,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
             ref.read(tesbihReminderProvider.notifier).toggleReminder(value);
           },
           colors.brightness,
+          context,
           trailing:
               ref.watch(tesbihReminderProvider).reminderEnabled &&
                       ref.watch(tesbihReminderProvider).reminderTime != null
@@ -1129,7 +1120,8 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     IconData icon,
     bool value,
     void Function(bool) onChanged,
-    Brightness brightness, {
+    Brightness brightness,
+    BuildContext context, {
     Widget? trailing,
   }) {
     final bool isNotificationToggle = title == "Notifications";
@@ -1150,7 +1142,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
         padding: const EdgeInsets.symmetric(vertical: 12.0),
         child: Row(
           children: [
-            Icon(icon, color: AppColors.iconInactive(brightness), size: 22),
+            Icon(icon, color: AppColors.iconInactive, size: 22),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
@@ -1182,8 +1174,8 @@ class _TesbihViewState extends ConsumerState<TesbihView>
               activeThumbColor: AppColors.primary(brightness),
               activeTrackColor:
                   isDisabled
-                      ? AppColors.switchTrackActive(brightness).withAlpha(77)
-                      : AppColors.switchTrackActive(brightness),
+                      ? AppColors.switchTrackActive.withAlpha(77)
+                      : AppColors.switchTrackActive,
               inactiveTrackColor:
                   isDisabled
                       ? AppColors.borderColor(brightness).withAlpha(77)
@@ -1191,7 +1183,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
               inactiveThumbColor:
                   isDisabled
                       ? AppColors.textSecondary(brightness).withAlpha(77)
-                      : AppColors.iconInactive(brightness).withAlpha(178),
+                      : AppColors.iconInactive.withAlpha(178),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           ],

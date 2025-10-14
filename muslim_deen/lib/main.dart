@@ -1,6 +1,6 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -11,23 +11,30 @@ import 'package:muslim_deen/services/error_handler_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/navigation_service.dart';
 import 'package:muslim_deen/services/notification_service.dart';
+
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/views/fasting_tracker_view.dart';
 import 'package:muslim_deen/views/hadith_view.dart';
 import 'package:muslim_deen/views/home_view.dart';
 import 'package:muslim_deen/views/islamic_calendar_view.dart';
+
 import 'package:muslim_deen/views/mosque_view.dart';
 import 'package:muslim_deen/views/qibla_view.dart';
 import 'package:muslim_deen/views/settings_view.dart';
 import 'package:muslim_deen/views/tesbih_view.dart';
 import 'package:muslim_deen/views/zakat_calculator_view.dart';
 import 'package:muslim_deen/widgets/error_boundary.dart';
+import 'package:muslim_deen/config/app_localization_config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
     await setupLocator();
+    
+    // Initialize enhanced accessibility
+
+    
   } catch (e, s) {
     // If service locator fails, we can't use the logger, so print to console
     debugPrint('Failed to setup service locator: $e');
@@ -102,18 +109,21 @@ class MuslimDeenApp extends StatelessWidget {
       builder: (context, ref, _) {
         final settingsState = ref.watch(settingsProvider);
 
-        final currentLocale = const Locale('en', 'US'); // Default to English for now
+        final currentLocale = _getLocaleFromSettings(settingsState.language);
         
         return MaterialApp(
           title: 'Muslim Deen',
           theme: _buildLightTheme(),
           darkTheme: _buildDarkTheme(),
           themeMode: settingsState.themeMode,
-          home: Directionality(
-            textDirection: TextDirection.ltr, // Default to LTR for now
-            child: const MainScreen(),
-          ),
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: const MainScreen(),
           locale: currentLocale,
+          supportedLocales: AppLocalizationConfig.supportedLocales,
           navigatorKey: locator<NavigationService>().navigatorKey,
           navigatorObservers: [_NavigationObserver()],
           // Add RTL support for scroll views and other directional elements
@@ -123,7 +133,9 @@ class MuslimDeenApp extends StatelessWidget {
                 textScaler: TextScaler.linear(1.0), // Ensure consistent text scaling
               ),
               child: Directionality(
-                textDirection: TextDirection.ltr, // Default to LTR for now
+                textDirection: AppLocalizationConfig.getTextDirection(
+                  Localizations.localeOf(context),
+                ),
                 child: child!,
               ),
             );
@@ -141,7 +153,7 @@ class MuslimDeenApp extends StatelessWidget {
       scaffoldBackgroundColor: AppColors.background(brightness),
       colorScheme: ColorScheme.light(
         primary: AppColors.primary(brightness),
-        secondary: AppColors.accentGreen(brightness),
+        secondary: AppColors.accentGreen,
         surface: AppColors.surface(brightness),
         error: AppColors.error(brightness),
         onPrimary: AppColors.textPrimary(brightness),
@@ -158,19 +170,19 @@ class MuslimDeenApp extends StatelessWidget {
         titleTextStyle: AppTextStyles.appTitle(brightness),
       ),
       cardColor: AppColors.surface(brightness),
-      dividerColor: AppColors.divider(brightness),
-      iconTheme: IconThemeData(color: AppColors.iconInactive(brightness)),
-      primaryIconTheme: IconThemeData(color: AppColors.accentGreen(brightness)),
+      dividerColor: AppColors.divider,
+      iconTheme: IconThemeData(color: AppColors.iconInactive),
+      primaryIconTheme: IconThemeData(color: AppColors.accentGreen),
       textTheme: _buildTextTheme(brightness),
       switchTheme: _buildSwitchTheme(brightness),
       visualDensity: VisualDensity.adaptivePlatformDensity,
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: AppColors.surface(brightness),
-        selectedItemColor: AppColors.accentGreen(brightness),
-        unselectedItemColor: AppColors.iconInactive(brightness),
+        selectedItemColor: AppColors.accentGreen,
+        unselectedItemColor: AppColors.iconInactive,
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: AppColors.accentGreen(brightness),
+        backgroundColor: AppColors.accentGreen,
         foregroundColor: AppColors.textPrimary(brightness),
       ),
     );
@@ -183,7 +195,7 @@ class MuslimDeenApp extends StatelessWidget {
       scaffoldBackgroundColor: AppColors.background(brightness),
       colorScheme: ColorScheme.dark(
         primary: AppColors.primary(brightness),
-        secondary: AppColors.accentGreen(brightness),
+        secondary: AppColors.accentGreen,
         surface: AppColors.surface(brightness),
         error: AppColors.error(brightness),
         onPrimary: AppColors.textPrimary(brightness),
@@ -206,34 +218,34 @@ class MuslimDeenApp extends StatelessWidget {
             ).titleLarge,
       ),
       cardColor: AppColors.surface(brightness),
-      dividerColor: AppColors.divider(brightness),
-      iconTheme: IconThemeData(color: AppColors.iconInactive(brightness)),
-      primaryIconTheme: IconThemeData(color: AppColors.accentGreen(brightness)),
+      dividerColor: AppColors.divider,
+      iconTheme: IconThemeData(color: AppColors.iconInactive),
+      primaryIconTheme: IconThemeData(color: AppColors.accentGreen),
       textTheme: _buildTextTheme(brightness),
       buttonTheme: ButtonThemeData(
-        buttonColor: AppColors.accentGreen(brightness),
+        buttonColor: AppColors.accentGreen,
         textTheme: ButtonTextTheme.primary,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.accentGreen(brightness),
+          backgroundColor: AppColors.accentGreen,
           foregroundColor: AppColors.textPrimary(brightness),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.accentGreen(brightness),
+          foregroundColor: AppColors.accentGreen,
         ),
       ),
       switchTheme: _buildSwitchTheme(brightness),
       visualDensity: VisualDensity.adaptivePlatformDensity,
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: AppColors.surface(brightness),
-        selectedItemColor: AppColors.accentGreen(brightness),
-        unselectedItemColor: AppColors.iconInactive(brightness),
+        selectedItemColor: AppColors.accentGreen,
+        unselectedItemColor: AppColors.iconInactive,
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: AppColors.accentGreen(brightness),
+        backgroundColor: AppColors.accentGreen,
         foregroundColor: AppColors.textPrimary(brightness),
       ),
     );
@@ -250,7 +262,7 @@ class MuslimDeenApp extends StatelessWidget {
       bodyLarge: TextStyle(color: AppColors.textPrimary(brightness)),
       bodyMedium: TextStyle(color: AppColors.textPrimary(brightness)),
       bodySmall: TextStyle(color: AppColors.textSecondary(brightness)),
-      labelLarge: TextStyle(color: AppColors.accentGreen(brightness)),
+      labelLarge: TextStyle(color: AppColors.accentGreen),
     );
   }
 
@@ -258,15 +270,15 @@ class MuslimDeenApp extends StatelessWidget {
     return SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith<Color?>((states) {
         if (states.contains(WidgetState.selected)) {
-          return AppColors.accentGreen(brightness);
+          return AppColors.accentGreen;
         }
-        return AppColors.accentGray(brightness);
+        return AppColors.accentGray;
       }),
       trackColor: WidgetStateProperty.resolveWith<Color?>((states) {
         if (states.contains(WidgetState.selected)) {
-          return AppColors.switchTrackActive(brightness);
+          return AppColors.switchTrackActive;
         }
-        return AppColors.accentGray(brightness).withAlpha(50);
+        return AppColors.accentGray.withAlpha(50);
       }),
     );
   }
@@ -458,14 +470,14 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         color: AppColors.surface(brightness),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowColor(brightness),
+            color: AppColors.shadowColor,
             blurRadius: 12,
             spreadRadius: 0,
             offset: const Offset(0, -2),
           ),
         ],
         border: Border(
-          top: BorderSide(color: AppColors.divider(brightness), width: 0.5),
+          top: BorderSide(color: AppColors.divider, width: 0.5),
         ),
       ),
       child: SafeArea(
@@ -535,8 +547,6 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isSelected = selectedIndex == index;
-    final theme = Theme.of(context);
-    final brightness = theme.brightness;
 
     return Semantics(
       label: data.tooltip,
@@ -545,10 +555,8 @@ class _NavItem extends StatelessWidget {
       child: InkWell(
         onTap: () => onTap(index),
         borderRadius: BorderRadius.circular(12),
-        splashColor: AppColors.accentGreen(brightness).withValues(alpha: 0.1),
-        highlightColor: AppColors.accentGreen(
-          brightness,
-        ).withValues(alpha: 0.05),
+        splashColor: AppColors.accentGreen.withValues(alpha: 0.1),
+        highlightColor: AppColors.accentGreen.withValues(alpha: 0.05),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
           child: Column(
@@ -562,9 +570,7 @@ class _NavItem extends StatelessWidget {
                 decoration: BoxDecoration(
                   color:
                       isSelected
-                          ? AppColors.accentGreen(
-                            brightness,
-                          ).withValues(alpha: 0.15)
+                          ? AppColors.accentGreen.withValues(alpha: 0.15)
                           : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -578,8 +584,8 @@ class _NavItem extends StatelessWidget {
                     key: ValueKey('$index-$isSelected'),
                     color:
                         isSelected
-                            ? AppColors.accentGreen(brightness)
-                            : AppColors.iconInactive(brightness),
+                            ? AppColors.accentGreen
+                            : AppColors.iconInactive,
                     size: 22,
                   ),
                 ),
@@ -590,8 +596,8 @@ class _NavItem extends StatelessWidget {
                 style: TextStyle(
                   color:
                       isSelected
-                          ? AppColors.accentGreen(brightness)
-                          : AppColors.iconInactive(brightness),
+                          ? AppColors.accentGreen
+                          : AppColors.iconInactive,
                   fontSize: 9,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   letterSpacing: 0.1,
@@ -638,7 +644,7 @@ class _OverflowMenuButton extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.settings_outlined,
-                      color: AppColors.iconInactive(brightness),
+                      color: AppColors.iconInactive,
                       size: 20,
                     ),
                     const SizedBox(width: 12),
@@ -658,7 +664,7 @@ class _OverflowMenuButton extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.book_outlined,
-                      color: AppColors.iconInactive(brightness),
+                      color: AppColors.iconInactive,
                       size: 20,
                     ),
                     const SizedBox(width: 12),
@@ -678,7 +684,7 @@ class _OverflowMenuButton extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.calendar_today_outlined,
-                      color: AppColors.iconInactive(brightness),
+                      color: AppColors.iconInactive,
                       size: 20,
                     ),
                     const SizedBox(width: 12),
@@ -698,7 +704,7 @@ class _OverflowMenuButton extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.restaurant_outlined,
-                      color: AppColors.iconInactive(brightness),
+                      color: AppColors.iconInactive,
                       size: 20,
                     ),
                     const SizedBox(width: 12),
@@ -718,7 +724,7 @@ class _OverflowMenuButton extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.account_balance_wallet_outlined,
-                      color: AppColors.iconInactive(brightness),
+                      color: AppColors.iconInactive,
                       size: 20,
                     ),
                     const SizedBox(width: 12),
@@ -735,10 +741,8 @@ class _OverflowMenuButton extends StatelessWidget {
             ],
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          splashColor: AppColors.accentGreen(brightness).withValues(alpha: 0.1),
-          highlightColor: AppColors.accentGreen(
-            brightness,
-          ).withValues(alpha: 0.05),
+          splashColor: AppColors.accentGreen.withValues(alpha: 0.1),
+          highlightColor: AppColors.accentGreen.withValues(alpha: 0.05),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             child: Column(
@@ -755,7 +759,7 @@ class _OverflowMenuButton extends StatelessWidget {
                   ),
                   child: Icon(
                     Icons.more_vert, // Vertical ellipsis
-                    color: AppColors.iconInactive(brightness),
+                    color: AppColors.iconInactive,
                     size: 22,
                   ),
                 ),
@@ -763,7 +767,7 @@ class _OverflowMenuButton extends StatelessWidget {
                 AnimatedDefaultTextStyle(
                   duration: const Duration(milliseconds: 200),
                   style: TextStyle(
-                    color: AppColors.iconInactive(brightness),
+                    color: AppColors.iconInactive,
                     fontSize: 9,
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0.1,
@@ -784,6 +788,29 @@ class _OverflowMenuButton extends StatelessWidget {
 }
 
 
+
+/// Convert language setting string to proper Locale
+Locale _getLocaleFromSettings(String languageCode) {
+  switch (languageCode) {
+    case 'ar':
+      return const Locale('ar', 'SA');
+    case 'ur':
+      return const Locale('ur', 'PK');
+    case 'fa':
+      return const Locale('fa', 'IR');
+    case 'tr':
+      return const Locale('tr', 'TR');
+    case 'id':
+      return const Locale('id', 'ID');
+    case 'ms':
+      return const Locale('ms', 'MY');
+    case 'fr':
+      return const Locale('fr', 'FR');
+    case 'en':
+    default:
+      return const Locale('en', 'US');
+  }
+}
 
 /// Fallback app shown when service locator initialization fails
 class ErrorApp extends StatelessWidget {

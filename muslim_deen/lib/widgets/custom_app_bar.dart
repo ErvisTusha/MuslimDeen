@@ -23,7 +23,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       title: Text(title, style: AppTextStyles.appTitle(brightness)),
       backgroundColor: AppColors.primary(brightness),
       elevation: 2.0,
-      shadowColor: AppColors.shadowColor(brightness),
+      shadowColor: AppColors.shadowColor,
       centerTitle: true,
       actions: actions,
       systemOverlayStyle: SystemUiOverlayStyle(

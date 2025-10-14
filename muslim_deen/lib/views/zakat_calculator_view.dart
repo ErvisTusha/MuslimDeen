@@ -217,7 +217,7 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView> {
             onPressed: _calculateZakat,
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.all(16),
-              backgroundColor: AppColors.accentGreen(brightness),
+              backgroundColor: AppColors.accentGreen,
               foregroundColor: Colors.white,
             ),
             child: const Text(
@@ -310,7 +310,7 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView> {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentGreen(brightness),
+                  backgroundColor: AppColors.accentGreen,
                   foregroundColor: Colors.white,
                 ),
                 child: const Text('Save Results'),
@@ -346,7 +346,7 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView> {
             'Current Nisab: ${_zakatService?.getCurrentNisab().toStringAsFixed(2) ?? 'Loading...'} $_currency',
             style: AppTextStyles.prayerTime(brightness).copyWith(
               fontWeight: FontWeight.bold,
-              color: AppColors.accentGreen(brightness),
+              color: AppColors.accentGreen,
             ),
           ),
         ],

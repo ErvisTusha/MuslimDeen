@@ -25,8 +25,8 @@ class RamadanCountdownBanner extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.accentGreen(brightness).withAlpha(200),
-            AppColors.accentGreen(brightness).withAlpha(150),
+            AppColors.accentGreen.withAlpha(200),
+            AppColors.accentGreen.withAlpha(150),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -34,7 +34,7 @@ class RamadanCountdownBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowColor(brightness),
+            color: AppColors.shadowColor,
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

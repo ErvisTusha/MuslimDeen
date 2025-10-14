@@ -14,9 +14,8 @@ class CommonContainerStyles {
       ),
       boxShadow: [
         BoxShadow(
-          color: AppColors.shadowColor(
-            colors.brightness,
-          ).withAlpha(colors.isDarkMode ? 20 : 30),
+          color: AppColors.shadowColor
+              .withAlpha(colors.isDarkMode ? 20 : 30),
           blurRadius: 4,
           offset: const Offset(0, 2),
         ),
@@ -34,9 +33,8 @@ class CommonContainerStyles {
       ),
       boxShadow: [
         BoxShadow(
-          color: AppColors.shadowColor(
-            colors.brightness,
-          ).withAlpha(colors.isDarkMode ? 20 : 30),
+          color: AppColors.shadowColor
+              .withAlpha(colors.isDarkMode ? 20 : 30),
           blurRadius: 4,
           offset: const Offset(0, 1),
         ),
@@ -54,9 +52,8 @@ class CommonContainerStyles {
       shape: BoxShape.circle,
       boxShadow: [
         BoxShadow(
-          color: AppColors.shadowColor(
-            colors.brightness,
-          ).withAlpha(colors.isDarkMode ? 30 : 50),
+          color: AppColors.shadowColor
+              .withAlpha(colors.isDarkMode ? 30 : 50),
           blurRadius: 8,
           spreadRadius: 1,
           offset: const Offset(0, 3),

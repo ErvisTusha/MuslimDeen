@@ -15,9 +15,11 @@ class SettingsNotifier extends Notifier<AppSettings>
     // Load settings immediately if storage is ready (synchronous path)
     final loadedSettings = loadSettingsSync();
 
-    // Still initialize async for any cleanup/validation
-    initializeSettings();
-    initializePermissionListener();
+    // Schedule async initialization for after the provider is built
+    Future.microtask(() {
+      initializeSettings();
+      initializePermissionListener();
+    });
 
     // Return loaded settings if available, otherwise defaults
     return loadedSettings ?? AppSettings.defaults;

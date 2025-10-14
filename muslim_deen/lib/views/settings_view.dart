@@ -642,7 +642,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
           ListTile(
             leading: Icon(
               Icons.location_on_outlined,
-              color: AppColors.iconInactive(brightness),
+              color: AppColors.iconInactive,
             ),
             title: Text(
               "Location",
@@ -685,7 +685,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             trailing: Icon(
               Icons.arrow_forward_ios,
               size: 16,
-              color: AppColors.iconInactive(brightness),
+              color: AppColors.iconInactive,
             ),
             onTap: () {
               _logger.logInteraction('SettingsView', 'Open location options');
@@ -737,7 +737,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   }
                 },
               ),
-              Divider(color: AppColors.divider(brightness)),
+              Divider(color: AppColors.divider),
               ListTile(
                 leading: Icon(
                   Icons.search,

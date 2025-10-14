@@ -269,7 +269,7 @@ class _HistoryViewState extends State<HistoryView>
                     Text(
                       '${entry.value}',
                       style: AppTextStyles.dateSecondary(brightness).copyWith(
-                        color: AppColors.accentGreen(brightness),
+                        color: AppColors.accentGreen,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -360,7 +360,7 @@ class _HistoryViewState extends State<HistoryView>
                   Text(
                     '$totalCount',
                     style: AppTextStyles.dateSecondary(brightness).copyWith(
-                      color: AppColors.accentGreen(brightness),
+                      color: AppColors.accentGreen,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

@@ -129,9 +129,9 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.accentGreen(brightness).withValues(alpha: 0.1),
+        color: AppColors.accentGreen.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.accentGreen(brightness).withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.accentGreen.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -140,7 +140,7 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
             children: [
               Icon(
                 isRamadan ? Icons.star : Icons.schedule,
-                color: AppColors.accentGreen(brightness),
+                color: AppColors.accentGreen,
               ),
               const SizedBox(width: 8),
               Text(
@@ -155,7 +155,7 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
               'Day $currentDay of 30',
               style: AppTextStyles.prayerTime(brightness).copyWith(
                 fontWeight: FontWeight.bold,
-                color: AppColors.accentGreen(brightness),
+                color: AppColors.accentGreen,
               ),
             )
           else if (daysUntil > 0)
@@ -180,7 +180,7 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowColor(brightness),
+            color: AppColors.shadowColor,
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -296,7 +296,7 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
               icon: const Icon(Icons.check_circle),
               label: const Text('Mark as Fasted'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentGreen(brightness),
+                backgroundColor: AppColors.accentGreen,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.all(16),
               ),
@@ -376,7 +376,7 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
         textColor = Colors.orange;
         break;
       default:
-        backgroundColor = isToday ? AppColors.accentGreen(brightness).withValues(alpha: 0.1) : Colors.transparent;
+        backgroundColor = isToday ? AppColors.accentGreen.withValues(alpha: 0.1) : Colors.transparent;
         textColor = AppColors.textPrimary(brightness);
     }
 
@@ -385,7 +385,7 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(8),
-        border: isToday ? Border.all(color: AppColors.accentGreen(brightness), width: 2) : null,
+        border: isToday ? Border.all(color: AppColors.accentGreen, width: 2) : null,
       ),
       child: Center(
         child: Text(

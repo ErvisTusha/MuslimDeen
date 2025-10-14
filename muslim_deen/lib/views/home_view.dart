@@ -1317,9 +1317,7 @@ class _HomeViewState extends ConsumerState<HomeView>
 
   void _navigateToMoonPhases() {
     locator<NavigationService>().navigateTo<MoonPhaseDetailsView>(
-      MoonPhaseDetailsView(
-        selectedDate: DateTime.now(),
-      ),
+      MoonPhaseDetailsView(),
       routeName: '/moon-phases',
     );
   }

@@ -148,11 +148,7 @@ mixin SettingsPersistenceMixin on Notifier<AppSettings> {
         'Error saving settings',
         error: e,
         stackTrace: s,
-        data: {
-          'themeMode': state.themeMode.toString(),
-          'calculationMethod': state.calculationMethod,
-          'key': _settingsKey,
-        },
+        data: _getSafeStateData(),
       );
       // Retry saving after a short delay
       Future.delayed(const Duration(seconds: 1), () async {
@@ -226,6 +222,22 @@ mixin SettingsPersistenceMixin on Notifier<AppSettings> {
 
   void disposePersistence() {
     _saveSettingsDebounceTimer?.cancel();
+  }
+
+  Map<String, dynamic> _getSafeStateData() {
+    try {
+      return {
+        'themeMode': state.themeMode.toString(),
+        'calculationMethod': state.calculationMethod,
+        'key': _settingsKey,
+      };
+    } catch (e) {
+      // If state is not accessible, return minimal data
+      return {
+        'key': _settingsKey,
+        'stateAccessError': e.toString(),
+      };
+    }
   }
 
   // Abstract methods that need to be implemented by the main class

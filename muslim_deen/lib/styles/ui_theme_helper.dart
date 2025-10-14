@@ -12,12 +12,12 @@ class UIThemeHelper {
           isDarkMode
               ? const Color(0xFF2C2C2C)
               : AppColors.background(brightness),
-      accentColor: AppColors.accentGreen(brightness),
+      accentColor: AppColors.accentGreen,
       errorColor: AppColors.error(brightness),
       textColorPrimary: AppColors.textPrimary(brightness),
       textColorSecondary: AppColors.textSecondary(brightness),
-      borderColor: AppColors.borderColor(brightness),
-      iconInactive: AppColors.iconInactive(brightness),
+      borderColor: AppColors.divider,
+      iconInactive: AppColors.iconInactive,
     );
   }
 }

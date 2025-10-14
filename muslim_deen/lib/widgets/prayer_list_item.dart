@@ -209,7 +209,7 @@ class _PrayerListItemState extends ConsumerState<PrayerListItem> {
       icon:
           widget.isCurrent
               ? widget.currentPrayerItemTextColor
-              : AppColors.iconInactive(widget.brightness),
+              : AppColors.iconInactive,
       text:
           widget.isCurrent
               ? widget.currentPrayerItemTextColor
