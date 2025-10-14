@@ -59,8 +59,10 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
-      // Handle error - could show snackbar
+      setState(() {
+        _isLoading = false;
+        _errorMessage = "Failed to load fasting data. Please try again.";
+      });
     }
   }
 
@@ -68,9 +70,27 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
     if (_fastingService == null) return;
 
     try {
-      await _fastingService!.markFastAsCompleted(DateTime.now());
-      await _loadData(); // Refresh data
+      final today = DateTime.now();
+      await _fastingService!.markFastAsCompleted(today);
+
+      // Optimistically update the UI
+      final updatedStats = await _fastingService!.getFastingStats();
+      final updatedRecords = List<FastingRecord>.from(_currentMonthRecords);
+      final recordIndex = updatedRecords.indexWhere((r) => r.date.day == today.day && r.date.month == today.month && r.date.year == today.year);
+
+      if (recordIndex != -1) {
+        updatedRecords[recordIndex] = updatedRecords[recordIndex].copyWith(status: FastingStatus.completed);
+      } else {
+        // If for some reason the record wasn't in the list, add it
+        updatedRecords.add(FastingRecord(id: '', date: today, type: FastingType.voluntary, status: FastingStatus.completed));
+      }
+
       if (mounted) {
+        setState(() {
+          _fastingStats = updatedStats;
+          _currentMonthRecords = updatedRecords;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Fast marked as completed!')),
         );
@@ -92,7 +112,24 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
       appBar: CustomAppBar(title: 'Fasting Tracker', brightness: brightness),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+          : _errorMessage != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.red, size: 60),
+                      const SizedBox(height: 16),
+                      Text(
+                        _errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.sectionTitle(brightness),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(onPressed: _loadData, child: const Text('Retry')),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
               onRefresh: _loadData,
               child: ListView(
                 padding: const EdgeInsets.all(16),

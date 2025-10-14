@@ -116,5 +116,27 @@
     "root_cause": "The filtering logic did not utilize the `_monthlyEvents` state variable and instead made a redundant async call for data that was already available.",
     "fix_summary": "Refactored the `_searchEvents` method to perform filtering on the in-memory `_monthlyEvents` list when no search query is present, avoiding the unnecessary service call and improving performance.",
     "patch_file": "patches/0003-fix-islamic-calendar-ux.patch"
+  },
+  {
+    "id": "MD-QA-007",
+    "title": "Silent Error Handling in Fasting Tracker",
+    "status": "Fixed",
+    "severity": "Medium",
+    "description": "In the Fasting Tracker view, if loading stats or records fails, the error is caught but handled silently. The user sees a perpetual loading indicator or an empty screen with no indication that data failed to load.",
+    "code_pointer": "lib/views/fasting_tracker_view.dart, _loadData()",
+    "root_cause": "The `try-catch` block responsible for loading fasting data had an empty `catch` block, preventing any user-facing error feedback.",
+    "fix_summary": "Added logic to the `catch` block to set an `_errorMessage` in the widget's state and modified the `build` method to display this error to the user.",
+    "patch_file": "patches/0004-fix-fasting-tracker-ux.patch"
+  },
+  {
+    "id": "MD-QA-008",
+    "title": "Inefficient UI Refresh in Fasting Tracker",
+    "status": "Fixed",
+    "severity": "Low",
+    "description": "After marking a fast as complete, the entire view is refreshed by re-fetching all stats and the full month's records. This is inefficient and can cause a noticeable flicker.",
+    "code_pointer": "lib/views/fasting_tracker_view.dart, _markFastAsCompleted()",
+    "root_cause": "The success handler called the generic `_loadData()` method instead of performing a more targeted local state update.",
+    "fix_summary": "Refactored `_markFastAsCompleted` to optimistically update the local state. It now only re-fetches the statistics and updates the specific record in the local list, avoiding a full data reload.",
+    "patch_file": "patches/0004-fix-fasting-tracker-ux.patch"
   }
 ]
