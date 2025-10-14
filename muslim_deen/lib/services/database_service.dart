@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
@@ -66,12 +64,7 @@ class DatabaseService {
     if (_isInitialized) return;
 
     try {
-      // Initialize database factory based on platform
-      if (kIsWeb) {
-        databaseFactory = databaseFactoryFfiWeb;
-      }
-      // For Android/iOS, use default sqflite factory
-
+      // Use default sqflite factory for Android/iOS
       final databasesPath = await getDatabasesPath();
       final path = join(databasesPath, _databaseName);
 

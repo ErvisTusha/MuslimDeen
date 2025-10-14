@@ -27,6 +27,8 @@
 ## Quality Gates
 - Zero tolerance for warnings errors or info. 
 
+## Platform Support
+- **Supported Platforms**: Android and iOS only
 
 ## BluePrint
 - Update blueprint.md, README.md etc with any new architectural decisions, data flows, or system interactions introduced during development.
