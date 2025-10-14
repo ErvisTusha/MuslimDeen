@@ -1,0 +1,50 @@
+[
+  {
+    "id": "MD-QA-001",
+    "title": "Invalid Tasbih Target Loaded from Storage",
+    "status": "Verified",
+    "severity": "Low",
+    "description": "The Tasbih view loads previously stored target values. The validation logic was not strict enough, allowing impractical low values (e.g., 1) to be loaded, leading to a poor user experience. The initial check only validated against values <= 0.",
+    "adb_steps": [
+      "adb shell am force-stop com.example.muslim_deen",
+      "adb shell am start -n com.example.muslim_deen/.MainActivity",
+      "sleep 5",
+      "adb shell input tap 135 2088",
+      "sleep 3",
+      "adb shell uiautomator dump",
+      "adb shell cat /storage/emulated/0/window_dump.xml"
+    ],
+    "evidence": {
+      "before": "content-desc ending in '...count: 0 of 1. Tap to increment.'",
+      "after": "content-desc ending in '...count: 0 of 33. Tap to increment.'"
+    },
+    "code_pointer": "lib/views/tesbih_view.dart, _loadPreferences()",
+    "root_cause": "Insufficient validation on data loaded from storage. The logic checked for `target <= 0` but should have checked for a more reasonable minimum, and it failed to validate the custom targets map.",
+    "fix_summary": "Updated the validation logic in `_loadPreferences` to discard any stored target (both general and custom) that is less than 10, falling back to the application default.",
+    "patch_file": "patches/0001-fix-tasbih-target-and-a11y.patch"
+  },
+  {
+    "id": "MD-QA-002",
+    "title": "Confusing Accessibility Label on Tasbih Counter",
+    "status": "Verified",
+    "severity": "Medium",
+    "description": "The main counter element on the Tasbih screen had a confusing, auto-generated accessibility label (e.g., '0%, 0\nTarget: 1'). This was caused by the accessibility framework combining the content descriptions of multiple child widgets.",
+    "adb_steps": [
+      "adb shell am force-stop com.example.muslim_deen",
+      "adb shell am start -n com.example.muslim_deen/.MainActivity",
+      "sleep 5",
+      "adb shell input tap 135 2088",
+      "sleep 3",
+      "adb shell uiautomator dump",
+      "adb shell cat /storage/emulated/0/window_dump.xml"
+    ],
+    "evidence": {
+      "before": "content-desc ending in '...count: 0 of 1. Tap to increment.'",
+      "after": "content-desc ending in '...count: 0 of 33. Tap to increment.'"
+    },
+    "code_pointer": "lib/views/tesbih_view.dart, _buildCounterSection()",
+    "root_cause": "The parent `GestureDetector` for the counter lacked a semantic label, causing the accessibility service to aggregate the labels of its children (a `CircularProgressIndicator` and multiple `Text` widgets) into a confusing string.",
+    "fix_summary": "Wrapped the `Stack` widget inside the counter's `GestureDetector` with a `Semantics` widget. This provides a single, clear, and descriptive label for the entire element and excludes the child semantics from being read individually.",
+    "patch_file": "patches/0001-fix-tasbih-target-and-a11y.patch"
+  }
+]
