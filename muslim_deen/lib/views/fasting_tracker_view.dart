@@ -23,6 +23,7 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
   Map<String, dynamic>? _ramadanInfo;
   List<FastingRecord> _currentMonthRecords = [];
   bool _isLoading = true;
+  bool _isMarking = false;
   String? _errorMessage;
 
   @override
@@ -73,6 +74,13 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
   Future<void> _markFastAsCompleted() async {
     if (_fastingService == null) return;
 
+    // Prevent duplicate submissions while a request is in progress
+    if (_isMarking) return;
+
+    setState(() {
+      _isMarking = true;
+    });
+
     try {
       final today = DateTime.now();
       await _fastingService!.markFastAsCompleted(today);
@@ -118,6 +126,12 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to mark fast as completed')),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isMarking = false;
+        });
       }
     }
   }
@@ -359,11 +373,6 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-<<<<<<< Updated upstream
-              onPressed: _markFastAsCompleted,
-              icon: const Icon(Icons.check_circle),
-              label: const Text('Mark as Fasted'),
-=======
               onPressed: _isMarking ? null : _markFastAsCompleted,
               icon:
                   _isMarking
@@ -382,11 +391,11 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
                   _isMarking
                       ? const Text('Marking...')
                       : const Text('Mark as Fasted'),
->>>>>>> Stashed changes
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.accentGreen,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.all(16),
+                minimumSize: const Size.fromHeight(48),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
               ),
             ),
           ),
