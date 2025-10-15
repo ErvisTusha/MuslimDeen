@@ -55,9 +55,9 @@ class UIThemeHelper {
           : math.pow((vv + 0.055) / 1.055, 2.4).toDouble();
     }
 
-    return 0.2126 * srgb(c.red.toDouble()) +
-        0.7152 * srgb(c.green.toDouble()) +
-        0.0722 * srgb(c.blue.toDouble());
+    return 0.2126 * srgb((c.r * 255.0).round().toDouble()) +
+        0.7152 * srgb((c.g * 255.0).round().toDouble()) +
+        0.0722 * srgb((c.b * 255.0).round().toDouble());
   }
 
   static double _contrastRatio(Color a, Color b) {
