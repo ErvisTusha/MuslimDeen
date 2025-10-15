@@ -58,7 +58,8 @@ class LocationPermissionHelper {
       if (permission == LocationPermission.denied) {
         return LocationValidationResult(
           isValid: false,
-          errorMessage: 'Location permission is required to find the Qibla direction.',
+          errorMessage:
+              'Location permission is required to find the Qibla direction.',
         );
       }
     }
@@ -67,7 +68,8 @@ class LocationPermissionHelper {
     if (permission == LocationPermission.deniedForever) {
       return LocationValidationResult(
         isValid: false,
-        errorMessage: 'Location permission is permanently denied. Please enable it in your device settings.',
+        errorMessage:
+            'Location permission is permanently denied. Please enable it in your device settings.',
       );
     }
 

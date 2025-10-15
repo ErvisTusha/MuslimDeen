@@ -31,7 +31,11 @@ class ZakatCalculatorService {
       _isInitialized = true;
       _logger.info('ZakatCalculatorService initialized');
     } catch (e, s) {
-      _logger.error('Failed to initialize ZakatCalculatorService', error: e, stackTrace: s);
+      _logger.error(
+        'Failed to initialize ZakatCalculatorService',
+        error: e,
+        stackTrace: s,
+      );
       rethrow;
     }
   }
@@ -40,23 +44,32 @@ class ZakatCalculatorService {
   Future<void> _loadMarketPrices() async {
     // For now, use default values. In production, this would fetch from a financial API
     _goldPricePerGram = 60.0; // Approximate current price
-    _silverPricePerGram = 0.7;  // Approximate current price
+    _silverPricePerGram = 0.7; // Approximate current price
 
-    _logger.debug('Market prices loaded', data: {
-      'goldPerGram': _goldPricePerGram,
-      'silverPerGram': _silverPricePerGram,
-    });
+    _logger.debug(
+      'Market prices loaded',
+      data: {
+        'goldPerGram': _goldPricePerGram,
+        'silverPerGram': _silverPricePerGram,
+      },
+    );
   }
 
   /// Update market prices
-  Future<void> updateMarketPrices(double goldPricePerGram, double silverPricePerGram) async {
+  Future<void> updateMarketPrices(
+    double goldPricePerGram,
+    double silverPricePerGram,
+  ) async {
     _goldPricePerGram = goldPricePerGram;
     _silverPricePerGram = silverPricePerGram;
 
-    _logger.info('Market prices updated', data: {
-      'goldPerGram': _goldPricePerGram,
-      'silverPerGram': _silverPricePerGram,
-    });
+    _logger.info(
+      'Market prices updated',
+      data: {
+        'goldPerGram': _goldPricePerGram,
+        'silverPerGram': _silverPricePerGram,
+      },
+    );
   }
 
   /// Calculate Zakat based on input data
@@ -81,12 +94,15 @@ class ZakatCalculatorService {
     // Record the calculation in history
     await _recordCalculation(calculation);
 
-    _logger.info('Zakat calculated', data: {
-      'totalAssets': calculation.totalAssets,
-      'netAssets': calculation.netAssets,
-      'zakatAmount': calculation.zakatAmount,
-      'isDue': calculation.isZakatDue,
-    });
+    _logger.info(
+      'Zakat calculated',
+      data: {
+        'totalAssets': calculation.totalAssets,
+        'netAssets': calculation.netAssets,
+        'zakatAmount': calculation.zakatAmount,
+        'isDue': calculation.isZakatDue,
+      },
+    );
 
     return calculation;
   }
@@ -94,7 +110,10 @@ class ZakatCalculatorService {
   /// Save Zakat input data
   Future<void> saveZakatInput(ZakatInput input) async {
     try {
-      await _storageService.saveData(_zakatInputKey, jsonEncode(input.toJson()));
+      await _storageService.saveData(
+        _zakatInputKey,
+        jsonEncode(input.toJson()),
+      );
 
       _logger.debug('Zakat input saved');
     } catch (e, s) {
@@ -106,7 +125,8 @@ class ZakatCalculatorService {
   /// Load saved Zakat input data
   Future<ZakatInput?> loadZakatInput() async {
     try {
-      final inputJson = await _storageService.getData(_zakatInputKey) as String?;
+      final inputJson =
+          await _storageService.getData(_zakatInputKey) as String?;
       if (inputJson != null) {
         final inputData = jsonDecode(inputJson) as Map<String, dynamic>;
         return ZakatInput.fromJson(inputData);
@@ -129,7 +149,10 @@ class ZakatCalculatorService {
         history.removeRange(0, history.length - 50);
       }
 
-      await _storageService.saveData(_zakatHistoryKey, jsonEncode(history.map((h) => h.toJson()).toList()));
+      await _storageService.saveData(
+        _zakatHistoryKey,
+        jsonEncode(history.map((h) => h.toJson()).toList()),
+      );
 
       _logger.debug('Calculation recorded in history');
     } catch (e, s) {
@@ -144,11 +167,17 @@ class ZakatCalculatorService {
       final historyJson = _storageService.getData(_zakatHistoryKey) as String?;
       if (historyJson != null) {
         final historyData = jsonDecode(historyJson) as List<dynamic>;
-        return historyData.map((c) => _calculationFromJson(c as Map<String, dynamic>)).toList();
+        return historyData
+            .map((c) => _calculationFromJson(c as Map<String, dynamic>))
+            .toList();
       }
       return [];
     } catch (e, s) {
-      _logger.error('Failed to load calculation history', error: e, stackTrace: s);
+      _logger.error(
+        'Failed to load calculation history',
+        error: e,
+        stackTrace: s,
+      );
       return [];
     }
   }
@@ -171,11 +200,11 @@ class ZakatCalculatorService {
       isZakatDue: json['isZakatDue'] as bool,
       calculationDate: DateTime.parse(json['calculationDate'] as String),
       assetBreakdown: (json['assetBreakdown'] as Map<String, dynamic>).map(
-        (key, value) => MapEntry(ZakatAssetType.values[int.parse(key)], value as double),
+        (key, value) =>
+            MapEntry(ZakatAssetType.values[int.parse(key)], value as double),
       ),
-      liabilityBreakdown: (json['liabilityBreakdown'] as Map<String, dynamic>).map(
-        (key, value) => MapEntry(key, value as double),
-      ),
+      liabilityBreakdown: (json['liabilityBreakdown'] as Map<String, dynamic>)
+          .map((key, value) => MapEntry(key, value as double)),
     );
   }
 
@@ -191,7 +220,9 @@ class ZakatCalculatorService {
   /// Get Zakat due date information
   Map<String, dynamic> getZakatDueInfo(DateTime lastPayment) {
     final isYearComplete = ZakatInfo.isZakatYearComplete(lastPayment);
-    final nextDueDate = lastPayment.add(Duration(days: (ZakatInfo.lunarMonths * 29.5).round()));
+    final nextDueDate = lastPayment.add(
+      Duration(days: (ZakatInfo.lunarMonths * 29.5).round()),
+    );
 
     return {
       'isYearComplete': isYearComplete,
@@ -221,10 +252,7 @@ class ZakatCalculatorService {
 
     calculation.liabilityBreakdown.forEach((name, amount) {
       if (amount > 0) {
-        liabilityDetails.add({
-          'name': name,
-          'amount': amount,
-        });
+        liabilityDetails.add({'name': name, 'amount': amount});
       }
     });
 
@@ -267,7 +295,7 @@ class ZakatCalculatorService {
   /// Clear all Zakat data (for testing or reset)
   Future<void> clearAllData() async {
     await _storageService.removeData(_zakatInputKey);
-        await _storageService.removeData(_zakatHistoryKey);
+    await _storageService.removeData(_zakatHistoryKey);
 
     _logger.info('All Zakat data cleared');
   }

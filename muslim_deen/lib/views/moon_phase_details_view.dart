@@ -64,7 +64,11 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
   }
 
   List<MoonPhaseInfo> _calculateUpcomingSignificantPhases(DateTime start) {
-    final rangeStart = DateTime(start.year, start.month, start.day).add(const Duration(days: 1));
+    final rangeStart = DateTime(
+      start.year,
+      start.month,
+      start.day,
+    ).add(const Duration(days: 1));
     final rangeEnd = rangeStart.add(const Duration(days: 60));
     final phases = _moonService.getMoonPhasesForRange(rangeStart, rangeEnd);
 
@@ -75,7 +79,8 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
       }
 
       final alreadyCaptured = upcoming.any(
-        (entry) => entry.phase == phase.phase && _isSameDay(entry.date, phase.date),
+        (entry) =>
+            entry.phase == phase.phase && _isSameDay(entry.date, phase.date),
       );
 
       if (!alreadyCaptured) {
@@ -138,31 +143,30 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
           ),
         ],
       ),
-      body: _isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                color: AppColors.accentGreen,
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _loadMoonPhaseData,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildCurrentPhaseCard(brightness),
-                    const SizedBox(height: 24),
-                    _buildIslamicSignificanceSection(brightness),
-                    const SizedBox(height: 24),
-                    _buildUpcomingPhasesSection(brightness),
-                    const SizedBox(height: 24),
-                    _buildMoonPhaseGuide(brightness),
-                  ],
+      body:
+          _isLoading
+              ? Center(
+                child: CircularProgressIndicator(color: AppColors.accentGreen),
+              )
+              : RefreshIndicator(
+                onRefresh: _loadMoonPhaseData,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildCurrentPhaseCard(brightness),
+                      const SizedBox(height: 24),
+                      _buildIslamicSignificanceSection(brightness),
+                      const SizedBox(height: 24),
+                      _buildUpcomingPhasesSection(brightness),
+                      const SizedBox(height: 24),
+                      _buildMoonPhaseGuide(brightness),
+                    ],
+                  ),
                 ),
               ),
-            ),
     );
   }
 
@@ -196,15 +200,13 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  _currentPhase!.icon,
-                  size: 48,
-                  color: accent,
-                ),
+                Icon(_currentPhase!.icon, size: 48, color: accent),
                 const SizedBox(width: 16),
                 Text(
                   _currentPhase!.phaseName,
-                  style: AppTextStyles.headlineSmall(brightness).copyWith(color: accent),
+                  style: AppTextStyles.headlineSmall(
+                    brightness,
+                  ).copyWith(color: accent),
                 ),
               ],
             ),
@@ -230,15 +232,22 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
             if (isSignificant) ...[
               const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: accent.withAlpha((0.12 * 255).round()),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: accent.withAlpha((0.3 * 255).round())),
+                  border: Border.all(
+                    color: accent.withAlpha((0.3 * 255).round()),
+                  ),
                 ),
                 child: Text(
                   'Significant phase',
-                  style: AppTextStyles.labelMedium(brightness).copyWith(color: accent),
+                  style: AppTextStyles.labelMedium(
+                    brightness,
+                  ).copyWith(color: accent),
                 ),
               ),
             ],
@@ -263,17 +272,20 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
               children: [
                 Icon(Icons.mosque, color: AppColors.accentGreen, size: 24),
                 const SizedBox(width: 12),
-                Text('Islamic significance', style: AppTextStyles.titleLarge(brightness)),
+                Text(
+                  'Islamic significance',
+                  style: AppTextStyles.titleLarge(brightness),
+                ),
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              info.description,
-              style: AppTextStyles.bodyMedium(brightness),
-            ),
+            Text(info.description, style: AppTextStyles.bodyMedium(brightness)),
             if (info.practices.isNotEmpty) ...[
               const SizedBox(height: 12),
-              Text('Recommended practices', style: AppTextStyles.titleSmall(brightness)),
+              Text(
+                'Recommended practices',
+                style: AppTextStyles.titleSmall(brightness),
+              ),
               const SizedBox(height: 8),
               ...info.practices.map(
                 (practice) => Padding(
@@ -309,7 +321,10 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Upcoming significant phases', style: AppTextStyles.titleLarge(brightness)),
+            Text(
+              'Upcoming significant phases',
+              style: AppTextStyles.titleLarge(brightness),
+            ),
             const SizedBox(height: 12),
             if (_upcomingPhases.isEmpty)
               Text(
@@ -325,7 +340,9 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: phase.displayColor.withAlpha((0.15 * 255).round()),
+                          color: phase.displayColor.withAlpha(
+                            (0.15 * 255).round(),
+                          ),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -374,7 +391,10 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Moon phase guide', style: AppTextStyles.titleLarge(brightness)),
+            Text(
+              'Moon phase guide',
+              style: AppTextStyles.titleLarge(brightness),
+            ),
             const SizedBox(height: 16),
             ..._phaseGuideEntries().map(
               (entry) => Padding(
@@ -388,9 +408,15 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(entry.name, style: AppTextStyles.titleSmall(brightness)),
+                          Text(
+                            entry.name,
+                            style: AppTextStyles.titleSmall(brightness),
+                          ),
                           const SizedBox(height: 4),
-                          Text(entry.description, style: AppTextStyles.bodySmall(brightness)),
+                          Text(
+                            entry.description,
+                            style: AppTextStyles.bodySmall(brightness),
+                          ),
                         ],
                       ),
                     ),
@@ -408,7 +434,8 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
     switch (phase) {
       case MoonPhase.newMoon:
         return const IslamicSignificance(
-          description: 'The new moon marks the beginning of an Islamic month and is traditionally observed to confirm Ramadan, Shawwal, and other significant months.',
+          description:
+              'The new moon marks the beginning of an Islamic month and is traditionally observed to confirm Ramadan, Shawwal, and other significant months.',
           practices: [
             'Observe the sky for the Hilal',
             'Reaffirm intentions for the new month',
@@ -417,7 +444,8 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
         );
       case MoonPhase.fullMoon:
         return const IslamicSignificance(
-          description: 'The full moon occurs around the 14th and 15th of the Islamic month, a time associated with increased blessings and optional fasting days.',
+          description:
+              'The full moon occurs around the 14th and 15th of the Islamic month, a time associated with increased blessings and optional fasting days.',
           practices: [
             'Consider the Ayam al-Bid fasting (13th, 14th, 15th)',
             'Increase night prayers and reflection',
@@ -426,7 +454,8 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
         );
       case MoonPhase.firstQuarter:
         return const IslamicSignificance(
-          description: 'The first quarter aligns with the earlier part of the month, encouraging balanced routines and steady acts of worship.',
+          description:
+              'The first quarter aligns with the earlier part of the month, encouraging balanced routines and steady acts of worship.',
           practices: [
             'Maintain consistent daily prayers',
             'Plan charitable giving for the month',
@@ -434,7 +463,8 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
         );
       case MoonPhase.lastQuarter:
         return const IslamicSignificance(
-          description: 'The last quarter often overlaps with the final third of the month, signalling preparation for closing acts of worship, especially during Ramadan.',
+          description:
+              'The last quarter often overlaps with the final third of the month, signalling preparation for closing acts of worship, especially during Ramadan.',
           practices: [
             'Intensify supplications and remembrance',
             'Seek Laylat al-Qadr in Ramadan',
@@ -443,7 +473,8 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
         );
       default:
         return const IslamicSignificance(
-          description: 'Each lunar phase is a reminder of the Islamic lunar calendar and offers an opportunity to align worship with the natural cycles created by Allah.',
+          description:
+              'Each lunar phase is a reminder of the Islamic lunar calendar and offers an opportunity to align worship with the natural cycles created by Allah.',
           practices: [
             'Track the Hijri calendar for key events',
             'Schedule family learning around lunar phases',
@@ -458,22 +489,26 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
       _PhaseGuideEntry(
         name: 'New Moon',
         icon: Icons.brightness_2,
-        description: 'Moon positioned between Earth and Sun; generally not visible. Marks the start of the Islamic month.',
+        description:
+            'Moon positioned between Earth and Sun; generally not visible. Marks the start of the Islamic month.',
       ),
       _PhaseGuideEntry(
         name: 'Waxing Crescent',
         icon: Icons.brightness_3,
-        description: 'Sliver of moon visible after sunset. Traditionally observed to confirm the new month.',
+        description:
+            'Sliver of moon visible after sunset. Traditionally observed to confirm the new month.',
       ),
       _PhaseGuideEntry(
         name: 'First Quarter',
         icon: Icons.brightness_4,
-        description: 'Half of the moon illuminated. Visible in the afternoon and early evening.',
+        description:
+            'Half of the moon illuminated. Visible in the afternoon and early evening.',
       ),
       _PhaseGuideEntry(
         name: 'Waxing Gibbous',
         icon: Icons.brightness_5,
-        description: 'More than half illuminated and increasing toward the full moon.',
+        description:
+            'More than half illuminated and increasing toward the full moon.',
       ),
       _PhaseGuideEntry(
         name: 'Full Moon',
@@ -483,17 +518,20 @@ class _MoonPhaseDetailsViewState extends State<MoonPhaseDetailsView> {
       _PhaseGuideEntry(
         name: 'Waning Gibbous',
         icon: Icons.brightness_5,
-        description: 'More than half illuminated but decreasing after the full moon.',
+        description:
+            'More than half illuminated but decreasing after the full moon.',
       ),
       _PhaseGuideEntry(
         name: 'Last Quarter',
         icon: Icons.brightness_4,
-        description: 'Half of the moon illuminated, visible after midnight and in the morning.',
+        description:
+            'Half of the moon illuminated, visible after midnight and in the morning.',
       ),
       _PhaseGuideEntry(
         name: 'Waning Crescent',
         icon: Icons.brightness_3,
-        description: 'Thin crescent visible before sunrise leading into the next new moon.',
+        description:
+            'Thin crescent visible before sunrise leading into the next new moon.',
       ),
     ];
   }

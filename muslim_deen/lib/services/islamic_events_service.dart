@@ -24,7 +24,11 @@ class IslamicEventsService {
       _isInitialized = true;
       _logger.info('IslamicEventsService initialized successfully');
     } catch (e, s) {
-      _logger.error('Failed to initialize IslamicEventsService', error: e, stackTrace: s);
+      _logger.error(
+        'Failed to initialize IslamicEventsService',
+        error: e,
+        stackTrace: s,
+      );
       rethrow;
     }
   }
@@ -69,9 +73,10 @@ class IslamicEventsService {
 
     _yearlyEventsCache[hijriYear] = events;
 
-    _logger.debug('Calculated events for Hijri year $hijriYear', data: {
-      'eventCount': events.length,
-    });
+    _logger.debug(
+      'Calculated events for Hijri year $hijriYear',
+      data: {'eventCount': events.length},
+    );
   }
 
   /// Get all events for a specific Gregorian year
@@ -91,7 +96,8 @@ class IslamicEventsService {
 
     // Filter events that actually occur in the requested Gregorian year
     return allEvents.where((event) {
-      final eventDate = event.gregorianDate ?? event.getGregorianDateForYear(year);
+      final eventDate =
+          event.gregorianDate ?? event.getGregorianDateForYear(year);
       return eventDate.year == year;
     }).toList();
   }
@@ -101,7 +107,8 @@ class IslamicEventsService {
     final yearEvents = await getEventsForYear(year);
 
     return yearEvents.where((event) {
-      final eventDate = event.gregorianDate ?? event.getGregorianDateForYear(year);
+      final eventDate =
+          event.gregorianDate ?? event.getGregorianDateForYear(year);
       return eventDate.month == month;
     }).toList();
   }
@@ -114,7 +121,10 @@ class IslamicEventsService {
   }
 
   /// Get upcoming events from a specific date
-  Future<List<IslamicEvent>> getUpcomingEvents(DateTime fromDate, {int limit = 10}) async {
+  Future<List<IslamicEvent>> getUpcomingEvents(
+    DateTime fromDate, {
+    int limit = 10,
+  }) async {
     final currentYear = fromDate.year;
     final nextYear = currentYear + 1;
 
@@ -123,14 +133,20 @@ class IslamicEventsService {
 
     final allEvents = [...currentYearEvents, ...nextYearEvents];
 
-    final upcomingEvents = allEvents.where((event) {
-      final eventDate = event.gregorianDate ?? event.getGregorianDateForYear(DateTime.now().year);
-      return eventDate.isAfter(fromDate) || eventDate.isAtSameMomentAs(fromDate);
-    }).toList();
+    final upcomingEvents =
+        allEvents.where((event) {
+          final eventDate =
+              event.gregorianDate ??
+              event.getGregorianDateForYear(DateTime.now().year);
+          return eventDate.isAfter(fromDate) ||
+              eventDate.isAtSameMomentAs(fromDate);
+        }).toList();
 
     upcomingEvents.sort((a, b) {
-      final aDate = a.gregorianDate ?? a.getGregorianDateForYear(DateTime.now().year);
-      final bDate = b.gregorianDate ?? b.getGregorianDateForYear(DateTime.now().year);
+      final aDate =
+          a.gregorianDate ?? a.getGregorianDateForYear(DateTime.now().year);
+      final bDate =
+          b.gregorianDate ?? b.getGregorianDateForYear(DateTime.now().year);
       return aDate.compareTo(bDate);
     });
 
@@ -138,41 +154,43 @@ class IslamicEventsService {
   }
 
   /// Get events by type
-  Future<List<IslamicEvent>> getEventsByType(IslamicEventType type, {int? year}) async {
-    final events = year != null
-        ? await getEventsForYear(year)
-        : await _getAllEvents();
+  Future<List<IslamicEvent>> getEventsByType(
+    IslamicEventType type, {
+    int? year,
+  }) async {
+    final events =
+        year != null ? await getEventsForYear(year) : await _getAllEvents();
 
     return events.where((event) => event.type == type).toList();
   }
 
   /// Get events by category
-  Future<List<IslamicEvent>> getEventsByCategory(IslamicEventCategory category, {int? year}) async {
-    final events = year != null
-        ? await getEventsForYear(year)
-        : await _getAllEvents();
+  Future<List<IslamicEvent>> getEventsByCategory(
+    IslamicEventCategory category, {
+    int? year,
+  }) async {
+    final events =
+        year != null ? await getEventsForYear(year) : await _getAllEvents();
 
     return events.where((event) => event.category == category).toList();
   }
 
   /// Get holidays
   Future<List<IslamicEvent>> getHolidays({int? year}) async {
-    final events = year != null
-        ? await getEventsForYear(year)
-        : await _getAllEvents();
+    final events =
+        year != null ? await getEventsForYear(year) : await _getAllEvents();
 
     return events.where((event) => event.isHoliday).toList();
   }
 
   /// Search events
   Future<List<IslamicEvent>> searchEvents(String query, {int? year}) async {
-    final events = year != null
-        ? await getEventsForYear(year)
-        : await _getAllEvents();
+    final events =
+        year != null ? await getEventsForYear(year) : await _getAllEvents();
 
-    return IslamicEventsDatabase.searchEvents(query)
-        .where(events.contains)
-        .toList();
+    return IslamicEventsDatabase.searchEvents(
+      query,
+    ).where(events.contains).toList();
   }
 
   /// Get all events (across multiple years)
@@ -194,11 +212,18 @@ class IslamicEventsService {
     final ramadanEnd = DateTime(hijri.hYear + 578, 3, 30); // Approximate
 
     // If we're past this year's Ramadan, get next year's
-    final effectiveRamadanStart = now.isAfter(ramadanEnd) ? DateTime(hijri.hYear + 579, 3, 1) : ramadanStart;
-    final effectiveRamadanEnd = now.isAfter(ramadanEnd) ? DateTime(hijri.hYear + 579, 3, 30) : ramadanEnd;
+    final effectiveRamadanStart =
+        now.isAfter(ramadanEnd)
+            ? DateTime(hijri.hYear + 579, 3, 1)
+            : ramadanStart;
+    final effectiveRamadanEnd =
+        now.isAfter(ramadanEnd)
+            ? DateTime(hijri.hYear + 579, 3, 30)
+            : ramadanEnd;
 
-    final isCurrentlyRamadan = now.isAfter(effectiveRamadanStart.subtract(const Duration(days: 1))) &&
-                              now.isBefore(effectiveRamadanEnd.add(const Duration(days: 1)));
+    final isCurrentlyRamadan =
+        now.isAfter(effectiveRamadanStart.subtract(const Duration(days: 1))) &&
+        now.isBefore(effectiveRamadanEnd.add(const Duration(days: 1)));
 
     int? currentDay;
     if (isCurrentlyRamadan) {
@@ -223,9 +248,18 @@ class IslamicEventsService {
     final hijri = HijriCalendar.fromDate(date);
 
     final monthNames = [
-      'Muharram', 'Safar', 'Rabi\' al-awwal', 'Rabi\' al-thani',
-      'Jumada al-awwal', 'Jumada al-thani', 'Rajab', 'Sha\'ban',
-      'Ramadan', 'Shawwal', 'Dhu al-Qi\'dah', 'Dhu al-Hijjah'
+      'Muharram',
+      'Safar',
+      'Rabi\' al-awwal',
+      'Rabi\' al-thani',
+      'Jumada al-awwal',
+      'Jumada al-thani',
+      'Rajab',
+      'Sha\'ban',
+      'Ramadan',
+      'Shawwal',
+      'Dhu al-Qi\'dah',
+      'Dhu al-Hijjah',
     ];
 
     return {
@@ -241,7 +275,8 @@ class IslamicEventsService {
 
   /// Get number of days in an Islamic month
   int _getDaysInIslamicMonth(int month, int year) {
-    if (month == 12) { // Dhul-Hijjah always has 30 days
+    if (month == 12) {
+      // Dhul-Hijjah always has 30 days
       return 30;
     }
 
@@ -254,7 +289,10 @@ class IslamicEventsService {
   }
 
   /// Get Islamic calendar information for a date range
-  Future<List<Map<String, dynamic>>> getIslamicCalendarForRange(DateTime start, DateTime end) async {
+  Future<List<Map<String, dynamic>>> getIslamicCalendarForRange(
+    DateTime start,
+    DateTime end,
+  ) async {
     final calendar = <Map<String, dynamic>>[];
     final current = DateTime(start.year, start.month, start.day);
 

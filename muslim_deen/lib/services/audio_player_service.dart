@@ -45,7 +45,11 @@ class AudioPlayerService {
 
       _logger.info('AudioPlayerService initialized successfully');
     } catch (e, s) {
-      _logger.error('Failed to initialize AudioPlayerService', error: e, stackTrace: s);
+      _logger.error(
+        'Failed to initialize AudioPlayerService',
+        error: e,
+        stackTrace: s,
+      );
       rethrow;
     }
   }
@@ -106,7 +110,11 @@ class AudioPlayerService {
       _logger.debug('Playing dhikr audio: $dhikr');
     } catch (e, s) {
       _isDhikrPlaying = false;
-      _logger.error('Error playing dhikr audio for $dhikr', error: e, stackTrace: s);
+      _logger.error(
+        'Error playing dhikr audio for $dhikr',
+        error: e,
+        stackTrace: s,
+      );
     }
   }
 
@@ -249,7 +257,11 @@ class AudioPlayerService {
 
       _logger.info('AudioPlayerService disposed');
     } catch (e, s) {
-      _logger.error('Error disposing AudioPlayerService', error: e, stackTrace: s);
+      _logger.error(
+        'Error disposing AudioPlayerService',
+        error: e,
+        stackTrace: s,
+      );
     }
   }
 }

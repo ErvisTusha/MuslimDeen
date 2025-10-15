@@ -6,13 +6,13 @@ import 'package:muslim_deen/services/logger_service.dart';
 
 /// Represents a moon phase
 enum MoonPhase {
-  newMoon,      // New Moon (conjunction)
+  newMoon, // New Moon (conjunction)
   waxingCrescent, // Waxing Crescent
   firstQuarter, // First Quarter
   waxingGibbous, // Waxing Gibbous
-  fullMoon,     // Full Moon (opposition)
+  fullMoon, // Full Moon (opposition)
   waningGibbous, // Waning Gibbous
-  lastQuarter,  // Last Quarter
+  lastQuarter, // Last Quarter
   waningCrescent, // Waning Crescent
 }
 
@@ -65,7 +65,8 @@ class MoonPhasesService {
 
   // Astronomical constants
   static const double _newMoonJulianDate = 2451549.5; // J2000 epoch
-  static const double _synodicMonth = 29.53058867; // Average synodic month in days
+  static const double _synodicMonth =
+      29.53058867; // Average synodic month in days
   static const double _rad = pi / 180.0;
 
   bool _isInitialized = false;
@@ -84,7 +85,13 @@ class MoonPhasesService {
     final y = date.year + 4800 - a;
     final m = date.month + 12 * a - 3;
 
-    return date.day + (153 * m + 2) ~/ 5 + 365 * y + y ~/ 4 - y ~/ 100 + y ~/ 400 - 32045;
+    return date.day +
+        (153 * m + 2) ~/ 5 +
+        365 * y +
+        y ~/ 4 -
+        y ~/ 100 +
+        y ~/ 400 -
+        32045;
   }
 
   /// Calculate moon phase for a given date

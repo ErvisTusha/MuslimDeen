@@ -4,14 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:muslim_deen/models/app_settings.dart';
 import 'package:muslim_deen/providers/service_providers.dart';
 
-enum PrayerType {
-  fajr,
-  sunrise,
-  dhuhr,
-  asr,
-  maghrib,
-  isha,
-}
+enum PrayerType { fajr, sunrise, dhuhr, asr, maghrib, isha }
 
 mixin PrayerCalculationMixin on Notifier<AppSettings> {
   Future<void> updatePrayerOffset(PrayerType prayer, int offsetMinutes) async {

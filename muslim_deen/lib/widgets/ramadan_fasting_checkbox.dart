@@ -40,7 +40,9 @@ class _RamadanFastingCheckboxState extends State<RamadanFastingCheckbox> {
 
     try {
       final today = DateTime.now();
-      final record = await widget.fastingService!.getFastingRecordForDate(today);
+      final record = await widget.fastingService!.getFastingRecordForDate(
+        today,
+      );
       if (mounted) {
         setState(() {
           _isChecked = record?.status.name == 'completed';
@@ -100,9 +102,10 @@ class _RamadanFastingCheckboxState extends State<RamadanFastingCheckbox> {
         color: AppColors.surface(brightness),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: _isChecked
-              ? AppColors.accentGreen.withAlpha(100)
-              : AppColors.borderColor(brightness),
+          color:
+              _isChecked
+                  ? AppColors.accentGreen.withAlpha(100)
+                  : AppColors.borderColor(brightness),
           width: 1.5,
         ),
         boxShadow: [
@@ -118,16 +121,18 @@ class _RamadanFastingCheckboxState extends State<RamadanFastingCheckbox> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: _isChecked
-                  ? AppColors.accentGreen.withAlpha(50)
-                  : Colors.transparent,
+              color:
+                  _isChecked
+                      ? AppColors.accentGreen.withAlpha(50)
+                      : Colors.transparent,
               shape: BoxShape.circle,
             ),
             child: Icon(
               _isChecked ? Icons.check_circle : Icons.radio_button_unchecked,
-              color: _isChecked
-                  ? AppColors.accentGreen
-                  : AppColors.textSecondary(brightness),
+              color:
+                  _isChecked
+                      ? AppColors.accentGreen
+                      : AppColors.textSecondary(brightness),
               size: 24,
             ),
           ),
@@ -139,9 +144,10 @@ class _RamadanFastingCheckboxState extends State<RamadanFastingCheckbox> {
                 Text(
                   'Ramadan Fast Completed',
                   style: AppTextStyles.sectionTitle(brightness).copyWith(
-                    color: _isChecked
-                        ? AppColors.accentGreen
-                        : AppColors.textPrimary(brightness),
+                    color:
+                        _isChecked
+                            ? AppColors.accentGreen
+                            : AppColors.textPrimary(brightness),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -151,9 +157,12 @@ class _RamadanFastingCheckboxState extends State<RamadanFastingCheckbox> {
                       : 'Available after Maghrib prayer',
                   style: AppTextStyles.label(brightness).copyWith(
                     fontSize: 12,
-                    color: isEnabled
-                        ? AppColors.textSecondary(brightness)
-                        : AppColors.textSecondary(brightness).withAlpha(128),
+                    color:
+                        isEnabled
+                            ? AppColors.textSecondary(brightness)
+                            : AppColors.textSecondary(
+                              brightness,
+                            ).withAlpha(128),
                   ),
                 ),
               ],

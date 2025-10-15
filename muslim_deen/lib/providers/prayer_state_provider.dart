@@ -289,9 +289,8 @@ class PrayerCompletionNotifier
     extends riverpod.Notifier<PrayerCompletionState> {
   final LoggerService _logger;
 
-  PrayerCompletionNotifier({
-    required LoggerService loggerService,
-  }) : _logger = loggerService;
+  PrayerCompletionNotifier({required LoggerService loggerService})
+    : _logger = loggerService;
 
   @override
   PrayerCompletionState build() {
@@ -346,9 +345,7 @@ final prayerCompletionProvider =
       () {
         final loggerService = locator<LoggerService>();
 
-        return PrayerCompletionNotifier(
-          loggerService: loggerService,
-        );
+        return PrayerCompletionNotifier(loggerService: loggerService);
       },
     );
 

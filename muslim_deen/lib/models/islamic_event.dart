@@ -3,20 +3,20 @@ import 'package:hijri/hijri_calendar.dart';
 
 /// Types of Islamic events
 enum IslamicEventType {
-  holiday,        // Major Islamic holidays
-  commemoration,  // Days of remembrance
-  seasonal,       // Seasonal events
-  historical,     // Historical Islamic events
-  other,          // Other events
+  holiday, // Major Islamic holidays
+  commemoration, // Days of remembrance
+  seasonal, // Seasonal events
+  historical, // Historical Islamic events
+  other, // Other events
 }
 
 /// Categories for Islamic events
 enum IslamicEventCategory {
-  ramadan,        // Ramadan-related events
-  eid,           // Eid celebrations
-  prophets,      // Prophet-related events
-  companions,    // Companion-related events
-  general,       // General Islamic events
+  ramadan, // Ramadan-related events
+  eid, // Eid celebrations
+  prophets, // Prophet-related events
+  companions, // Companion-related events
+  general, // General Islamic events
 }
 
 /// Represents an Islamic event or holiday
@@ -26,16 +26,17 @@ class IslamicEvent {
   final String description;
   final IslamicEventType type;
   final IslamicEventCategory category;
-  final HijriCalendar hijriDate;  // Hijri date for the event
-  final DateTime? gregorianDate;  // Calculated Gregorian date
-  final bool isRecurring;         // Whether this event recurs annually
-  final int? hijriDay;           // Specific hijri day (1-30)
-  final int? hijriMonth;         // Specific hijri month (1-12)
-  final bool isHoliday;           // Whether this is a holiday (no work/prayer changes)
-  final String? fasting;          // Fasting requirements: 'obligatory', 'voluntary', 'none'
-  final String? prayer;           // Special prayer requirements
-  final String? significance;     // Religious significance
-  final List<String> tags;        // Tags for filtering/searching
+  final HijriCalendar hijriDate; // Hijri date for the event
+  final DateTime? gregorianDate; // Calculated Gregorian date
+  final bool isRecurring; // Whether this event recurs annually
+  final int? hijriDay; // Specific hijri day (1-30)
+  final int? hijriMonth; // Specific hijri month (1-12)
+  final bool isHoliday; // Whether this is a holiday (no work/prayer changes)
+  final String?
+  fasting; // Fasting requirements: 'obligatory', 'voluntary', 'none'
+  final String? prayer; // Special prayer requirements
+  final String? significance; // Religious significance
+  final List<String> tags; // Tags for filtering/searching
 
   IslamicEvent({
     required this.id,
@@ -63,8 +64,13 @@ class IslamicEvent {
       description: json['description'] as String,
       type: IslamicEventType.values[json['type'] as int],
       category: IslamicEventCategory.values[json['category'] as int],
-      hijriDate: HijriCalendar.fromDate(DateTime.parse(json['hijriDate'] as String)),
-      gregorianDate: json['gregorianDate'] != null ? DateTime.parse(json['gregorianDate'] as String) : null,
+      hijriDate: HijriCalendar.fromDate(
+        DateTime.parse(json['hijriDate'] as String),
+      ),
+      gregorianDate:
+          json['gregorianDate'] != null
+              ? DateTime.parse(json['gregorianDate'] as String)
+              : null,
       isRecurring: json['isRecurring'] as bool? ?? true,
       hijriDay: json['hijriDay'] as int?,
       hijriMonth: json['hijriMonth'] as int?,
@@ -147,14 +153,14 @@ class IslamicEvent {
   bool occursOnDate(DateTime date) {
     if (gregorianDate != null) {
       return date.year == gregorianDate!.year &&
-             date.month == gregorianDate!.month &&
-             date.day == gregorianDate!.day;
+          date.month == gregorianDate!.month &&
+          date.day == gregorianDate!.day;
     }
 
     final eventDate = getGregorianDateForYear(date.year);
     return date.year == eventDate.year &&
-           date.month == eventDate.month &&
-           date.day == eventDate.day;
+        date.month == eventDate.month &&
+        date.day == eventDate.day;
   }
 
   /// Get display color based on event type
@@ -198,7 +204,9 @@ class IslamicEventsDatabase {
       description: 'The start of the holy month of Ramadan',
       type: IslamicEventType.seasonal,
       category: IslamicEventCategory.ramadan,
-      hijriDate: HijriCalendar.fromDate(DateTime(2024, 3, 11)), // Approximate date for Ramadan start
+      hijriDate: HijriCalendar.fromDate(
+        DateTime(2024, 3, 11),
+      ), // Approximate date for Ramadan start
       isRecurring: true,
       hijriDay: 1,
       hijriMonth: 9,
@@ -213,7 +221,9 @@ class IslamicEventsDatabase {
       description: 'The night when the Quran was first revealed',
       type: IslamicEventType.holiday,
       category: IslamicEventCategory.ramadan,
-      hijriDate: HijriCalendar.fromDate(DateTime(2024, 4, 6)), // Approximate date for Laylatul Qadr
+      hijriDate: HijriCalendar.fromDate(
+        DateTime(2024, 4, 6),
+      ), // Approximate date for Laylatul Qadr
       isRecurring: true,
       hijriDay: 27,
       hijriMonth: 9,
@@ -229,7 +239,9 @@ class IslamicEventsDatabase {
       description: 'Festival of Breaking the Fast',
       type: IslamicEventType.holiday,
       category: IslamicEventCategory.eid,
-      hijriDate: HijriCalendar.fromDate(DateTime(2024, 4, 10)), // Approximate date for Eid ul-Fitr
+      hijriDate: HijriCalendar.fromDate(
+        DateTime(2024, 4, 10),
+      ), // Approximate date for Eid ul-Fitr
       isRecurring: true,
       hijriDay: 1,
       hijriMonth: 10,
@@ -246,14 +258,17 @@ class IslamicEventsDatabase {
       description: 'Festival of Sacrifice',
       type: IslamicEventType.holiday,
       category: IslamicEventCategory.eid,
-      hijriDate: HijriCalendar.fromDate(DateTime(2024, 6, 16)), // Approximate date for Eid ul-Adha
+      hijriDate: HijriCalendar.fromDate(
+        DateTime(2024, 6, 16),
+      ), // Approximate date for Eid ul-Adha
       isRecurring: true,
       hijriDay: 10,
       hijriMonth: 12,
       isHoliday: true,
       fasting: 'none',
       prayer: 'Eid prayer',
-      significance: 'Commemorates Prophet Ibrahim\'s willingness to sacrifice his son',
+      significance:
+          'Commemorates Prophet Ibrahim\'s willingness to sacrifice his son',
       tags: ['eid', 'sacrifice', 'hajj'],
     ),
 
@@ -264,7 +279,9 @@ class IslamicEventsDatabase {
       description: 'Prophet Muhammad\'s night journey and ascension',
       type: IslamicEventType.commemoration,
       category: IslamicEventCategory.prophets,
-      hijriDate: HijriCalendar.fromDate(DateTime(2024, 2, 14)), // Approximate date for Isra Miraj
+      hijriDate: HijriCalendar.fromDate(
+        DateTime(2024, 2, 14),
+      ), // Approximate date for Isra Miraj
       isRecurring: true,
       hijriDay: 27,
       hijriMonth: 7,
@@ -278,7 +295,9 @@ class IslamicEventsDatabase {
       description: 'Birthday of Prophet Muhammad',
       type: IslamicEventType.commemoration,
       category: IslamicEventCategory.prophets,
-      hijriDate: HijriCalendar.fromDate(DateTime(2023, 9, 27)), // Approximate date for Prophet's birthday
+      hijriDate: HijriCalendar.fromDate(
+        DateTime(2023, 9, 27),
+      ), // Approximate date for Prophet's birthday
       isRecurring: true,
       hijriDay: 12,
       hijriMonth: 3,
@@ -293,7 +312,9 @@ class IslamicEventsDatabase {
       description: '10th of Muharram - Day of mourning and fasting',
       type: IslamicEventType.commemoration,
       category: IslamicEventCategory.general,
-      hijriDate: HijriCalendar.fromDate(DateTime(2023, 7, 27)), // Approximate date for Ashura
+      hijriDate: HijriCalendar.fromDate(
+        DateTime(2023, 7, 27),
+      ), // Approximate date for Ashura
       isRecurring: true,
       hijriDay: 10,
       hijriMonth: 1,
@@ -308,7 +329,9 @@ class IslamicEventsDatabase {
       description: 'The first revelation of the Quran to Prophet Muhammad',
       type: IslamicEventType.historical,
       category: IslamicEventCategory.prophets,
-      hijriDate: HijriCalendar.fromDate(DateTime(610, 4, 6)), // First revelation date
+      hijriDate: HijriCalendar.fromDate(
+        DateTime(610, 4, 6),
+      ), // First revelation date
       isRecurring: false,
       gregorianDate: DateTime(610, 4, 6), // Approximate Gregorian date
       significance: 'The beginning of the prophethood of Muhammad',
@@ -347,10 +370,15 @@ class IslamicEventsDatabase {
   /// Search events by title or description
   static List<IslamicEvent> searchEvents(String query) {
     final lowercaseQuery = query.toLowerCase();
-    return _events.where((event) =>
-      event.title.toLowerCase().contains(lowercaseQuery) ||
-      event.description.toLowerCase().contains(lowercaseQuery) ||
-      event.tags.any((tag) => tag.toLowerCase().contains(lowercaseQuery))
-    ).toList();
+    return _events
+        .where(
+          (event) =>
+              event.title.toLowerCase().contains(lowercaseQuery) ||
+              event.description.toLowerCase().contains(lowercaseQuery) ||
+              event.tags.any(
+                (tag) => tag.toLowerCase().contains(lowercaseQuery),
+              ),
+        )
+        .toList();
   }
 }

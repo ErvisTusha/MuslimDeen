@@ -13,7 +13,8 @@ class ZakatCalculatorView extends ConsumerStatefulWidget {
   const ZakatCalculatorView({super.key});
 
   @override
-  ConsumerState<ZakatCalculatorView> createState() => _ZakatCalculatorViewState();
+  ConsumerState<ZakatCalculatorView> createState() =>
+      _ZakatCalculatorViewState();
 }
 
 class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView> {
@@ -58,7 +59,9 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView> {
     // Initialize liability controllers
     _liabilityControllers['Debts'] = TextEditingController(text: '0.00');
     _liabilityControllers['Loans'] = TextEditingController(text: '0.00');
-    _liabilityControllers['Other Liabilities'] = TextEditingController(text: '0.00');
+    _liabilityControllers['Other Liabilities'] = TextEditingController(
+      text: '0.00',
+    );
   }
 
   Future<void> _loadSavedData() async {
@@ -182,7 +185,10 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView> {
 
     return Scaffold(
       appBar: CustomAppBar(title: 'Zakat Calculator', brightness: brightness),
-      body: _showResults ? _buildResultsView(brightness) : _buildInputView(brightness),
+      body:
+          _showResults
+              ? _buildResultsView(brightness)
+              : _buildInputView(brightness),
     );
   }
 
@@ -245,9 +251,10 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: _calculation!.isZakatDue
-                ? Colors.green.withValues(alpha: 0.1)
-                : Colors.orange.withValues(alpha: 0.1),
+            color:
+                _calculation!.isZakatDue
+                    ? Colors.green.withValues(alpha: 0.1)
+                    : Colors.orange.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: _calculation!.isZakatDue ? Colors.green : Colors.orange,
@@ -266,7 +273,8 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView> {
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: _calculation!.isZakatDue ? Colors.green : Colors.orange,
+                  color:
+                      _calculation!.isZakatDue ? Colors.green : Colors.orange,
                 ),
               ),
               if (_calculation!.isZakatDue) ...[
@@ -362,19 +370,19 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView> {
   Widget _buildCurrencySelector(Brightness brightness) {
     return Row(
       children: [
-        Text(
-          'Currency:',
-          style: AppTextStyles.prayerTime(brightness),
-        ),
+        Text('Currency:', style: AppTextStyles.prayerTime(brightness)),
         const SizedBox(width: 16),
         DropdownButton<String>(
           value: _currency,
-          items: ['USD', 'EUR', 'GBP', 'SAR', 'AED', 'PKR', 'BDT', 'MYR', 'IDR']
-              .map((currency) => DropdownMenuItem(
-                    value: currency,
-                    child: Text(currency),
-                  ))
-              .toList(),
+          items:
+              ['USD', 'EUR', 'GBP', 'SAR', 'AED', 'PKR', 'BDT', 'MYR', 'IDR']
+                  .map(
+                    (currency) => DropdownMenuItem(
+                      value: currency,
+                      child: Text(currency),
+                    ),
+                  )
+                  .toList(),
           onChanged: (value) {
             if (value != null) {
               setState(() => _currency = value);
@@ -395,12 +403,11 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Assets',
-            style: AppTextStyles.sectionTitle(brightness),
-          ),
+          Text('Assets', style: AppTextStyles.sectionTitle(brightness)),
           const SizedBox(height: 16),
-          ...ZakatAssetType.values.map((type) => _buildAssetInput(type, brightness)),
+          ...ZakatAssetType.values.map(
+            (type) => _buildAssetInput(type, brightness),
+          ),
         ],
       ),
     );
@@ -469,16 +476,17 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView> {
     );
   }
 
-  Widget _buildLiabilityInput(String name, TextEditingController controller, Brightness brightness) {
+  Widget _buildLiabilityInput(
+    String name,
+    TextEditingController controller,
+    Brightness brightness,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            name,
-            style: AppTextStyles.prayerTime(brightness),
-          ),
+          Text(name, style: AppTextStyles.prayerTime(brightness)),
           TextFormField(
             controller: controller,
             keyboardType: TextInputType.numberWithOptions(decimal: true),
@@ -497,7 +505,8 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView> {
   }
 
   Widget _buildDetailedBreakdown(Brightness brightness) {
-    if (_calculation == null || _zakatService == null) return const SizedBox.shrink();
+    if (_calculation == null || _zakatService == null)
+      return const SizedBox.shrink();
 
     final breakdown = _zakatService!.getDetailedBreakdown(_calculation!);
 
@@ -517,19 +526,46 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView> {
           const SizedBox(height: 16),
 
           // Summary
-          _buildBreakdownRow('Total Assets', breakdown['summary']['totalAssets'], brightness),
-          _buildBreakdownRow('Total Liabilities', breakdown['summary']['totalLiabilities'], brightness),
+          _buildBreakdownRow(
+            'Total Assets',
+            breakdown['summary']['totalAssets'],
+            brightness,
+          ),
+          _buildBreakdownRow(
+            'Total Liabilities',
+            breakdown['summary']['totalLiabilities'],
+            brightness,
+          ),
           const Divider(),
-          _buildBreakdownRow('Net Assets', breakdown['summary']['netAssets'], brightness, isBold: true),
-          _buildBreakdownRow('Nisab Threshold', breakdown['summary']['nisabThreshold'], brightness),
+          _buildBreakdownRow(
+            'Net Assets',
+            breakdown['summary']['netAssets'],
+            brightness,
+            isBold: true,
+          ),
+          _buildBreakdownRow(
+            'Nisab Threshold',
+            breakdown['summary']['nisabThreshold'],
+            brightness,
+          ),
           const Divider(),
-          _buildBreakdownRow('Zakat Amount', breakdown['summary']['zakatAmount'], brightness, isBold: true),
+          _buildBreakdownRow(
+            'Zakat Amount',
+            breakdown['summary']['zakatAmount'],
+            brightness,
+            isBold: true,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildBreakdownRow(String label, dynamic value, Brightness brightness, {bool isBold = false}) {
+  Widget _buildBreakdownRow(
+    String label,
+    dynamic value,
+    Brightness brightness, {
+    bool isBold = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -537,15 +573,21 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView> {
         children: [
           Text(
             label,
-            style: isBold
-                ? AppTextStyles.prayerTime(brightness).copyWith(fontWeight: FontWeight.bold)
-                : AppTextStyles.prayerTime(brightness),
+            style:
+                isBold
+                    ? AppTextStyles.prayerTime(
+                      brightness,
+                    ).copyWith(fontWeight: FontWeight.bold)
+                    : AppTextStyles.prayerTime(brightness),
           ),
           Text(
             '${(value as num).toStringAsFixed(2)} $_currency',
-            style: isBold
-                ? AppTextStyles.prayerTime(brightness).copyWith(fontWeight: FontWeight.bold)
-                : AppTextStyles.prayerTime(brightness),
+            style:
+                isBold
+                    ? AppTextStyles.prayerTime(
+                      brightness,
+                    ).copyWith(fontWeight: FontWeight.bold)
+                    : AppTextStyles.prayerTime(brightness),
           ),
         ],
       ),
@@ -562,10 +604,7 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'About Zakat',
-            style: AppTextStyles.sectionTitle(brightness),
-          ),
+          Text('About Zakat', style: AppTextStyles.sectionTitle(brightness)),
           const SizedBox(height: 8),
           Text(
             'Zakat is one of the Five Pillars of Islam. It purifies wealth and helps establish social welfare. The rate is 2.5% of eligible assets held for one lunar year.',
@@ -579,28 +618,29 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView> {
   void _showAssetInfoDialog(ZakatAssetType type, Map<String, String> info) {
     showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(info['title'] ?? ''),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Description: ${info['description']}'),
-            const SizedBox(height: 8),
-            Text('Rate: ${info['rate']}'),
-            if (info['nisab'] != null) ...[
-              const SizedBox(height: 8),
-              Text('Nisab: ${info['nisab']}'),
+      builder:
+          (context) => AlertDialog(
+            title: Text(info['title'] ?? ''),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Description: ${info['description']}'),
+                const SizedBox(height: 8),
+                Text('Rate: ${info['rate']}'),
+                if (info['nisab'] != null) ...[
+                  const SizedBox(height: 8),
+                  Text('Nisab: ${info['nisab']}'),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
             ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
           ),
-        ],
-      ),
     );
   }
 

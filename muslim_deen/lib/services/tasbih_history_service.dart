@@ -12,12 +12,10 @@ class DhikrTargetsCacheEntry {
   final Map<String, int> targets;
   final DateTime calculatedAt;
 
-  DhikrTargetsCacheEntry({
-    required this.targets,
-    required this.calculatedAt,
-  });
+  DhikrTargetsCacheEntry({required this.targets, required this.calculatedAt});
 
-  bool get isExpired => DateTime.now().difference(calculatedAt) > const Duration(minutes: 10);
+  bool get isExpired =>
+      DateTime.now().difference(calculatedAt) > const Duration(minutes: 10);
 }
 
 /// Cache entry for tasbih statistics
@@ -32,7 +30,8 @@ class TasbihStatsCacheEntry {
     required this.days,
   });
 
-  bool get isExpired => DateTime.now().difference(calculatedAt) > const Duration(minutes: 5);
+  bool get isExpired =>
+      DateTime.now().difference(calculatedAt) > const Duration(minutes: 5);
 }
 
 /// Service to track tasbih/dhikr counts and provide historical statistics
@@ -81,13 +80,15 @@ class TasbihHistoryService {
         expiredKeys.add(entry.key);
       }
     }
-    
+
     for (final key in expiredKeys) {
       _statsCache.remove(key);
     }
-    
+
     if (expiredKeys.isNotEmpty) {
-      _logger.debug('Cleaned up ${expiredKeys.length} expired stats cache entries');
+      _logger.debug(
+        'Cleaned up ${expiredKeys.length} expired stats cache entries',
+      );
     }
   }
 
@@ -102,12 +103,14 @@ class TasbihHistoryService {
   Map<String, int>? _getCachedStats(int days) {
     final cacheKey = _generateStatsCacheKey(days);
     final cachedEntry = _statsCache[cacheKey];
-    
-    if (cachedEntry != null && !cachedEntry.isExpired && cachedEntry.days == days) {
+
+    if (cachedEntry != null &&
+        !cachedEntry.isExpired &&
+        cachedEntry.days == days) {
       _logger.debug('Retrieved tasbih stats from cache for $days days');
       return cachedEntry.stats;
     }
-    
+
     return null;
   }
 
@@ -119,7 +122,7 @@ class TasbihHistoryService {
       calculatedAt: DateTime.now(),
       days: days,
     );
-    
+
     _logger.debug('Cached tasbih stats for $days days');
   }
 
@@ -150,10 +153,8 @@ class TasbihHistoryService {
         todayData[dhikrType] = (todayData[dhikrType] ?? 0) + count;
 
         // Batch update all dhikr types for today
-        final batchData = <String, Map<String, int>>{
-          dateKey: todayData,
-        };
-        
+        final batchData = <String, Map<String, int>>{dateKey: todayData};
+
         await _database.batchInsertTasbihHistory(batchData, txn: txn);
       });
 
@@ -174,7 +175,7 @@ class TasbihHistoryService {
   /// Record multiple tasbih counts in a single batch operation
   Future<void> recordTasbihCountsBatch(Map<String, int> counts) async {
     if (counts.isEmpty) return;
-    
+
     try {
       final now = DateTime.now();
       final dateKey = _getDateKey(now);
@@ -183,17 +184,15 @@ class TasbihHistoryService {
       await _database.transaction((txn) async {
         // Get existing counts for today
         final todayData = await _database.getTasbihHistory(dateKey, txn: txn);
-        
+
         // Update counts
         for (final entry in counts.entries) {
           todayData[entry.key] = (todayData[entry.key] ?? 0) + entry.value;
         }
 
         // Batch update all dhikr types for today
-        final batchData = <String, Map<String, int>>{
-          dateKey: todayData,
-        };
-        
+        final batchData = <String, Map<String, int>>{dateKey: todayData};
+
         await _database.batchInsertTasbihHistory(batchData, txn: txn);
       });
 
@@ -244,7 +243,7 @@ class TasbihHistoryService {
         final startDate = now.subtract(Duration(days: days - 1));
         final startDateKey = _getDateKey(startDate);
         final endDateKey = _getDateKey(now);
-        
+
         // Get all tasbih history for the date range in a single query
         final result = await txn.query(
           'tasbih_history',
@@ -252,21 +251,24 @@ class TasbihHistoryService {
           whereArgs: [startDateKey, endDateKey],
           orderBy: 'date DESC',
         );
-        
+
         final aggregatedStats = <String, int>{};
         for (final row in result) {
           final dhikrType = row['dhikr_type'] as String;
           final count = row['count'] as int;
-          aggregatedStats[dhikrType] = (aggregatedStats[dhikrType] ?? 0) + count;
+          aggregatedStats[dhikrType] =
+              (aggregatedStats[dhikrType] ?? 0) + count;
         }
-        
+
         return aggregatedStats;
       });
-      
+
       // Cache the result
       _cacheStats(stats, days);
-      
-      _logger.debug('Retrieved $days-day tasbih stats with optimized query: $stats');
+
+      _logger.debug(
+        'Retrieved $days-day tasbih stats with optimized query: $stats',
+      );
     } catch (e, stackTrace) {
       _logger.error(
         'Error calculating tasbih statistics',
@@ -366,7 +368,7 @@ class TasbihHistoryService {
       for (int i = 0; i < 365; i++) {
         final date = now.subtract(Duration(days: i));
         final dateKey = _getDateKey(date);
-        
+
         final counts = historyBatch[dateKey] ?? {};
 
         // Check if all dhikr targets are met

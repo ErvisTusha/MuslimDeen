@@ -188,10 +188,10 @@ mixin SettingsPersistenceMixin on Notifier<AppSettings> {
   }) async {
     if (getter(state) != value) {
       state = setter(state, value);
-      _logger.info('Critical setting updated immediately', data: {
-        'setting': settingName,
-        'value': value,
-      });
+      _logger.info(
+        'Critical setting updated immediately',
+        data: {'setting': settingName, 'value': value},
+      );
       await forceSaveSettings();
     }
   }
@@ -233,10 +233,7 @@ mixin SettingsPersistenceMixin on Notifier<AppSettings> {
       };
     } catch (e) {
       // If state is not accessible, return minimal data
-      return {
-        'key': _settingsKey,
-        'stateAccessError': e.toString(),
-      };
+      return {'key': _settingsKey, 'stateAccessError': e.toString()};
     }
   }
 

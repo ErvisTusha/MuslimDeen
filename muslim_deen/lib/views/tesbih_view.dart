@@ -260,13 +260,17 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                   primary: AppColors.primary(Theme.of(context).brightness),
                   onPrimary: Colors.white,
                   surface: AppColors.surface(Theme.of(context).brightness),
-                  onSurface: AppColors.textPrimary(Theme.of(context).brightness),
+                  onSurface: AppColors.textPrimary(
+                    Theme.of(context).brightness,
+                  ),
                 )
                 : ColorScheme.light(
                   primary: AppColors.primary(Theme.of(context).brightness),
                   onPrimary: AppColors.background(Theme.of(context).brightness),
                   surface: AppColors.background(Theme.of(context).brightness),
-                  onSurface: AppColors.textPrimary(Theme.of(context).brightness),
+                  onSurface: AppColors.textPrimary(
+                    Theme.of(context).brightness,
+                  ),
                 );
         return Theme(
           data: Theme.of(context).copyWith(
@@ -404,8 +408,6 @@ class _TesbihViewState extends ConsumerState<TesbihView>
       });
     }
   }
-
-
 
   Future<void> _savePreferences() async {
     try {
@@ -579,8 +581,6 @@ class _TesbihViewState extends ConsumerState<TesbihView>
       _logger.warning('Failed to trigger haptic feedback: $e');
     }
   }
-
-
 
   Future<void> _setDhikr(String dhikr) async {
     if (dhikr == _currentDhikr || _isInDhikrTransition) return;
@@ -756,24 +756,30 @@ class _TesbihViewState extends ConsumerState<TesbihView>
   /// Creates Tesbih-specific colors
   TesbihColors _getTesbihColors(UIColors colors) {
     return TesbihColors(
-      contentSurface: colors.isDarkMode
-          ? const Color(0xFF2C2C2C)
-          : AppColors.primary(colors.brightness),
-      counterCircleBg: colors.isDarkMode
-          ? const Color(0xFF3C3C3C)
-          : AppColors.background(colors.brightness),
-      dhikrArabicText: colors.isDarkMode
-          ? colors.textColorPrimary
-          : AppColors.primary(colors.brightness),
-      counterProgress: colors.isDarkMode
-          ? colors.accentColor
-          : AppColors.primary(colors.brightness),
-      counterCountText: colors.isDarkMode
-          ? colors.accentColor
-          : AppColors.primary(colors.brightness),
-      toggleCardBg: colors.isDarkMode
-          ? const Color(0xFF2C2C2C)
-          : AppColors.background(colors.brightness),
+      contentSurface:
+          colors.isDarkMode
+              ? const Color(0xFF2C2C2C)
+              : AppColors.primary(colors.brightness),
+      counterCircleBg:
+          colors.isDarkMode
+              ? const Color(0xFF3C3C3C)
+              : AppColors.background(colors.brightness),
+      dhikrArabicText:
+          colors.isDarkMode
+              ? colors.textColorPrimary
+              : AppColors.primary(colors.brightness),
+      counterProgress:
+          colors.isDarkMode
+              ? colors.accentColor
+              : AppColors.primary(colors.brightness),
+      counterCountText:
+          colors.isDarkMode
+              ? colors.accentColor
+              : AppColors.primary(colors.brightness),
+      toggleCardBg:
+          colors.isDarkMode
+              ? const Color(0xFF2C2C2C)
+              : AppColors.background(colors.brightness),
     );
   }
 
@@ -815,7 +821,8 @@ class _TesbihViewState extends ConsumerState<TesbihView>
         color: tesbihColors.contentSurface,
         child: Center(
           child: Semantics(
-            label: 'Tasbih counter. Current count: $_count of $_target. Tap to increment.',
+            label:
+                'Tasbih counter. Current count: $_count of $_target. Tap to increment.',
             value: '$_count / $_target',
             excludeSemantics: true,
             child: Stack(
@@ -841,8 +848,9 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                     color: tesbihColors.counterCircleBg,
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.shadowColor
-                            .withAlpha(colors.isDarkMode ? 60 : 128),
+                        color: AppColors.shadowColor.withAlpha(
+                          colors.isDarkMode ? 60 : 128,
+                        ),
                         spreadRadius: 1,
                         blurRadius: 8,
                         offset: const Offset(0, 1),
@@ -866,7 +874,9 @@ class _TesbihViewState extends ConsumerState<TesbihView>
                         const SizedBox(height: 4),
                         Text(
                           "Target: $_target",
-                          style: AppTextStyles.label(colors.brightness).copyWith(
+                          style: AppTextStyles.label(
+                            colors.brightness,
+                          ).copyWith(
                             fontSize: 15,
                             color:
                                 colors.isDarkMode
@@ -986,9 +996,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
     final bool isDarkMode = brightness == Brightness.dark;
 
     final Color selectedBgColor =
-        isDarkMode
-            ? AppColors.accentGreen
-            : AppColors.primary(brightness);
+        isDarkMode ? AppColors.accentGreen : AppColors.primary(brightness);
     final Color selectedFgColor =
         isDarkMode ? Colors.white : AppColors.background(brightness);
 

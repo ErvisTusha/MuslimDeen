@@ -48,12 +48,12 @@ class DatabaseService {
 
   Database? _database;
   final LoggerService _logger = locator<LoggerService>();
-  
+
   // Connection management
   int _activeConnections = 0;
   final List<Database> _connectionPool = [];
   bool _isInitialized = false;
-  
+
   // Performance monitoring
   final List<DatabaseMetrics> _metricsHistory = [];
   static const int _maxMetricsHistory = 100;
@@ -86,7 +86,9 @@ class DatabaseService {
       // Start cleanup timer for old metrics
       _startCleanupTimer();
 
-      _logger.info('DatabaseService initialized at $path with connection management');
+      _logger.info(
+        'DatabaseService initialized at $path with connection management',
+      );
     } catch (e, stackTrace) {
       _logger.error(
         'Failed to initialize database',
@@ -107,7 +109,10 @@ class DatabaseService {
   /// Clean up old metrics to prevent memory leaks
   void _cleanupOldMetrics() {
     if (_metricsHistory.length > _maxMetricsHistory) {
-      _metricsHistory.removeRange(0, _metricsHistory.length - _maxMetricsHistory);
+      _metricsHistory.removeRange(
+        0,
+        _metricsHistory.length - _maxMetricsHistory,
+      );
       _logger.debug('Cleaned up old database metrics');
     }
   }
@@ -173,9 +178,15 @@ class DatabaseService {
     ''');
 
     // Add indexes for better performance
-    await db.execute('CREATE INDEX idx_prayer_history_date ON prayer_history(date)');
-    await db.execute('CREATE INDEX idx_tasbih_history_date ON tasbih_history(date)');
-    await db.execute('CREATE INDEX idx_fasting_records_date ON fasting_records(date)');
+    await db.execute(
+      'CREATE INDEX idx_prayer_history_date ON prayer_history(date)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_tasbih_history_date ON tasbih_history(date)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_fasting_records_date ON fasting_records(date)',
+    );
     await db.execute('CREATE INDEX idx_settings_key ON settings(key)');
 
     _logger.info('Database tables and indexes created successfully');
@@ -185,8 +196,12 @@ class DatabaseService {
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       // Add indexes for better performance
-      await db.execute('CREATE INDEX idx_prayer_history_date ON prayer_history(date)');
-      await db.execute('CREATE INDEX idx_tasbih_history_date ON tasbih_history(date)');
+      await db.execute(
+        'CREATE INDEX idx_prayer_history_date ON prayer_history(date)',
+      );
+      await db.execute(
+        'CREATE INDEX idx_tasbih_history_date ON tasbih_history(date)',
+      );
       await db.execute('CREATE INDEX idx_settings_key ON settings(key)');
       _logger.info('Database indexes added in version 2');
     }
@@ -206,16 +221,22 @@ class DatabaseService {
           updatedAt TEXT NOT NULL
         )
       ''');
-      await db.execute('CREATE INDEX idx_fasting_records_date ON fasting_records(date)');
+      await db.execute(
+        'CREATE INDEX idx_fasting_records_date ON fasting_records(date)',
+      );
       _logger.info('Fasting records table added in version 3');
     }
     if (oldVersion < 4) {
       // Check if fasting_records table exists and has the wrong schema
-      final tables = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='fasting_records'");
+      final tables = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='fasting_records'",
+      );
       if (tables.isNotEmpty) {
         // Check the schema of the existing table
         final schema = await db.rawQuery("PRAGMA table_info(fasting_records)");
-        final hasWrongSchema = schema.any((col) => col['name'] == 'fasting_type' || col['name'] == 'created_at');
+        final hasWrongSchema = schema.any(
+          (col) => col['name'] == 'fasting_type' || col['name'] == 'created_at',
+        );
 
         if (hasWrongSchema) {
           // Drop and recreate with correct schema (data will be lost, but this fixes the schema issue)
@@ -234,12 +255,16 @@ class DatabaseService {
               updatedAt TEXT NOT NULL
             )
           ''');
-          _logger.info('Fasting records table recreated with correct schema in version 4');
+          _logger.info(
+            'Fasting records table recreated with correct schema in version 4',
+          );
         } else {
           _logger.info('Fasting records table already has correct schema');
         }
       }
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_fasting_records_date ON fasting_records(date)');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_fasting_records_date ON fasting_records(date)',
+      );
     }
     _logger.info('Database upgraded from $oldVersion to $newVersion');
   }
@@ -259,20 +284,20 @@ class DatabaseService {
   ) async {
     final stopwatch = Stopwatch()..start();
     int rowsAffected = 0;
-    
+
     try {
       final result = await databaseOperation();
       stopwatch.stop();
-      
+
       // Track metrics
       if (result is int) {
         rowsAffected = result;
       } else if (result is List && result.isNotEmpty) {
         rowsAffected = result.length;
       }
-      
+
       _recordMetrics(operation, stopwatch.elapsed, rowsAffected);
-      
+
       // Log slow queries
       if (stopwatch.elapsed > _slowQueryThreshold) {
         _logger.warning(
@@ -284,7 +309,7 @@ class DatabaseService {
           },
         );
       }
-      
+
       return result;
     } catch (e, stackTrace) {
       stopwatch.stop();
@@ -292,9 +317,7 @@ class DatabaseService {
         'Database operation failed: $operation',
         error: e,
         stackTrace: stackTrace,
-        data: {
-          'duration': '${stopwatch.elapsed.inMilliseconds}ms',
-        },
+        data: {'duration': '${stopwatch.elapsed.inMilliseconds}ms'},
       );
       rethrow;
     }
@@ -308,9 +331,9 @@ class DatabaseService {
       rowsAffected: rowsAffected,
       timestamp: DateTime.now(),
     );
-    
+
     _metricsHistory.add(metrics);
-    
+
     _logger.debug(
       'Database operation completed',
       data: {
@@ -334,14 +357,19 @@ class DatabaseService {
     return _executeWithTracking('batch', () async {
       final db = _getDatabase();
       final batch = db.batch();
-      
+
       for (final op in operations) {
         switch (op.operation.toLowerCase()) {
           case 'insert':
             batch.insert(op.table, op.data);
             break;
           case 'update':
-            batch.update(op.table, op.data, where: op.where, whereArgs: op.whereArgs);
+            batch.update(
+              op.table,
+              op.data,
+              where: op.where,
+              whereArgs: op.whereArgs,
+            );
             break;
           case 'delete':
             batch.delete(op.table, where: op.where, whereArgs: op.whereArgs);
@@ -350,7 +378,7 @@ class DatabaseService {
             throw ArgumentError('Unknown batch operation: ${op.operation}');
         }
       }
-      
+
       return await batch.commit();
     });
   }
@@ -358,21 +386,22 @@ class DatabaseService {
   /// Batch insert prayer history for multiple dates
   Future<void> batchInsertPrayerHistory(Map<String, String> prayerData) async {
     if (prayerData.isEmpty) return;
-    
-    final operations = prayerData.entries.map((entry) {
-      final now = DateTime.now().millisecondsSinceEpoch;
-      return BatchOperation(
-        table: 'prayer_history',
-        operation: 'insert',
-        data: {
-          'date': entry.key,
-          'completed_prayers': entry.value,
-          'created_at': now,
-          'updated_at': now,
-        },
-      );
-    }).toList();
-    
+
+    final operations =
+        prayerData.entries.map((entry) {
+          final now = DateTime.now().millisecondsSinceEpoch;
+          return BatchOperation(
+            table: 'prayer_history',
+            operation: 'insert',
+            data: {
+              'date': entry.key,
+              'completed_prayers': entry.value,
+              'created_at': now,
+              'updated_at': now,
+            },
+          );
+        }).toList();
+
     await transaction((txn) async {
       for (final op in operations) {
         await txn.insert(
@@ -382,7 +411,7 @@ class DatabaseService {
         );
       }
     });
-    
+
     _logger.info('Batch inserted ${prayerData.length} prayer history records');
   }
 
@@ -392,27 +421,29 @@ class DatabaseService {
     Transaction? txn,
   }) async {
     if (tasbihData.isEmpty) return;
-    
+
     final operations = <BatchOperation>[];
     final now = DateTime.now().millisecondsSinceEpoch;
-    
+
     for (final dateEntry in tasbihData.entries) {
       final date = dateEntry.key;
       for (final tasbihEntry in dateEntry.value.entries) {
-        operations.add(BatchOperation(
-          table: 'tasbih_history',
-          operation: 'insert',
-          data: {
-            'date': date,
-            'dhikr_type': tasbihEntry.key,
-            'count': tasbihEntry.value,
-            'created_at': now,
-            'updated_at': now,
-          },
-        ));
+        operations.add(
+          BatchOperation(
+            table: 'tasbih_history',
+            operation: 'insert',
+            data: {
+              'date': date,
+              'dhikr_type': tasbihEntry.key,
+              'count': tasbihEntry.value,
+              'created_at': now,
+              'updated_at': now,
+            },
+          ),
+        );
       }
     }
-    
+
     if (txn != null) {
       // Use provided transaction
       for (final op in operations) {
@@ -434,12 +465,17 @@ class DatabaseService {
         }
       });
     }
-    
+
     _logger.info('Batch inserted ${operations.length} tasbih history records');
   }
 
   /// Insert or update fasting record
-  Future<void> saveFastingRecord(String date, String fastingType, String status, {String? notes}) async {
+  Future<void> saveFastingRecord(
+    String date,
+    String fastingType,
+    String status, {
+    String? notes,
+  }) async {
     await _executeWithTracking('saveFastingRecord', () async {
       final db = _getDatabase();
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -473,13 +509,19 @@ class DatabaseService {
   }
 
   /// Get all fasting records within a date range
-  Future<List<Map<String, dynamic>>> getFastingRecordsInRange(DateTime startDate, DateTime endDate) async {
+  Future<List<Map<String, dynamic>>> getFastingRecordsInRange(
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
     return await _executeWithTracking('getFastingRecordsInRange', () async {
       final db = _getDatabase();
       final result = await db.query(
         'fasting_records',
         where: 'date >= ? AND date <= ?',
-        whereArgs: [startDate.toIso8601String().split('T')[0], endDate.toIso8601String().split('T')[0]],
+        whereArgs: [
+          startDate.toIso8601String().split('T')[0],
+          endDate.toIso8601String().split('T')[0],
+        ],
         orderBy: 'date ASC',
       );
 
@@ -523,20 +565,22 @@ class DatabaseService {
   /// Get average query time for the last N operations
   Duration getAverageQueryTime({int lastN = 10}) {
     if (_metricsHistory.isEmpty) return Duration.zero;
-    
-    final recentMetrics = _metricsHistory.length > lastN
-        ? _metricsHistory.sublist(_metricsHistory.length - lastN)
-        : _metricsHistory;
-    
+
+    final recentMetrics =
+        _metricsHistory.length > lastN
+            ? _metricsHistory.sublist(_metricsHistory.length - lastN)
+            : _metricsHistory;
+
     final totalMs = recentMetrics
         .map((m) => m.duration.inMilliseconds)
         .reduce((a, b) => a + b);
-    
+
     return Duration(milliseconds: totalMs ~/ recentMetrics.length);
   }
 
   /// Check if database connection is healthy
-  bool get isHealthy => _isInitialized && _database != null && _database!.isOpen;
+  bool get isHealthy =>
+      _isInitialized && _database != null && _database!.isOpen;
 
   /// Get connection status
   Map<String, dynamic> getConnectionStatus() {
@@ -624,7 +668,7 @@ class DatabaseService {
     return await _executeWithTracking('getPrayerHistoryBatch', () async {
       final db = _getDatabase();
       if (dates.isEmpty) return {};
-      
+
       // Create placeholders for the IN clause
       final placeholders = List.filled(dates.length, '?').join(',');
       final result = await db.query(
@@ -637,7 +681,7 @@ class DatabaseService {
       for (final row in result) {
         history[row['date'] as String] = row['completed_prayers'] as String;
       }
-      
+
       return history;
     });
   }
@@ -673,7 +717,10 @@ class DatabaseService {
   }
 
   /// Get tasbih counts for a specific date with performance tracking
-  Future<Map<String, int>> getTasbihHistory(String date, {Transaction? txn}) async {
+  Future<Map<String, int>> getTasbihHistory(
+    String date, {
+    Transaction? txn,
+  }) async {
     return await _executeWithTracking('getTasbihHistory', () async {
       final db = txn ?? _getDatabase();
       final result = await db.query(
@@ -692,11 +739,13 @@ class DatabaseService {
   }
 
   /// Get tasbih history for multiple dates in a single query with performance tracking
-  Future<Map<String, Map<String, int>>> getTasbihHistoryBatch(List<String> dates) async {
+  Future<Map<String, Map<String, int>>> getTasbihHistoryBatch(
+    List<String> dates,
+  ) async {
     return await _executeWithTracking('getTasbihHistoryBatch', () async {
       final db = _getDatabase();
       if (dates.isEmpty) return {};
-      
+
       // Create placeholders for the IN clause
       final placeholders = List.filled(dates.length, '?').join(',');
       final result = await db.query(
@@ -710,13 +759,13 @@ class DatabaseService {
         final date = row['date'] as String;
         final dhikrType = row['dhikr_type'] as String;
         final count = row['count'] as int;
-        
+
         if (!history.containsKey(date)) {
           history[date] = {};
         }
         history[date]![dhikrType] = count;
       }
-      
+
       return history;
     });
   }
@@ -829,7 +878,7 @@ class DatabaseService {
       _logger.info(
         'Cleaned old history data: $prayerDeleted prayer records, $tasbihDeleted tasbih records',
       );
-      
+
       return prayerDeleted + tasbihDeleted;
     });
   }
@@ -840,25 +889,21 @@ class DatabaseService {
       // Cancel cleanup timer
       _cleanupTimer?.cancel();
       _cleanupTimer = null;
-      
+
       // Close all connections
       if (_database != null) {
         await _database!.close();
         _database = null;
         _activeConnections = 0;
         _isInitialized = false;
-        
+
         _logger.info('Database closed with connection management cleanup');
       }
-      
+
       // Clear connection pool
       _connectionPool.clear();
     } catch (e, stackTrace) {
-      _logger.error(
-        'Error closing database',
-        error: e,
-        stackTrace: stackTrace,
-      );
+      _logger.error('Error closing database', error: e, stackTrace: stackTrace);
     }
   }
 }

@@ -13,7 +13,7 @@ class PrayerTimesCache {
 
   final CacheService _cacheService;
   final LoggerService _logger;
-  
+
   // Track cache keys for size management
   final List<String> _cacheKeys = [];
   final Map<String, DateTime> _cacheTimestamps = {};
@@ -21,7 +21,12 @@ class PrayerTimesCache {
   PrayerTimesCache(this._cacheService, this._logger);
 
   /// Generate a more specific cache key for a specific date, location, and calculation parameters
-  String _generateCacheKey(DateTime date, Coordinates coordinates, {String? calculationMethod, String? madhab}) {
+  String _generateCacheKey(
+    DateTime date,
+    Coordinates coordinates, {
+    String? calculationMethod,
+    String? madhab,
+  }) {
     // Format as prayer_times_YYYY-MM-DD_HH_LAT_LON_METHOD_MADHAB
     // Including hour for more granular caching
     final dateStr =
@@ -48,7 +53,7 @@ class PrayerTimesCache {
         calculationMethod: calculationMethod,
         madhab: madhab,
       );
-      
+
       // Manage cache size
       await _manageCacheSize();
 
@@ -82,20 +87,25 @@ class PrayerTimesCache {
       _logger.error('Error caching prayer times', error: e, stackTrace: s);
     }
   }
-  
+
   /// Manage cache size by removing oldest entries
   Future<void> _manageCacheSize() async {
     if (_cacheKeys.length >= _maxCacheSize) {
       // Sort keys by timestamp (oldest first)
       final sortedKeys = List<String>.from(_cacheKeys);
       sortedKeys.sort((a, b) {
-        final timeA = _cacheTimestamps[a] ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final timeB = _cacheTimestamps[b] ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final timeA =
+            _cacheTimestamps[a] ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final timeB =
+            _cacheTimestamps[b] ?? DateTime.fromMillisecondsSinceEpoch(0);
         return timeA.compareTo(timeB);
       });
-      
+
       // Remove oldest entries (10% of cache or 1 entry, whichever is larger)
-      final removeCount = (_maxCacheSize * 0.1).ceil().clamp(1, _maxCacheSize ~/ 2);
+      final removeCount = (_maxCacheSize * 0.1).ceil().clamp(
+        1,
+        _maxCacheSize ~/ 2,
+      );
       for (int i = 0; i < removeCount && i < sortedKeys.length; i++) {
         final keyToRemove = sortedKeys[i];
         await _cacheService.removeData(keyToRemove);
@@ -103,8 +113,10 @@ class PrayerTimesCache {
         _cacheKeys.remove(keyToRemove);
         _cacheTimestamps.remove(keyToRemove);
       }
-      
-      _logger.debug('Removed $removeCount oldest cache entries to maintain size limit');
+
+      _logger.debug(
+        'Removed $removeCount oldest cache entries to maintain size limit',
+      );
     }
   }
 

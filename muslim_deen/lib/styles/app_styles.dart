@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 /// Provides consistent theming across the application
 class AppColors {
   // Brightness-based color definitions
-  
+
   // Light theme colors
   static const Color primaryLight = Color(0xFF2E604C);
   static const Color backgroundLight = Color(0xFFF5F6F8);
   static const Color surfaceLight = Color(0xFFF5F6F8);
   static const Color errorLight = Color(0xFFE53935);
   static const Color surfaceVariantLight = Color(0xFFE8F5E8);
-  
+
   // Dark theme colors
   static const Color primaryDark = Color(0xFF1B5E20);
   static const Color backgroundDark = Color(0xFF121212);
@@ -33,27 +33,28 @@ class AppColors {
   static const Color textSecondaryDark = Color(0xB0BEC7);
 
   // Text color getters
-  static Color textPrimary(Brightness brightness) => 
+  static Color textPrimary(Brightness brightness) =>
       brightness == Brightness.dark ? textPrimaryDark : textPrimaryLight;
-  static Color textSecondary(Brightness brightness) => 
+  static Color textSecondary(Brightness brightness) =>
       brightness == Brightness.dark ? textSecondaryDark : textSecondaryLight;
 
   // Utility colors
-  static Color primary(Brightness brightness) => 
+  static Color primary(Brightness brightness) =>
       brightness == Brightness.dark ? primaryDark : primaryLight;
-  static Color background(Brightness brightness) => 
+  static Color background(Brightness brightness) =>
       brightness == Brightness.dark ? backgroundDark : backgroundLight;
-  static Color surface(Brightness brightness) => 
+  static Color surface(Brightness brightness) =>
       brightness == Brightness.dark ? surfaceDark : surfaceLight;
-  static Color error(Brightness brightness) => 
+  static Color error(Brightness brightness) =>
       brightness == Brightness.dark ? errorDark : errorLight;
-  static Color surfaceVariant(Brightness brightness) => 
+  static Color surfaceVariant(Brightness brightness) =>
       brightness == Brightness.dark ? surfaceVariantDark : surfaceVariantLight;
-  
+
   // Convenience methods
-  static Color getScaffoldBackground(Brightness brightness) => background(brightness);
+  static Color getScaffoldBackground(Brightness brightness) =>
+      background(brightness);
   static Color borderColor(Brightness brightness) => divider;
-  
+
   // Element colors
   static const Color iconInactive = Color(0xFF9E9E9E);
   static const Color iconActivePrimary = Color(0xFF2E604C);
@@ -70,14 +71,14 @@ class AppTextStyles {
     color: AppColors.textPrimary(brightness),
     fontFamily: 'Roboto',
   );
-  
+
   static TextStyle headlineMedium(Brightness brightness) => TextStyle(
     fontSize: 28,
     fontWeight: FontWeight.bold,
     color: AppColors.textPrimary(brightness),
     fontFamily: 'Roboto',
   );
-  
+
   static TextStyle headlineSmall(Brightness brightness) => TextStyle(
     fontSize: 24,
     fontWeight: FontWeight.bold,
@@ -91,21 +92,21 @@ class AppTextStyles {
     color: AppColors.textPrimary(brightness),
     fontFamily: 'Roboto',
   );
-  
+
   static TextStyle titleMedium(Brightness brightness) => TextStyle(
     fontSize: 20,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary(brightness),
     fontFamily: 'Roboto',
   );
-  
+
   static TextStyle titleSmall(Brightness brightness) => TextStyle(
     fontSize: 18,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary(brightness),
     fontFamily: 'Roboto',
   );
-  
+
   static TextStyle titleTiny(Brightness brightness) => TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.w600,
@@ -149,14 +150,14 @@ class AppTextStyles {
     color: AppColors.textPrimary(brightness),
     fontFamily: 'Roboto',
   );
-  
+
   static TextStyle labelMedium(Brightness brightness) => TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.w500,
     color: AppColors.textPrimary(brightness),
     fontFamily: 'Roboto',
   );
-  
+
   static TextStyle labelSmall(Brightness brightness) => TextStyle(
     fontSize: 12,
     fontWeight: FontWeight.w500,
@@ -239,42 +240,42 @@ class AppTextStyles {
   );
 
   static TextStyle label(Brightness brightness) => labelLarge(brightness);
-  
+
   static TextStyle date(Brightness brightness) => TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.normal,
     color: AppColors.textPrimary(brightness),
     fontFamily: 'Roboto',
   );
-  
+
   static TextStyle locationCity(Brightness brightness) => TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary(brightness),
     fontFamily: 'Roboto',
   );
-  
+
   static TextStyle locationCountry(Brightness brightness) => TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.normal,
     color: AppColors.textSecondary(brightness),
     fontFamily: 'Roboto',
   );
-  
+
   static TextStyle currentPrayer(Brightness brightness) => TextStyle(
     fontSize: 20,
     fontWeight: FontWeight.bold,
     color: AppColors.textPrimary(brightness),
     fontFamily: 'Roboto',
   );
-  
+
   static TextStyle nextPrayer(Brightness brightness) => TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.w600,
     color: AppColors.textSecondary(brightness),
     fontFamily: 'Roboto',
   );
-  
+
   static TextStyle countdownTimer(Brightness brightness) => TextStyle(
     fontSize: 24,
     fontWeight: FontWeight.bold,
@@ -297,20 +298,38 @@ class AppLayout {
   static const EdgeInsets paddingSmall = EdgeInsets.all(8.0);
   static const EdgeInsets paddingMedium = EdgeInsets.all(16.0);
   static const EdgeInsets paddingLarge = EdgeInsets.all(24.0);
-  
+
   // Specific padding
-  static const EdgeInsets paddingVerticalSmall = EdgeInsets.symmetric(horizontal: 0, vertical: 8.0);
-  static const EdgeInsets paddingVerticalMedium = EdgeInsets.symmetric(horizontal: 0, vertical: 16.0);
-  static const EdgeInsets paddingVerticalLarge = EdgeInsets.symmetric(horizontal: 0, vertical: 24.0);
-  static const EdgeInsets paddingHorizontalSmall = EdgeInsets.symmetric(horizontal: 8.0, vertical: 0);
-  static const EdgeInsets paddingHorizontalMedium = EdgeInsets.symmetric(horizontal: 16.0, vertical: 0);
-  static const EdgeInsets paddingHorizontalLarge = EdgeInsets.symmetric(horizontal: 24.0, vertical: 0);
+  static const EdgeInsets paddingVerticalSmall = EdgeInsets.symmetric(
+    horizontal: 0,
+    vertical: 8.0,
+  );
+  static const EdgeInsets paddingVerticalMedium = EdgeInsets.symmetric(
+    horizontal: 0,
+    vertical: 16.0,
+  );
+  static const EdgeInsets paddingVerticalLarge = EdgeInsets.symmetric(
+    horizontal: 0,
+    vertical: 24.0,
+  );
+  static const EdgeInsets paddingHorizontalSmall = EdgeInsets.symmetric(
+    horizontal: 8.0,
+    vertical: 0,
+  );
+  static const EdgeInsets paddingHorizontalMedium = EdgeInsets.symmetric(
+    horizontal: 16.0,
+    vertical: 0,
+  );
+  static const EdgeInsets paddingHorizontalLarge = EdgeInsets.symmetric(
+    horizontal: 24.0,
+    vertical: 0,
+  );
 
   // Border radius
   static const double radiusSmall = 8.0;
   static const double radiusMedium = 12.0;
   static const double radiusLarge = 16.0;
-  static const double radiusOversized = 20.0; 
+  static const double radiusOversized = 20.0;
   static const double radiusGiant = 32.0;
 
   // Elevation
@@ -334,14 +353,18 @@ class AppContainers {
   }) {
     return BoxDecoration(
       color: color,
-      borderRadius: borderRadius ?? BorderRadius.circular(AppLayout.radiusMedium),
-      boxShadow: shadow && elevation != null ? [
-        BoxShadow(
-          color: shadowColor ?? AppColors.shadowColor,
-          blurRadius: elevation * 2,
-          offset: Offset(0, elevation),
-        ),
-      ] : [],
+      borderRadius:
+          borderRadius ?? BorderRadius.circular(AppLayout.radiusMedium),
+      boxShadow:
+          shadow && elevation != null
+              ? [
+                BoxShadow(
+                  color: shadowColor ?? AppColors.shadowColor,
+                  blurRadius: elevation * 2,
+                  offset: Offset(0, elevation),
+                ),
+              ]
+              : [],
       border: border,
       gradient: gradient,
     );
@@ -358,13 +381,16 @@ class AppContainers {
     return BoxDecoration(
       color: color,
       borderRadius: borderRadius,
-      boxShadow: shadow && (elevation != null) ? [
-        BoxShadow(
-          color: shadowColor ?? AppColors.shadowColor,
-          blurRadius: elevation * 2,
-          offset: Offset(0, elevation),
-        ),
-      ] : [],
+      boxShadow:
+          shadow && (elevation != null)
+              ? [
+                BoxShadow(
+                  color: shadowColor ?? AppColors.shadowColor,
+                  blurRadius: elevation * 2,
+                  offset: Offset(0, elevation),
+                ),
+              ]
+              : [],
       border: border,
     );
   }

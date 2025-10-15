@@ -1,13 +1,13 @@
 /// Types of assets subject to Zakat
 enum ZakatAssetType {
-  cash,           // Cash in hand, bank accounts
-  gold,           // Gold and gold jewelry
-  silver,         // Silver and silver items
-  stocks,         // Stocks and shares
-  business,       // Business inventory and assets
-  livestock,      // Cattle, sheep, goats, camels
-  agriculture,    // Agricultural produce
-  other,          // Other assets
+  cash, // Cash in hand, bank accounts
+  gold, // Gold and gold jewelry
+  silver, // Silver and silver items
+  stocks, // Stocks and shares
+  business, // Business inventory and assets
+  livestock, // Cattle, sheep, goats, camels
+  agriculture, // Agricultural produce
+  other, // Other assets
 }
 
 /// Zakat calculation result
@@ -41,11 +41,15 @@ class ZakatCalculation {
     required double nisabThreshold,
   }) {
     final totalAssets = assets.values.fold(0.0, (sum, value) => sum + value);
-    final totalLiabilities = liabilities.values.fold(0.0, (sum, value) => sum + value);
+    final totalLiabilities = liabilities.values.fold(
+      0.0,
+      (sum, value) => sum + value,
+    );
     final netAssets = totalAssets - totalLiabilities;
 
     final isZakatDue = netAssets >= nisabThreshold;
-    final zakatAmount = isZakatDue ? netAssets * 0.025 : 0.0; // 2.5% of net assets
+    final zakatAmount =
+        isZakatDue ? netAssets * 0.025 : 0.0; // 2.5% of net assets
 
     return ZakatCalculation(
       totalAssets: totalAssets,
@@ -93,7 +97,9 @@ Calculated on: ${calculationDate.toString().split(' ')[0]}
       'nisabThreshold': nisabThreshold,
       'isZakatDue': isZakatDue,
       'calculationDate': calculationDate.toIso8601String(),
-      'assetBreakdown': assetBreakdown.map((key, value) => MapEntry(key.index.toString(), value)),
+      'assetBreakdown': assetBreakdown.map(
+        (key, value) => MapEntry(key.index.toString(), value),
+      ),
       'liabilityBreakdown': liabilityBreakdown,
     };
   }
@@ -119,7 +125,8 @@ class ZakatInput {
   factory ZakatInput.fromJson(Map<String, dynamic> json) {
     return ZakatInput(
       assets: (json['assets'] as Map<String, dynamic>).map(
-        (key, value) => MapEntry(ZakatAssetType.values[int.parse(key)], value as double),
+        (key, value) =>
+            MapEntry(ZakatAssetType.values[int.parse(key)], value as double),
       ),
       liabilities: (json['liabilities'] as Map<String, dynamic>).map(
         (key, value) => MapEntry(key, value as double),
@@ -133,7 +140,9 @@ class ZakatInput {
   /// Convert to JSON
   Map<String, dynamic> toJson() {
     return {
-      'assets': assets.map((key, value) => MapEntry(key.index.toString(), value)),
+      'assets': assets.map(
+        (key, value) => MapEntry(key.index.toString(), value),
+      ),
       'liabilities': liabilities,
       'currency': currency,
       'nisabValue': nisabValue,
@@ -143,15 +152,13 @@ class ZakatInput {
 
   /// Create empty input
   factory ZakatInput.empty() {
-    return ZakatInput(
-      assets: {},
-      liabilities: {},
-      nisabValue: 0.0,
-    );
+    return ZakatInput(assets: {}, liabilities: {}, nisabValue: 0.0);
   }
 
   /// Check if input has any data
-  bool get hasData => assets.values.any((value) => value > 0) || liabilities.values.any((value) => value > 0);
+  bool get hasData =>
+      assets.values.any((value) => value > 0) ||
+      liabilities.values.any((value) => value > 0);
 
   @override
   String toString() {
@@ -229,11 +236,16 @@ class ZakatInfo {
   /// Get general Zakat information
   static Map<String, String> getGeneralInfo() {
     return {
-      'definition': 'Zakat is one of the Five Pillars of Islam. It is obligatory almsgiving, intended to purify wealth and souls.',
-      'purpose': 'Zakat purifies wealth, promotes social welfare, reduces inequality, and fosters community solidarity.',
-      'timing': 'Zakat becomes obligatory when wealth reaches the Nisab threshold and has been held for one lunar year.',
-      'distribution': 'Zakat should be distributed to the eight categories mentioned in the Quran: the poor, orphans, widows, etc.',
-      'importance': 'Zakat is both a spiritual act and a social responsibility that strengthens the Muslim community.',
+      'definition':
+          'Zakat is one of the Five Pillars of Islam. It is obligatory almsgiving, intended to purify wealth and souls.',
+      'purpose':
+          'Zakat purifies wealth, promotes social welfare, reduces inequality, and fosters community solidarity.',
+      'timing':
+          'Zakat becomes obligatory when wealth reaches the Nisab threshold and has been held for one lunar year.',
+      'distribution':
+          'Zakat should be distributed to the eight categories mentioned in the Quran: the poor, orphans, widows, etc.',
+      'importance':
+          'Zakat is both a spiritual act and a social responsibility that strengthens the Muslim community.',
     };
   }
 
@@ -255,7 +267,9 @@ class ZakatInfo {
   /// Check if one lunar year has passed since last Zakat payment
   static bool isZakatYearComplete(DateTime lastPayment) {
     final now = DateTime.now();
-    final lunarYear = Duration(days: (lunarMonths * 29.5).round()); // Approximate lunar year
+    final lunarYear = Duration(
+      days: (lunarMonths * 29.5).round(),
+    ); // Approximate lunar year
     return now.difference(lastPayment) >= lunarYear;
   }
 }

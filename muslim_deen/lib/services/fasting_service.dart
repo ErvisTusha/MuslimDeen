@@ -34,7 +34,11 @@ class FastingService {
       _isInitialized = true;
       _logger.info('FastingService initialized successfully');
     } catch (e, s) {
-      _logger.error('Failed to initialize FastingService', error: e, stackTrace: s);
+      _logger.error(
+        'Failed to initialize FastingService',
+        error: e,
+        stackTrace: s,
+      );
       rethrow;
     }
   }
@@ -59,9 +63,15 @@ class FastingService {
     await _databaseService.executeCommand(createTableQuery);
 
     // Create indexes for better performance
-    await _databaseService.executeCommand('CREATE INDEX IF NOT EXISTS idx_fasting_date ON fasting_records(date)');
-    await _databaseService.executeCommand('CREATE INDEX IF NOT EXISTS idx_fasting_type ON fasting_records(type)');
-    await _databaseService.executeCommand('CREATE INDEX IF NOT EXISTS idx_fasting_status ON fasting_records(status)');
+    await _databaseService.executeCommand(
+      'CREATE INDEX IF NOT EXISTS idx_fasting_date ON fasting_records(date)',
+    );
+    await _databaseService.executeCommand(
+      'CREATE INDEX IF NOT EXISTS idx_fasting_type ON fasting_records(type)',
+    );
+    await _databaseService.executeCommand(
+      'CREATE INDEX IF NOT EXISTS idx_fasting_status ON fasting_records(status)',
+    );
   }
 
   /// Load Ramadan dates for the current year
@@ -76,8 +86,16 @@ class FastingService {
 
     // If we're past Ramadan this year, calculate for next year
     if (now.isAfter(ramadanEnd)) {
-      final nextRamadanStart = DateTime(hijriNow.hYear + 579, 3, 1); // Approximate
-      final nextRamadanEnd = DateTime(hijriNow.hYear + 579, 3, 30); // Approximate
+      final nextRamadanStart = DateTime(
+        hijriNow.hYear + 579,
+        3,
+        1,
+      ); // Approximate
+      final nextRamadanEnd = DateTime(
+        hijriNow.hYear + 579,
+        3,
+        30,
+      ); // Approximate
       _ramadanStart = nextRamadanStart;
       _ramadanEnd = nextRamadanEnd;
       _currentRamadanYear = hijriNow.hYear + 1;
@@ -87,11 +105,14 @@ class FastingService {
       _currentRamadanYear = hijriNow.hYear;
     }
 
-    _logger.debug('Ramadan dates loaded', data: {
-      'start': _ramadanStart?.toIso8601String(),
-      'end': _ramadanEnd?.toIso8601String(),
-      'year': _currentRamadanYear,
-    });
+    _logger.debug(
+      'Ramadan dates loaded',
+      data: {
+        'start': _ramadanStart?.toIso8601String(),
+        'end': _ramadanEnd?.toIso8601String(),
+        'year': _currentRamadanYear,
+      },
+    );
   }
 
   /// Add or update a fasting record
@@ -109,11 +130,14 @@ class FastingService {
 
       _recordCache[updatedRecord.id] = updatedRecord;
 
-      _logger.debug('Fasting record saved', data: {
-        'id': updatedRecord.id,
-        'date': updatedRecord.date.toIso8601String(),
-        'status': updatedRecord.status.toString(),
-      });
+      _logger.debug(
+        'Fasting record saved',
+        data: {
+          'id': updatedRecord.id,
+          'date': updatedRecord.date.toIso8601String(),
+          'status': updatedRecord.status.toString(),
+        },
+      );
     } catch (e, s) {
       _logger.error('Failed to save fasting record', error: e, stackTrace: s);
       rethrow;
@@ -135,15 +159,25 @@ class FastingService {
 
       return null;
     } catch (e, s) {
-      _logger.error('Failed to get fasting record for date', error: e, stackTrace: s);
+      _logger.error(
+        'Failed to get fasting record for date',
+        error: e,
+        stackTrace: s,
+      );
       return null;
     }
   }
 
-    /// Get all fasting records within a date range
-  Future<List<FastingRecord>> getFastingRecordsInRange(DateTime start, DateTime end) async {
+  /// Get all fasting records within a date range
+  Future<List<FastingRecord>> getFastingRecordsInRange(
+    DateTime start,
+    DateTime end,
+  ) async {
     try {
-      final results = await _databaseService.getFastingRecordsInRange(start, end);
+      final results = await _databaseService.getFastingRecordsInRange(
+        start,
+        end,
+      );
 
       final records = <FastingRecord>[];
       for (final result in results) {
@@ -154,7 +188,11 @@ class FastingService {
 
       return records;
     } catch (e, s) {
-      _logger.error('Failed to get fasting records in range', error: e, stackTrace: s);
+      _logger.error(
+        'Failed to get fasting records in range',
+        error: e,
+        stackTrace: s,
+      );
       return [];
     }
   }
@@ -239,11 +277,16 @@ class FastingService {
         await saveFastingRecord(newRecord);
       }
 
-      _logger.debug('Fast marked as completed', data: {
-        'date': date.toIso8601String(),
-      });
+      _logger.debug(
+        'Fast marked as completed',
+        data: {'date': date.toIso8601String()},
+      );
     } catch (e, s) {
-      _logger.error('Failed to mark fast as completed', error: e, stackTrace: s);
+      _logger.error(
+        'Failed to mark fast as completed',
+        error: e,
+        stackTrace: s,
+      );
       rethrow;
     }
   }
@@ -255,10 +298,12 @@ class FastingService {
     }
 
     try {
-      final results = await _databaseService.executeQuery(
-        'SELECT * FROM fasting_records WHERE id = ?',
-        [id],
-      ) as List<Map<String, dynamic>>;
+      final results =
+          await _databaseService.executeQuery(
+                'SELECT * FROM fasting_records WHERE id = ?',
+                [id],
+              )
+              as List<Map<String, dynamic>>;
 
       if (results.isNotEmpty) {
         final record = FastingRecord.fromJson(results.first);
@@ -268,7 +313,11 @@ class FastingService {
 
       return null;
     } catch (e, s) {
-      _logger.error('Failed to get fasting record by ID', error: e, stackTrace: s);
+      _logger.error(
+        'Failed to get fasting record by ID',
+        error: e,
+        stackTrace: s,
+      );
       return null;
     }
   }
@@ -279,10 +328,12 @@ class FastingService {
 
     try {
       final dateStr = date.toIso8601String().split('T')[0];
-      final results = await _databaseService.executeQuery(
-        'SELECT * FROM fasting_records WHERE date = ?',
-        [dateStr],
-      ) as List<Map<String, dynamic>>;
+      final results =
+          await _databaseService.executeQuery(
+                'SELECT * FROM fasting_records WHERE date = ?',
+                [dateStr],
+              )
+              as List<Map<String, dynamic>>;
 
       if (results.isNotEmpty) {
         final record = FastingRecord.fromJson(results.first);
@@ -292,16 +343,24 @@ class FastingService {
 
       return null;
     } catch (e, s) {
-      _logger.error('Failed to get fasting record for date', error: e, stackTrace: s);
+      _logger.error(
+        'Failed to get fasting record for date',
+        error: e,
+        stackTrace: s,
+      );
       rethrow;
     }
   }
 
   /// Calculate fasting statistics
-  Future<FastingStats> getFastingStats({DateTime? startDate, DateTime? endDate}) async {
+  Future<FastingStats> getFastingStats({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     await init();
 
-    final start = startDate ?? DateTime.now().subtract(const Duration(days: 365));
+    final start =
+        startDate ?? DateTime.now().subtract(const Duration(days: 365));
     final end = endDate ?? DateTime.now();
 
     try {
@@ -309,8 +368,12 @@ class FastingService {
 
       final totalFasts = records.length;
       final completedFasts = records.where((r) => r.isCompleted).length;
-      final ramadanFasts = records.where((r) => r.isRamadan && r.isCompleted).length;
-      final voluntaryFasts = records.where((r) => r.type == FastingType.voluntary && r.isCompleted).length;
+      final ramadanFasts =
+          records.where((r) => r.isRamadan && r.isCompleted).length;
+      final voluntaryFasts =
+          records
+              .where((r) => r.type == FastingType.voluntary && r.isCompleted)
+              .length;
 
       final completionRate = totalFasts > 0 ? completedFasts / totalFasts : 0.0;
 
@@ -328,7 +391,11 @@ class FastingService {
         completionRate: completionRate,
       );
     } catch (e, s) {
-      _logger.error('Failed to calculate fasting stats', error: e, stackTrace: s);
+      _logger.error(
+        'Failed to calculate fasting stats',
+        error: e,
+        stackTrace: s,
+      );
       return FastingStats.empty();
     }
   }
@@ -338,9 +405,9 @@ class FastingService {
     if (records.isEmpty) return 0;
 
     // Sort by date descending
-    final sortedRecords = records.where((r) => r.isCompleted)
-        .toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+    final sortedRecords =
+        records.where((r) => r.isCompleted).toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
 
     if (sortedRecords.isEmpty) return 0;
 
@@ -373,9 +440,9 @@ class FastingService {
   int _calculateLongestStreak(List<FastingRecord> records) {
     if (records.isEmpty) return 0;
 
-    final completedRecords = records.where((r) => r.isCompleted)
-        .toList()
-      ..sort((a, b) => a.date.compareTo(b.date));
+    final completedRecords =
+        records.where((r) => r.isCompleted).toList()
+          ..sort((a, b) => a.date.compareTo(b.date));
 
     if (completedRecords.isEmpty) return 0;
 
@@ -383,11 +450,15 @@ class FastingService {
     int currentStreak = 1;
 
     for (int i = 1; i < completedRecords.length; i++) {
-      final daysDiff = completedRecords[i].date.difference(completedRecords[i-1].date).inDays;
+      final daysDiff =
+          completedRecords[i].date
+              .difference(completedRecords[i - 1].date)
+              .inDays;
 
       if (daysDiff == 1) {
         currentStreak++;
-        longestStreak = longestStreak > currentStreak ? longestStreak : currentStreak;
+        longestStreak =
+            longestStreak > currentStreak ? longestStreak : currentStreak;
       } else {
         currentStreak = 1;
       }
@@ -401,12 +472,21 @@ class FastingService {
     if (_ramadanStart == null || _ramadanEnd == null) return false;
 
     final dateOnly = DateTime(date.year, date.month, date.day);
-    final ramadanStartOnly = DateTime(_ramadanStart!.year, _ramadanStart!.month, _ramadanStart!.day);
-    final ramadanEndOnly = DateTime(_ramadanEnd!.year, _ramadanEnd!.month, _ramadanEnd!.day);
+    final ramadanStartOnly = DateTime(
+      _ramadanStart!.year,
+      _ramadanStart!.month,
+      _ramadanStart!.day,
+    );
+    final ramadanEndOnly = DateTime(
+      _ramadanEnd!.year,
+      _ramadanEnd!.month,
+      _ramadanEnd!.day,
+    );
 
     return dateOnly.isAtSameMomentAs(ramadanStartOnly) ||
-           dateOnly.isAtSameMomentAs(ramadanEndOnly) ||
-           (dateOnly.isAfter(ramadanStartOnly) && dateOnly.isBefore(ramadanEndOnly));
+        dateOnly.isAtSameMomentAs(ramadanEndOnly) ||
+        (dateOnly.isAfter(ramadanStartOnly) &&
+            dateOnly.isBefore(ramadanEndOnly));
   }
 
   /// Get Ramadan countdown information
@@ -451,7 +531,10 @@ class FastingService {
   }
 
   /// Get fasting records for a specific month
-  Future<List<FastingRecord>> getFastingRecordsForMonth(int year, int month) async {
+  Future<List<FastingRecord>> getFastingRecordsForMonth(
+    int year,
+    int month,
+  ) async {
     final startOfMonth = DateTime(year, month, 1);
     final endOfMonth = DateTime(year, month + 1, 0); // Last day of month
 

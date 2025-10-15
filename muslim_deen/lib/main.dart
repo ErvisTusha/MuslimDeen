@@ -31,10 +31,8 @@ Future<void> main() async {
 
   try {
     await setupLocator();
-    
-    // Initialize enhanced accessibility
 
-    
+    // Initialize enhanced accessibility
   } catch (e, s) {
     // If service locator fails, we can't use the logger, so print to console
     debugPrint('Failed to setup service locator: $e');
@@ -110,7 +108,7 @@ class MuslimDeenApp extends StatelessWidget {
         final settingsState = ref.watch(settingsProvider);
 
         final currentLocale = _getLocaleFromSettings(settingsState.language);
-        
+
         return MaterialApp(
           title: 'Muslim Deen',
           theme: _buildLightTheme(),
@@ -130,7 +128,9 @@ class MuslimDeenApp extends StatelessWidget {
           builder: (context, child) {
             return MediaQuery(
               data: MediaQuery.of(context).copyWith(
-                textScaler: TextScaler.linear(1.0), // Ensure consistent text scaling
+                textScaler: TextScaler.linear(
+                  1.0,
+                ), // Ensure consistent text scaling
               ),
               child: Directionality(
                 textDirection: AppLocalizationConfig.getTextDirection(
@@ -233,9 +233,7 @@ class MuslimDeenApp extends StatelessWidget {
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: AppColors.accentGreen,
-        ),
+        style: TextButton.styleFrom(foregroundColor: AppColors.accentGreen),
       ),
       switchTheme: _buildSwitchTheme(brightness),
       visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -450,7 +448,8 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _cachedWidgets[_selectedIndex] ??= _widgetBuilders[_selectedIndex](),
+      body:
+          _cachedWidgets[_selectedIndex] ??= _widgetBuilders[_selectedIndex](),
       bottomNavigationBar: _buildBottomNavigationBar(context),
     );
   }
@@ -470,9 +469,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
             offset: const Offset(0, -2),
           ),
         ],
-        border: Border(
-          top: BorderSide(color: AppColors.divider, width: 0.5),
-        ),
+        border: Border(top: BorderSide(color: AppColors.divider, width: 0.5)),
       ),
       child: SafeArea(
         child: Container(
@@ -781,8 +778,6 @@ class _OverflowMenuButton extends StatelessWidget {
   }
 }
 
-
-
 /// Convert language setting string to proper Locale
 Locale _getLocaleFromSettings(String languageCode) {
   switch (languageCode) {
@@ -820,18 +815,11 @@ class ErrorApp extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: Colors.red,
-                ),
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
                 const SizedBox(height: 16),
                 const Text(
                   'App Initialization Failed',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
@@ -841,10 +829,7 @@ class ErrorApp extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
-                ElevatedButton(
-                  onPressed: main,
-                  child: const Text('Retry'),
-                ),
+                ElevatedButton(onPressed: main, child: const Text('Retry')),
               ],
             ),
           ),

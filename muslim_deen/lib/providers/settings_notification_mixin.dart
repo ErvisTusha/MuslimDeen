@@ -14,10 +14,12 @@ import 'package:muslim_deen/services/prayer_service.dart';
 mixin NotificationSchedulingMixin on Notifier<AppSettings> {
   StreamSubscription<NotificationPermissionStatus>? _permissionSubscription;
 
-  NotificationService get _notificationService => ref.read(notificationServiceProvider);
+  NotificationService get _notificationService =>
+      ref.read(notificationServiceProvider);
   LoggerService get _logger => ref.read(loggerServiceProvider);
   PrayerService get _prayerService => ref.read(prayerServiceProvider);
-  DhikrReminderService get _dhikrReminderService => ref.read(dhikrReminderServiceProvider);
+  DhikrReminderService get _dhikrReminderService =>
+      ref.read(dhikrReminderServiceProvider);
 
   bool get areNotificationsBlocked => _notificationService.isBlocked;
 
@@ -54,16 +56,22 @@ mixin NotificationSchedulingMixin on Notifier<AppSettings> {
         state.notifications,
       );
       newNotifications[prayer] = isEnabled;
-      state = state.copyWith(notifications: newNotifications as Map<PrayerNotification, bool>?);
+      state = state.copyWith(
+        notifications: newNotifications as Map<PrayerNotification, bool>?,
+      );
 
       await updateCriticalSetting(
         'notification_${prayer.name}',
         isEnabled,
         getter: (settings) => settings.notifications[prayer] ?? false,
         setter: (settings, value) {
-          final newNotifs = Map<PrayerNotification, bool>.from(settings.notifications);
+          final newNotifs = Map<PrayerNotification, bool>.from(
+            settings.notifications,
+          );
           newNotifs[prayer] = value;
-          return settings.copyWith(notifications: newNotifs as Map<PrayerNotification, bool>?);
+          return settings.copyWith(
+            notifications: newNotifs as Map<PrayerNotification, bool>?,
+          );
         },
       );
     }
@@ -76,7 +84,9 @@ mixin NotificationSchedulingMixin on Notifier<AppSettings> {
     for (var prayer in PrayerNotification.values) {
       newNotifications[prayer] = isEnabled;
     }
-    state = state.copyWith(notifications: newNotifications as Map<PrayerNotification, bool>?);
+    state = state.copyWith(
+      notifications: newNotifications as Map<PrayerNotification, bool>?,
+    );
     await forceSaveSettings();
   }
 
@@ -85,7 +95,9 @@ mixin NotificationSchedulingMixin on Notifier<AppSettings> {
       'azanSound',
       soundFileName,
       getter: (settings) => settings.azanSoundForStandardPrayers,
-      setter: (settings, value) => settings.copyWith(azanSoundForStandardPrayers: value),
+      setter:
+          (settings, value) =>
+              settings.copyWith(azanSoundForStandardPrayers: value),
     );
     await recalculateAndRescheduleNotifications();
   }
@@ -138,11 +150,7 @@ mixin NotificationSchedulingMixin on Notifier<AppSettings> {
 
   List<Map<String, dynamic>> _getPrayersToReschedule() {
     return [
-      {
-        'name': "fajr",
-        'enum': PrayerNotification.fajr,
-        'displayName': "Fajr",
-      },
+      {'name': "fajr", 'enum': PrayerNotification.fajr, 'displayName': "Fajr"},
       {
         'name': "sunrise",
         'enum': PrayerNotification.sunrise,
@@ -159,11 +167,7 @@ mixin NotificationSchedulingMixin on Notifier<AppSettings> {
         'enum': PrayerNotification.maghrib,
         'displayName': "Maghrib",
       },
-      {
-        'name': "isha",
-        'enum': PrayerNotification.isha,
-        'displayName': "Isha",
-      },
+      {'name': "isha", 'enum': PrayerNotification.isha, 'displayName': "Isha"},
     ];
   }
 
@@ -182,11 +186,14 @@ mixin NotificationSchedulingMixin on Notifier<AppSettings> {
       state,
     );
 
-    if (finalPrayerTime != null &&
-        state.notifications[prayerEnum] == true) {
+    if (finalPrayerTime != null && state.notifications[prayerEnum] == true) {
       final formattedTime = timeFormatter.format(finalPrayerTime);
 
-      final notificationContent = _getNotificationContent(prayerEnum, prayerDisplayName, formattedTime);
+      final notificationContent = _getNotificationContent(
+        prayerEnum,
+        prayerDisplayName,
+        formattedTime,
+      );
 
       _logger.info(
         'Rescheduling notification for $prayerDisplayName',
@@ -252,13 +259,13 @@ mixin NotificationSchedulingMixin on Notifier<AppSettings> {
 
   Future<void> scheduleDhikrReminders() async {
     try {
-      await _dhikrReminderService.scheduleDhikrReminders(state.dhikrReminderInterval);
+      await _dhikrReminderService.scheduleDhikrReminders(
+        state.dhikrReminderInterval,
+      );
 
       _logger.info(
         'Dhikr reminders scheduled via DhikrReminderService',
-        data: {
-          'intervalHours': state.dhikrReminderInterval,
-        },
+        data: {'intervalHours': state.dhikrReminderInterval},
       );
     } catch (e, s) {
       _logger.error(

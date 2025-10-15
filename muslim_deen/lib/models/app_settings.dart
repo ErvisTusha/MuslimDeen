@@ -125,8 +125,7 @@ class AppSettings {
         json['notifications'] as Map<String, dynamic>? ?? {};
 
     return AppSettings(
-      calculationMethod:
-          json['calculationMethod'] as String? ?? 'Auto',
+      calculationMethod: json['calculationMethod'] as String? ?? 'Auto',
       madhab: json['madhab'] as String? ?? 'hanafi',
       themeMode: () {
         // Use a closure to handle logic cleanly inline

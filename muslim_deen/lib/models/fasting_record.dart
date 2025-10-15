@@ -1,18 +1,17 @@
-
 enum FastingType {
-  ramadan,      // Obligatory Ramadan fasting
-  voluntary,    // Voluntary fasting (like Monday/Thursday)
-  qada,         // Makeup fasting for missed Ramadan days
-  kaffarah,     // Expiatory fasting
-  other,        // Other types of fasting
+  ramadan, // Obligatory Ramadan fasting
+  voluntary, // Voluntary fasting (like Monday/Thursday)
+  qada, // Makeup fasting for missed Ramadan days
+  kaffarah, // Expiatory fasting
+  other, // Other types of fasting
 }
 
 /// Status of a fasting day
 enum FastingStatus {
-  completed,    // Successfully completed the fast
-  broken,       // Fast was broken (intentionally or unintentionally)
-  excused,      // Excused from fasting (travel, illness, etc.)
-  notStarted,   // Day hasn't started yet
+  completed, // Successfully completed the fast
+  broken, // Fast was broken (intentionally or unintentionally)
+  excused, // Excused from fasting (travel, illness, etc.)
+  notStarted, // Day hasn't started yet
 }
 
 /// Represents a single fasting record for a specific day
@@ -21,10 +20,10 @@ class FastingRecord {
   final DateTime date;
   final FastingType type;
   final FastingStatus status;
-  final DateTime? startTime;      // When the fast was started
-  final DateTime? endTime;        // When the fast was completed/broken
-  final String? notes;            // Optional notes about the fast
-  final bool isRamadan;           // Whether this day is during Ramadan
+  final DateTime? startTime; // When the fast was started
+  final DateTime? endTime; // When the fast was completed/broken
+  final String? notes; // Optional notes about the fast
+  final bool isRamadan; // Whether this day is during Ramadan
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -49,8 +48,14 @@ class FastingRecord {
       date: DateTime.parse(json['date'] as String),
       type: FastingType.values[json['type'] as int],
       status: FastingStatus.values[json['status'] as int],
-      startTime: json['startTime'] != null ? DateTime.parse(json['startTime'] as String) : null,
-      endTime: json['endTime'] != null ? DateTime.parse(json['endTime'] as String) : null,
+      startTime:
+          json['startTime'] != null
+              ? DateTime.parse(json['startTime'] as String)
+              : null,
+      endTime:
+          json['endTime'] != null
+              ? DateTime.parse(json['endTime'] as String)
+              : null,
       notes: json['notes'] as String?,
       isRamadan: json['isRamadan'] as bool? ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),

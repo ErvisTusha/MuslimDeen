@@ -232,12 +232,14 @@ class _PrayerListItemState extends ConsumerState<PrayerListItem> {
 
   /// Navigates to the settings screen and calls the refresh callback when returning
   void _navigateToSettings(BuildContext context) {
-    locator<NavigationService>().navigateTo<void>(
-      const SettingsView(scrollToNotifications: true),
-      routeName: '/settings',
-    ).then((_) {
-      widget.onRefresh?.call();
-    });
+    locator<NavigationService>()
+        .navigateTo<void>(
+          const SettingsView(scrollToNotifications: true),
+          routeName: '/settings',
+        )
+        .then((_) {
+          widget.onRefresh?.call();
+        });
   }
 }
 

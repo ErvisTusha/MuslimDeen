@@ -5,26 +5,26 @@ import 'dart:convert';
 /// Service to automatically detect country and apply appropriate prayer time calculation method
 class CountryCalculationService {
   static const Map<String, String> _countryToCalculationMethod = {
-    'TR': 'Turkey',        // Turkey - Diyanet
-    'EG': 'Egyptian',      // Egypt - Egyptian General Authority
-    'DZ': 'Egyptian',      // Algeria - similar to Egyptian method
-    'MA': 'Morocco',       // Morocco - Moroccan method
+    'TR': 'Turkey', // Turkey - Diyanet
+    'EG': 'Egyptian', // Egypt - Egyptian General Authority
+    'DZ': 'Egyptian', // Algeria - similar to Egyptian method
+    'MA': 'Morocco', // Morocco - Moroccan method
     'TN': 'MuslimWorldLeague', // Tunisia
     'LY': 'MuslimWorldLeague', // Libya
-    'SA': 'UmmAlQura',     // Saudi Arabia
+    'SA': 'UmmAlQura', // Saudi Arabia
     'JO': 'MuslimWorldLeague', // Jordan
     'LB': 'MuslimWorldLeague', // Lebanon
     'SY': 'MuslimWorldLeague', // Syria
     'IQ': 'MuslimWorldLeague', // Iraq
-    'IR': 'Tehran',        // Iran
-    'PK': 'Karachi',       // Pakistan
+    'IR': 'Tehran', // Iran
+    'PK': 'Karachi', // Pakistan
     'IN': 'MuslimWorldLeague', // India
     'BD': 'MuslimWorldLeague', // Bangladesh
     'ID': 'MuslimWorldLeague', // Indonesia
     'MY': 'MuslimWorldLeague', // Malaysia
-    'AE': 'Dubai',         // UAE
-    'KW': 'Kuwait',        // Kuwait
-    'QA': 'Qatar',         // Qatar
+    'AE': 'Dubai', // UAE
+    'KW': 'Kuwait', // Kuwait
+    'QA': 'Qatar', // Qatar
     'BH': 'MuslimWorldLeague', // Bahrain
     'OM': 'MuslimWorldLeague', // Oman
     'YE': 'MuslimWorldLeague', // Yemen
@@ -45,7 +45,7 @@ class CountryCalculationService {
     'BA': 'MuslimWorldLeague', // Bosnia and Herzegovina
     'ME': 'MuslimWorldLeague', // Montenegro
     'MK': 'MuslimWorldLeague', // North Macedonia
-    'AL': 'MuslimWorldLeague', // Albania  
+    'AL': 'MuslimWorldLeague', // Albania
     'RS': 'MuslimWorldLeague', // Serbia (Sandžak region)
   };
 
@@ -60,25 +60,26 @@ class CountryCalculationService {
         latitude,
         longitude,
       );
-      
+
       if (placemarks.isNotEmpty) {
         final String? countryCode = placemarks.first.isoCountryCode;
-        if (countryCode != null && _countryToCalculationMethod.containsKey(countryCode)) {
+        if (countryCode != null &&
+            _countryToCalculationMethod.containsKey(countryCode)) {
           return _countryToCalculationMethod[countryCode]!;
         }
       }
     } catch (e) {
       print('Error getting country from coordinates: $e');
     }
-    
+
     // Fallback to default method
     return 'MuslimWorldLeague';
   }
 
   /// Get calculation method based on country code directly
   static String getCalculationMethodForCountry(String countryCode) {
-    return _countryToCalculationMethod[countryCode.toUpperCase()] ?? 
-           'MuslimWorldLeague';
+    return _countryToCalculationMethod[countryCode.toUpperCase()] ??
+        'MuslimWorldLeague';
   }
 
   /// Get all supported countries and their calculation methods
@@ -95,14 +96,14 @@ class CountryCalculationService {
     try {
       // Get calculation method ID for the country
       final int methodId = getMethodIdForCountry(countryCode);
-      
+
       final url = Uri.parse(
         'https://api.aladhan.com/v1/timings/${DateTime.now().day}'
-        '?latitude=$latitude&longitude=$longitude&method=$methodId'
+        '?latitude=$latitude&longitude=$longitude&method=$methodId',
       );
-      
+
       final response = await http.get(url);
-      
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
         if (data['code'] == 200) {
@@ -112,22 +113,31 @@ class CountryCalculationService {
     } catch (e) {
       print('Error fetching prayer times from API: $e');
     }
-    
+
     return null;
   }
 
   /// Convert country code to Aladhan API method ID
   static int getMethodIdForCountry(String countryCode) {
     switch (countryCode.toUpperCase()) {
-      case 'TR': return 0;  // Diyanet (Turkey)
-      case 'EG': return 5;  // Egyptian (Egypt)
-      case 'SA': return 3;  // Umm Al Qura (Saudi Arabia)
-      case 'AE': return 8;  // Dubai (UAE)
-      case 'KW': return 9;  // Kuwait
-      case 'QA': return 10; // Qatar
-      case 'PK': return 1;  // Muslim World League (Pakistan)
-      case 'IR': return 7;  // Tehran (Iran)
-      default: return 3;    // Muslim World League (default)
+      case 'TR':
+        return 0; // Diyanet (Turkey)
+      case 'EG':
+        return 5; // Egyptian (Egypt)
+      case 'SA':
+        return 3; // Umm Al Qura (Saudi Arabia)
+      case 'AE':
+        return 8; // Dubai (UAE)
+      case 'KW':
+        return 9; // Kuwait
+      case 'QA':
+        return 10; // Qatar
+      case 'PK':
+        return 1; // Muslim World League (Pakistan)
+      case 'IR':
+        return 7; // Tehran (Iran)
+      default:
+        return 3; // Muslim World League (default)
     }
   }
 
@@ -138,22 +148,25 @@ class CountryCalculationService {
     String countryCode,
     Map<String, DateTime> localPrayerTimes,
   ) async {
-    final apiData = await getPrayerTimesFromAPI(latitude, longitude, countryCode);
+    final apiData = await getPrayerTimesFromAPI(
+      latitude,
+      longitude,
+      countryCode,
+    );
     if (apiData == null) return false;
 
     final apiTimings = apiData['timings'] as Map<String, dynamic>?;
     if (apiTimings == null) return false;
-    
+
     const tolerance = Duration(minutes: 5); // 5 minute tolerance
-    
+
     try {
       for (final prayer in ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha']) {
-        if (localPrayerTimes.containsKey(prayer.toLowerCase()) && 
+        if (localPrayerTimes.containsKey(prayer.toLowerCase()) &&
             apiTimings.containsKey(prayer)) {
-          
           final localTime = localPrayerTimes[prayer.toLowerCase()];
           final apiTimeString = apiTimings[prayer] as String;
-          
+
           // Parse API time (format: "HH:MM")
           final apiTimeParts = apiTimeString.split(':');
           final apiTime = DateTime(
@@ -163,10 +176,12 @@ class CountryCalculationService {
             int.parse(apiTimeParts[0]),
             int.parse(apiTimeParts[1]),
           );
-          
+
           final difference = (localTime.difference(apiTime)).abs();
           if (difference > tolerance) {
-            print('Prayer time mismatch for $prayer: Local=${localTime.toString().substring(11,16)}, API=$apiTimeString, Difference=${difference.inMinutes}min');
+            print(
+              'Prayer time mismatch for $prayer: Local=${localTime.toString().substring(11, 16)}, API=$apiTimeString, Difference=${difference.inMinutes}min',
+            );
             return false;
           }
         }

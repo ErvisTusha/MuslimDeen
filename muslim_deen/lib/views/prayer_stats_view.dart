@@ -14,7 +14,8 @@ class PrayerStatsView extends StatefulWidget {
 
 class _PrayerStatsViewState extends State<PrayerStatsView> {
   final PrayerHistoryService _historyService = locator<PrayerHistoryService>();
-  final PrayerAnalyticsService _analyticsService = locator<PrayerAnalyticsService>();
+  final PrayerAnalyticsService _analyticsService =
+      locator<PrayerAnalyticsService>();
 
   Map<String, int> _weeklyStats = {};
   Map<String, int> _monthlyStats = {};
@@ -318,62 +319,6 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
     final score = (_consistencyScore * 100).round();
     final scoreColor = _getConsistencyColor(score);
 
-  return Container(
-    padding: const EdgeInsets.all(20),
-    decoration: BoxDecoration(
-      color: AppColors.surface(brightness),
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: AppColors.divider, width: 1),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(
-              Icons.timeline,
-              color: AppColors.primary(brightness),
-              size: 24,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Consistency Score',
-              style: AppTextStyles.sectionTitle(brightness),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: LinearProgressIndicator(
-                value: _consistencyScore,
-                backgroundColor: AppColors.divider,
-                valueColor: AlwaysStoppedAnimation<Color>(scoreColor),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Text(
-              '$score%',
-              style: AppTextStyles.sectionTitle(brightness).copyWith(
-                color: scoreColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          _getConsistencyMessage(score),
-          style: AppTextStyles.dateSecondary(brightness),
-        ),
-      ],
-    ),
-  );
-}
-
-  Widget _buildTrendCard(Brightness brightness) {
-    if (_trendData == null) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -387,10 +332,108 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
           Row(
             children: [
               Icon(
-                Icons.trending_up,
+                Icons.timeline,
                 color: AppColors.primary(brightness),
                 size: 24,
               ),
+              const SizedBox(width: 12),
+              Text(
+                'Consistency Score',
+                style: AppTextStyles.sectionTitle(brightness),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: LinearProgressIndicator(
+                  value: _consistencyScore,
+                  backgroundColor: AppColors.divider,
+                  valueColor: AlwaysStoppedAnimation<Color>(scoreColor),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Text(
+                '$score%',
+                style: AppTextStyles.sectionTitle(
+                  brightness,
+                ).copyWith(color: scoreColor, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _getConsistencyMessage(score),
+            style: AppTextStyles.dateSecondary(brightness),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrendCard(Brightness brightness) {
+    if (_trendData == null) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surface(brightness),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.divider, width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.trending_up,
+                  color: AppColors.primary(brightness),
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Prayer Trends (30 Days)',
+                  style: AppTextStyles.sectionTitle(brightness),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No trend data available',
+              style: AppTextStyles.dateSecondary(brightness),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final trendIcon =
+        _trendData!.trendDirection == TrendDirection.improving
+            ? Icons.trending_up
+            : _trendData!.trendDirection == TrendDirection.declining
+            ? Icons.trending_down
+            : Icons.trending_flat;
+    final trendColor =
+        _trendData!.trendDirection == TrendDirection.improving
+            ? Colors.green
+            : _trendData!.trendDirection == TrendDirection.declining
+            ? Colors.red
+            : AppColors.primary(brightness);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface(brightness),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(trendIcon, color: trendColor, size: 24),
               const SizedBox(width: 12),
               Text(
                 'Prayer Trends (30 Days)',
@@ -399,79 +442,68 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
             ],
           ),
           const SizedBox(height: 16),
-          Text(
-            'No trend data available',
-            style: AppTextStyles.dateSecondary(brightness),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildTrendMetric(
+                'Average Daily',
+                '${_trendData!.averagePrayersPerDay.toStringAsFixed(1)}',
+                brightness,
+              ),
+              _buildTrendMetric(
+                'Best Day',
+                '${_trendData!.bestDayCount}',
+                brightness,
+              ),
+              _buildTrendMetric(
+                'Trend',
+                _getTrendText(_trendData!.trendDirection),
+                brightness,
+                color: trendColor,
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  final trendIcon = _trendData!.trendDirection == TrendDirection.improving
-      ? Icons.trending_up
-      : _trendData!.trendDirection == TrendDirection.declining
-          ? Icons.trending_down
-          : Icons.trending_flat;
-  final trendColor = _trendData!.trendDirection == TrendDirection.improving
-      ? Colors.green
-      : _trendData!.trendDirection == TrendDirection.declining
-          ? Colors.red
-          : AppColors.primary(brightness);
-
-  return Container(
-    padding: const EdgeInsets.all(20),
-    decoration: BoxDecoration(
-      color: AppColors.surface(brightness),
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: AppColors.divider, width: 1),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(
-              trendIcon,
-              color: trendColor,
-              size: 24,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Prayer Trends (30 Days)',
-              style: AppTextStyles.sectionTitle(brightness),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildTrendMetric(
-              'Average Daily',
-              '${_trendData!.averagePrayersPerDay.toStringAsFixed(1)}',
-              brightness,
-            ),
-            _buildTrendMetric(
-              'Best Day',
-              '${_trendData!.bestDayCount}',
-              brightness,
-            ),
-            _buildTrendMetric(
-              'Trend',
-              _getTrendText(_trendData!.trendDirection),
-              brightness,
-              color: trendColor,
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
-
   Widget _buildPerformanceInsightsCard(Brightness brightness) {
     if (_performanceData == null) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surface(brightness),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.divider, width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.insights,
+                  color: AppColors.primary(brightness),
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Performance Insights',
+                  style: AppTextStyles.sectionTitle(brightness),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No performance data available',
+              style: AppTextStyles.dateSecondary(brightness),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -497,88 +529,58 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
             ],
           ),
           const SizedBox(height: 16),
-          Text(
-            'No performance data available',
-            style: AppTextStyles.dateSecondary(brightness),
+          _buildInsightItem(
+            'Most Consistent Prayer',
+            _performanceData!.mostConsistentPrayer,
+            brightness,
+          ),
+          const SizedBox(height: 12),
+          _buildInsightItem(
+            'Least Consistent Prayer',
+            _performanceData!.leastConsistentPrayer,
+            brightness,
+          ),
+          const SizedBox(height: 12),
+          _buildInsightItem(
+            'Best Performing Day',
+            _performanceData!.bestPerformingDay,
+            brightness,
+          ),
+          const SizedBox(height: 12),
+          _buildInsightItem(
+            'Improvement Area',
+            _performanceData!.improvementArea,
+            brightness,
           ),
         ],
       ),
     );
   }
 
-  return Container(
-    padding: const EdgeInsets.all(20),
-    decoration: BoxDecoration(
-      color: AppColors.surface(brightness),
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: AppColors.divider, width: 1),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildTrendMetric(
+    String label,
+    String value,
+    Brightness brightness, {
+    Color? color,
+  }) {
+    return Column(
       children: [
-        Row(
-          children: [
-            Icon(
-              Icons.insights,
-              color: AppColors.primary(brightness),
-              size: 24,
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Performance Insights',
-              style: AppTextStyles.sectionTitle(brightness),
-            ),
-          ],
+        Text(
+          value,
+          style: AppTextStyles.sectionTitle(brightness).copyWith(
+            color: color ?? AppColors.primary(brightness),
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        const SizedBox(height: 16),
-        _buildInsightItem(
-          'Most Consistent Prayer',
-          _performanceData!.mostConsistentPrayer,
-          brightness,
-        ),
-        const SizedBox(height: 12),
-        _buildInsightItem(
-          'Least Consistent Prayer',
-          _performanceData!.leastConsistentPrayer,
-          brightness,
-        ),
-        const SizedBox(height: 12),
-        _buildInsightItem(
-          'Best Performing Day',
-          _performanceData!.bestPerformingDay,
-          brightness,
-        ),
-        const SizedBox(height: 12),
-        _buildInsightItem(
-          'Improvement Area',
-          _performanceData!.improvementArea,
-          brightness,
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: AppTextStyles.dateSecondary(brightness).copyWith(fontSize: 12),
+          textAlign: TextAlign.center,
         ),
       ],
-    ),
-  );
-}
-
-  Widget _buildTrendMetric(String label, String value, Brightness brightness,
-      {Color? color}) {
-    return Column(
-    children: [
-      Text(
-        value,
-        style: AppTextStyles.sectionTitle(brightness).copyWith(
-          color: color ?? AppColors.primary(brightness),
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      const SizedBox(height: 4),
-      Text(
-        label,
-        style: AppTextStyles.dateSecondary(brightness).copyWith(fontSize: 12),
-        textAlign: TextAlign.center,
-      ),
-    ],
-  );
-}
+    );
+  }
 
   Widget _buildInsightItem(String label, String? value, Brightness brightness) {
     return Row(
@@ -588,9 +590,9 @@ class _PrayerStatsViewState extends State<PrayerStatsView> {
           width: 140,
           child: Text(
             '$label:',
-            style: AppTextStyles.prayerName(brightness).copyWith(
-              fontWeight: FontWeight.w500,
-            ),
+            style: AppTextStyles.prayerName(
+              brightness,
+            ).copyWith(fontWeight: FontWeight.w500),
           ),
         ),
         Expanded(

@@ -29,11 +29,13 @@ class CachedPrayerTimes {
     String madhab,
   ) {
     const positionTolerance = 0.001; // About 100m
-    
-    return (coordinates.latitude - this.coordinates.latitude).abs() < positionTolerance &&
-           (coordinates.longitude - this.coordinates.longitude).abs() < positionTolerance &&
-           this.calculationMethod == calculationMethod &&
-           this.madhab == madhab;
+
+    return (coordinates.latitude - this.coordinates.latitude).abs() <
+            positionTolerance &&
+        (coordinates.longitude - this.coordinates.longitude).abs() <
+            positionTolerance &&
+        this.calculationMethod == calculationMethod &&
+        this.madhab == madhab;
   }
 
   /// Create a CachedPrayerTimes from an Adhan PrayerTimes object
@@ -76,7 +78,9 @@ class CachedPrayerTimes {
   /// Create from JSON
   factory CachedPrayerTimes.fromJson(Map<String, dynamic> json) {
     return CachedPrayerTimes(
-      prayerTimes: PrayerTimesModel.fromJson(json['prayerTimes'] as Map<String, dynamic>),
+      prayerTimes: PrayerTimesModel.fromJson(
+        json['prayerTimes'] as Map<String, dynamic>,
+      ),
       coordinates: adhan.Coordinates(
         (json['coordinates']['latitude'] as num).toDouble(),
         (json['coordinates']['longitude'] as num).toDouble(),

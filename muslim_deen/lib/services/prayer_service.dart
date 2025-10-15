@@ -159,27 +159,38 @@ class PrayerService {
   /// Creates CalculationParameters based on the provided settings with caching.
   /// Falls back to defaults if settings are null or invalid.
   /// Automatically detects country-specific calculation method if not specified.
-  Future<adhan.CalculationParameters> _getCalculationParams(AppSettings? settings, {Position? position}) async {
+  Future<adhan.CalculationParameters> _getCalculationParams(
+    AppSettings? settings, {
+    Position? position,
+  }) async {
     String calculationMethod;
-    
-    if (settings?.calculationMethod == 'Auto' || settings?.calculationMethod == null) {
+
+    if (settings?.calculationMethod == 'Auto' ||
+        settings?.calculationMethod == null) {
       // Auto-detect calculation method based on location
       calculationMethod = 'MuslimWorldLeague'; // default
       if (position != null) {
         try {
-          calculationMethod = await CountryCalculationService.getCalculationMethodForCoordinates(
-            position.latitude, 
-            position.longitude,
+          calculationMethod =
+              await CountryCalculationService.getCalculationMethodForCoordinates(
+                position.latitude,
+                position.longitude,
+              );
+          _logger.info(
+            'Auto-detected calculation method',
+            data: {'method': calculationMethod},
           );
-          _logger.info('Auto-detected calculation method', data: {'method': calculationMethod});
         } catch (e) {
-          _logger.warning('Failed to auto-detect calculation method, using default', error: e);
+          _logger.warning(
+            'Failed to auto-detect calculation method, using default',
+            error: e,
+          );
         }
       }
     } else {
       calculationMethod = settings!.calculationMethod;
     }
-    
+
     final madhab = settings?.madhab ?? 'hanafi';
     final cacheKey = '$calculationMethod-$madhab';
 
@@ -264,6 +275,7 @@ class PrayerService {
 
     return params;
   }
+
   /// performs the calculation, updates service state, caches the result, and returns the prayer times.
   Future<adhan.PrayerTimes> _calculateAndPersistPrayerTimes(
     DateTime date,
@@ -402,7 +414,10 @@ class PrayerService {
 
     if (cachedTimes != null) {
       // Use cached prayer times - reconstruct adhan.PrayerTimes
-      final currentParams = await _getCalculationParams(effectiveSettings, position: position);
+      final currentParams = await _getCalculationParams(
+        effectiveSettings,
+        position: position,
+      );
       final adhanPrayerTimes = adhan.PrayerTimes(
         coordinates: coordinates,
         date: date.toUtc(),
@@ -428,7 +443,10 @@ class PrayerService {
     _metricsService?.recordMiss(cacheKey, 'prayer_times');
 
     // Calculate new prayer times
-    final currentParams = await _getCalculationParams(effectiveSettings, position: position);
+    final currentParams = await _getCalculationParams(
+      effectiveSettings,
+      position: position,
+    );
     return await _calculateAndPersistPrayerTimes(
       date,
       position,
@@ -572,7 +590,10 @@ class PrayerService {
     if (!_isInitialized) await init();
     final position = await _getEffectivePosition('prayer time recalculation');
 
-    final currentSettingsParams = await _getCalculationParams(settings, position: position);
+    final currentSettingsParams = await _getCalculationParams(
+      settings,
+      position: position,
+    );
     final String currentMethodNameString = settings.calculationMethod;
     final nowUtc = DateTime.now().toUtc();
 

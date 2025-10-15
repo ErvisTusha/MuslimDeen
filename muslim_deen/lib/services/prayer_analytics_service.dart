@@ -57,11 +57,7 @@ class PrayerTrendData {
 }
 
 /// Trend direction enum
-enum TrendDirection {
-  improving,
-  declining,
-  stable,
-}
+enum TrendDirection { improving, declining, stable }
 
 /// Service for advanced prayer analytics and insights
 class PrayerAnalyticsService {
@@ -86,10 +82,11 @@ class PrayerAnalyticsService {
     try {
       final data = <PrayerPerformanceData>[];
 
-      for (DateTime date = startDate;
-          date.isBefore(endDate.add(const Duration(days: 1)));
-          date = date.add(const Duration(days: 1))) {
-
+      for (
+        DateTime date = startDate;
+        date.isBefore(endDate.add(const Duration(days: 1)));
+        date = date.add(const Duration(days: 1))
+      ) {
         final dateStr = date.toIso8601String().split('T')[0];
         final completedPrayers = await _database.getPrayerHistory(dateStr);
 
@@ -97,21 +94,25 @@ class PrayerAnalyticsService {
           final prayerList = completedPrayers.split(',');
           final completionRate = prayerList.length / _totalPrayersPerDay;
 
-          data.add(PrayerPerformanceData(
-            date: date,
-            completedPrayers: prayerList.length,
-            totalPrayers: _totalPrayersPerDay,
-            completionRate: completionRate.clamp(0.0, 1.0),
-            completedPrayerNames: prayerList,
-          ));
+          data.add(
+            PrayerPerformanceData(
+              date: date,
+              completedPrayers: prayerList.length,
+              totalPrayers: _totalPrayersPerDay,
+              completionRate: completionRate.clamp(0.0, 1.0),
+              completedPrayerNames: prayerList,
+            ),
+          );
         } else {
-          data.add(PrayerPerformanceData(
-            date: date,
-            completedPrayers: 0,
-            totalPrayers: _totalPrayersPerDay,
-            completionRate: 0.0,
-            completedPrayerNames: [],
-          ));
+          data.add(
+            PrayerPerformanceData(
+              date: date,
+              completedPrayers: 0,
+              totalPrayers: _totalPrayersPerDay,
+              completionRate: 0.0,
+              completedPrayerNames: [],
+            ),
+          );
         }
       }
 
@@ -123,9 +124,7 @@ class PrayerAnalyticsService {
   }
 
   /// Analyze prayer trends over a period
-  Future<PrayerTrendData> analyzeTrends({
-    int days = 30,
-  }) async {
+  Future<PrayerTrendData> analyzeTrends({int days = 30}) async {
     try {
       final endDate = DateTime.now();
       final startDate = endDate.subtract(Duration(days: days));
@@ -150,26 +149,34 @@ class PrayerAnalyticsService {
       }
 
       // Calculate average completion rate
-      final avgRate = performanceData.map((d) => d.completionRate).reduce((a, b) => a + b) / performanceData.length;
+      final avgRate =
+          performanceData.map((d) => d.completionRate).reduce((a, b) => a + b) /
+          performanceData.length;
 
       // Calculate trend slope using linear regression
       final trendSlope = _calculateTrendSlope(performanceData);
 
       // Determine trend direction
-      final trendDirection = trendSlope > 0.001
-          ? TrendDirection.improving
-          : trendSlope < -0.001
+      final trendDirection =
+          trendSlope > 0.001
+              ? TrendDirection.improving
+              : trendSlope < -0.001
               ? TrendDirection.declining
               : TrendDirection.stable;
 
       // Find best and worst days
-      final completionCounts = performanceData.map((d) => d.completedPrayers).toList();
+      final completionCounts =
+          performanceData.map((d) => d.completedPrayers).toList();
       final bestDay = completionCounts.reduce(max);
       final worstDay = completionCounts.reduce(min);
-      final averagePrayersPerDay = completionCounts.reduce((a, b) => a + b) / completionCounts.length;
+      final averagePrayersPerDay =
+          completionCounts.reduce((a, b) => a + b) / completionCounts.length;
 
       // Calculate prayer type completion rates
-      final prayerTypeRates = await _calculatePrayerTypeRates(startDate, endDate);
+      final prayerTypeRates = await _calculatePrayerTypeRates(
+        startDate,
+        endDate,
+      );
 
       return PrayerTrendData(
         averageCompletionRate: avgRate,
@@ -215,13 +222,18 @@ class PrayerAnalyticsService {
       }
 
       // Bonus for high completion days
-      final highCompletionDays = trends.dataPoints.where((d) => d.completionRate >= 0.8).length;
+      final highCompletionDays =
+          trends.dataPoints.where((d) => d.completionRate >= 0.8).length;
       final highCompletionRatio = highCompletionDays / trends.dataPoints.length;
       score += (highCompletionRatio * 20).round(); // Up to 20 points
 
       return min(100, max(0, score));
     } catch (e, s) {
-      _logger.error('Error calculating consistency score', error: e, stackTrace: s);
+      _logger.error(
+        'Error calculating consistency score',
+        error: e,
+        stackTrace: s,
+      );
       return 0;
     }
   }
@@ -232,17 +244,22 @@ class PrayerAnalyticsService {
       final trends = await analyzeTrends(days: days);
 
       // Find most and least consistent prayers
-      final sortedPrayers = trends.prayerTypeRates.entries.toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
+      final sortedPrayers =
+          trends.prayerTypeRates.entries.toList()
+            ..sort((a, b) => b.value.compareTo(a.value));
 
-      final mostConsistent = sortedPrayers.isNotEmpty ? sortedPrayers.first.key : 'N/A';
-      final leastConsistent = sortedPrayers.isNotEmpty ? sortedPrayers.last.key : 'N/A';
+      final mostConsistent =
+          sortedPrayers.isNotEmpty ? sortedPrayers.first.key : 'N/A';
+      final leastConsistent =
+          sortedPrayers.isNotEmpty ? sortedPrayers.last.key : 'N/A';
 
       // Find best performing day of week
       final dayPerformance = <int, List<double>>{};
       for (final data in trends.dataPoints) {
         final dayOfWeek = data.date.weekday;
-        dayPerformance.putIfAbsent(dayOfWeek, () => []).add(data.completionRate);
+        dayPerformance
+            .putIfAbsent(dayOfWeek, () => [])
+            .add(data.completionRate);
       }
 
       String bestDay = 'N/A';
@@ -260,9 +277,11 @@ class PrayerAnalyticsService {
       if (trends.averageCompletionRate < 0.6) {
         improvementArea = 'Overall consistency - try setting daily reminders';
       } else if (leastConsistent != 'N/A') {
-        improvementArea = '$leastConsistent prayer - focus on maintaining this prayer';
+        improvementArea =
+            '$leastConsistent prayer - focus on maintaining this prayer';
       } else if (trends.trendDirection == TrendDirection.declining) {
-        improvementArea = 'Maintaining momentum - your recent trend is declining';
+        improvementArea =
+            'Maintaining momentum - your recent trend is declining';
       } else {
         improvementArea = 'Excellent performance! Keep up the great work.';
       }
@@ -279,7 +298,11 @@ class PrayerAnalyticsService {
         improvementArea: improvementArea,
       );
     } catch (e, s) {
-      _logger.error('Error getting performance insights', error: e, stackTrace: s);
+      _logger.error(
+        'Error getting performance insights',
+        error: e,
+        stackTrace: s,
+      );
       return PrayerPerformanceData(
         date: DateTime.now(),
         completedPrayers: 0,
@@ -313,7 +336,11 @@ class PrayerAnalyticsService {
 
       return distribution;
     } catch (e, s) {
-      _logger.error('Error getting monthly distribution', error: e, stackTrace: s);
+      _logger.error(
+        'Error getting monthly distribution',
+        error: e,
+        stackTrace: s,
+      );
       return {};
     }
   }
@@ -323,25 +350,53 @@ class PrayerAnalyticsService {
     if (data.length < 2) return 0.0;
 
     final n = data.length;
-    final sumX = data.asMap().entries.map((e) => e.key.toDouble()).reduce((a, b) => a + b);
+    final sumX = data
+        .asMap()
+        .entries
+        .map((e) => e.key.toDouble())
+        .reduce((a, b) => a + b);
     final sumY = data.map((d) => d.completionRate).reduce((a, b) => a + b);
-    final sumXY = data.asMap().entries.map((e) => e.key * data[e.key].completionRate).reduce((a, b) => a + b);
-    final sumXX = data.asMap().entries.map((e) => e.key * e.key.toDouble()).reduce((a, b) => a + b);
+    final sumXY = data
+        .asMap()
+        .entries
+        .map((e) => e.key * data[e.key].completionRate)
+        .reduce((a, b) => a + b);
+    final sumXX = data
+        .asMap()
+        .entries
+        .map((e) => e.key * e.key.toDouble())
+        .reduce((a, b) => a + b);
 
     final slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
     return slope.isNaN ? 0.0 : slope;
   }
 
   /// Calculate completion rates for each prayer type
-  Future<Map<String, double>> _calculatePrayerTypeRates(DateTime startDate, DateTime endDate) async {
+  Future<Map<String, double>> _calculatePrayerTypeRates(
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
     try {
-      final prayerCounts = <String, int>{'fajr': 0, 'dhuhr': 0, 'asr': 0, 'maghrib': 0, 'isha': 0};
-      final prayerTotals = <String, int>{'fajr': 0, 'dhuhr': 0, 'asr': 0, 'maghrib': 0, 'isha': 0};
+      final prayerCounts = <String, int>{
+        'fajr': 0,
+        'dhuhr': 0,
+        'asr': 0,
+        'maghrib': 0,
+        'isha': 0,
+      };
+      final prayerTotals = <String, int>{
+        'fajr': 0,
+        'dhuhr': 0,
+        'asr': 0,
+        'maghrib': 0,
+        'isha': 0,
+      };
 
-      for (DateTime date = startDate;
-          date.isBefore(endDate.add(const Duration(days: 1)));
-          date = date.add(const Duration(days: 1))) {
-
+      for (
+        DateTime date = startDate;
+        date.isBefore(endDate.add(const Duration(days: 1)));
+        date = date.add(const Duration(days: 1))
+      ) {
         final dateStr = date.toIso8601String().split('T')[0];
         final completedPrayers = await _database.getPrayerHistory(dateStr);
 
@@ -369,13 +424,25 @@ class PrayerAnalyticsService {
 
       return rates;
     } catch (e, s) {
-      _logger.error('Error calculating prayer type rates', error: e, stackTrace: s);
+      _logger.error(
+        'Error calculating prayer type rates',
+        error: e,
+        stackTrace: s,
+      );
       return {};
     }
   }
 
   String _getDayName(int dayOfWeek) {
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const days = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
     return days[dayOfWeek - 1];
   }
 

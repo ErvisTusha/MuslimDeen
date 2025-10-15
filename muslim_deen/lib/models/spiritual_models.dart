@@ -1,5 +1,3 @@
-
-
 /// Spiritual Models and Data Classes
 /// Central data models for spiritual analytics and AI components
 
@@ -36,7 +34,7 @@ class UserSpiritualProfile {
   final List<String> strengths;
   final List<SpiritualGoal> goals;
   final List<SpiritualMilestone> achievements;
-  
+
   const UserSpiritualProfile({
     required this.userId,
     required this.createdAt,
@@ -51,11 +49,9 @@ class UserSpiritualProfile {
     this.goals = const [],
     this.achievements = const [],
   });
-  
+
   /// Create builder for user spiritual profile
-  factory UserSpiritualProfile.create({
-    required String userId,
-  }) {
+  factory UserSpiritualProfile.create({required String userId}) {
     return UserSpiritualProfile(
       userId: userId,
       createdAt: DateTime.now(),
@@ -78,7 +74,7 @@ enum SpiritualLevel {
   intermediate,
   advanced,
   scholar;
-  
+
   factory SpiritualLevel.fromScore(double score) {
     if (score < 0.3) return SpiritualLevel.beginner;
     if (score < 0.6) return SpiritualLevel.intermediate;
@@ -200,7 +196,7 @@ class PrayerSession {
   final Duration duration;
   final double quality; // 1-10 quality score
   final bool completed;
-  final Map<String, dynamic> factors;  // Environmental and personal factors
+  final Map<String, dynamic> factors; // Environmental and personal factors
 
   const PrayerSession({
     required this.sessionId,
@@ -329,7 +325,7 @@ class PredictiveInsights {
     required this.next6months,
     required this.confidence,
   });
-  
+
   factory PredictiveInsights.empty() => const PredictiveInsights(
     next30days: const [],
     next3months: const [],
@@ -378,16 +374,20 @@ class SpiritualGrowth {
     required this.improvements,
     required this.growthRate,
   });
-  
+
   factory SpiritualGrowth.basic() {
     return SpiritualGrowth(
       overallScore: 0.7,
       aspects: const {
         'prayer': [0.8, 0.75, 0.82],
         'engagement': [0.6, 0.8, 0.75],
-        'character': [0.7, 0.8, 0.65]
+        'character': [0.7, 0.8, 0.65],
       },
-      improvements: const ['consistent_prayer', 'increased_reading', 'improved_patience'],
+      improvements: const [
+        'consistent_prayer',
+        'increased_reading',
+        'improved_patience',
+      ],
       growthRate: 0.05,
     );
   }
@@ -459,11 +459,7 @@ class DailyPattern {
   });
 
   static const DailyPattern basic = DailyPattern(
-    dailyRatios: {
-      'morning': 0.8,
-      'afternoon': 0.7,
-      'evening': 0.9,
-    },
+    dailyRatios: {'morning': 0.8, 'afternoon': 0.7, 'evening': 0.9},
     overallConsistency: 0.8,
     peakTime: '6:00 AM',
     weaknesses: ['occasional late prayers'],
@@ -488,14 +484,10 @@ class WeeklyPattern {
     required this.weeklyAverage,
     required this.patterns,
   });
-  
+
   factory WeeklyPattern.basic() {
     return WeeklyPattern(
-      weeklyRatios: const {
-        'friday': 0.9,
-        'weekend': 0.75,
-        'weekday': 0.85,
-      },
+      weeklyRatios: const {'friday': 0.9, 'weekend': 0.75, 'weekday': 0.85},
       overallConsistency: 0.82,
       fridaySpecial: true,
       weekendVariation: 0.1,
@@ -517,7 +509,7 @@ class SeasonalPattern {
     required this.seasonalRatios,
     this.ramadanElevation = 1.2, // 20% enhancement
     this.winterConsistency = 0.88, // Maintained in colder weather
-    this.summerConsistency = 0.78,  // Summer flexibility
+    this.summerConsistency = 0.78, // Summer flexibility
     this.seasonalAverage = 0.8,
   });
 }
@@ -652,7 +644,8 @@ class SpiritualPredictions {
 }
 
 class Prediction {
-  final String outlook; // 'positive', 'negative', 'stable', 'improving', 'declining'
+  final String
+  outlook; // 'positive', 'negative', 'stable', 'improving', 'declining'
   final double probability; // 0.0-1.0
   final String description; // Prediction detail
 
@@ -697,11 +690,8 @@ class DateRange {
   final DateTime start;
   final DateTime end;
 
-  const DateRange({
-    required this.start,
-    required this.end,
-  });
-  
+  const DateRange({required this.start, required this.end});
+
   bool get isNotEmpty => start.isBefore(end);
 }
 
@@ -757,7 +747,7 @@ class Threshold {
   final String thresholdName;
   final double thresholdValue; // Target value in MS or appropriate unit
   final String warningLevel; // 'warning', 'critical', 'info', 'info'
-  final String criticalLevel;   // same options as warning
+  final String criticalLevel; // same options as warning
 
   const Threshold({
     required this.thresholdName,
@@ -823,7 +813,7 @@ class PerformanceSnapshot {
     required this.cacheHitRate,
     required this.timestamp,
   });
-  
+
   factory PerformanceSnapshot.empty() => PerformanceSnapshot(
     cpuUsage: 0.0,
     memoryUsage: 0.0,

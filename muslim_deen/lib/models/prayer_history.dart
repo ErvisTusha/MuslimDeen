@@ -1,5 +1,3 @@
-
-
 /// Prayer History Data Models
 /// Comprehensive prayer tracking models for analytics and history
 
@@ -73,24 +71,34 @@ class PrayerAnalytics {
 
     final sortedRecords = List<PrayerRecord>.from(records);
     sortedRecords.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    
+
     final startDate = sortedRecords.first.timestamp;
     final endDate = sortedRecords.last.timestamp;
 
     // Calculate statistics
     final completedCount = sortedRecords.where((r) => r.completed).length;
     final onTimeCount = sortedRecords.where((r) => r.onTime).length;
-    final totalDuration = sortedRecords.fold<Duration>(Duration.zero, (sum, r) => sum + r.duration);
-    
+    final totalDuration = sortedRecords.fold<Duration>(
+      Duration.zero,
+      (sum, r) => sum + r.duration,
+    );
+
     final statistics = <String, double>{
-      'completion_rate': sortedRecords.isNotEmpty ? completedCount / sortedRecords.length : 0.0,
-      'punctuality_rate': sortedRecords.isNotEmpty ? onTimeCount / sortedRecords.length : 0.0,
-      'average_quality': sortedRecords.isNotEmpty 
-          ? sortedRecords.map((r) => r.quality).reduce((a, b) => a + b) / sortedRecords.length 
-          : 0.0,
-      'average_duration': sortedRecords.isNotEmpty 
-          ? totalDuration.inMilliseconds.toDouble() / sortedRecords.length 
-          : 0.0,
+      'completion_rate':
+          sortedRecords.isNotEmpty
+              ? completedCount / sortedRecords.length
+              : 0.0,
+      'punctuality_rate':
+          sortedRecords.isNotEmpty ? onTimeCount / sortedRecords.length : 0.0,
+      'average_quality':
+          sortedRecords.isNotEmpty
+              ? sortedRecords.map((r) => r.quality).reduce((a, b) => a + b) /
+                  sortedRecords.length
+              : 0.0,
+      'average_duration':
+          sortedRecords.isNotEmpty
+              ? totalDuration.inMilliseconds.toDouble() / sortedRecords.length
+              : 0.0,
     };
 
     return PrayerAnalytics(
@@ -129,9 +137,14 @@ class PrayerStreak {
     }
 
     // Filter records for specific prayer type
-    final prayerRecords = records.where((r) => 
-        r.prayerName.toLowerCase().contains(prayerType.name.toLowerCase())
-    ).toList();
+    final prayerRecords =
+        records
+            .where(
+              (r) => r.prayerName.toLowerCase().contains(
+                prayerType.name.toLowerCase(),
+              ),
+            )
+            .toList();
 
     // Calculate current streak
     int currentStreak = 0;
@@ -208,7 +221,7 @@ enum PrayerType {
   isha;
 
   const PrayerType();
-  
+
   String get displayName {
     switch (this) {
       case PrayerType.fajr:
@@ -223,7 +236,7 @@ enum PrayerType {
         return 'Isha';
     }
   }
-  
+
   String get arabicName {
     switch (this) {
       case PrayerType.fajr:
@@ -280,9 +293,9 @@ class PrayerRecommendation {
 class PrayerAnalyticsException implements Exception {
   final String message;
   final String? stackTrace;
-  
+
   const PrayerAnalyticsException(this.message, this.stackTrace);
-  
+
   @override
   String toString() => 'PrayerAnalyticsException: $message';
 }

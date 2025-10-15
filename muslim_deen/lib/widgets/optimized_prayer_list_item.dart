@@ -205,12 +205,14 @@ class _OptimizedPrayerListItemState
 
   /// Navigate to settings
   void _navigateToSettings(BuildContext context) {
-    locator<NavigationService>().navigateTo<void>(
-      const SettingsView(scrollToNotifications: true),
-      routeName: '/settings',
-    ).then((_) {
-      widget.onRefresh?.call();
-    });
+    locator<NavigationService>()
+        .navigateTo<void>(
+          const SettingsView(scrollToNotifications: true),
+          routeName: '/settings',
+        )
+        .then((_) {
+          widget.onRefresh?.call();
+        });
   }
 
   @override
