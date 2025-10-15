@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:muslim_deen/models/app_settings.dart';
-import 'package:muslim_deen/models/prayer_display_info_data.dart';
+import 'package:muslim_deen/models/prayer_list_item_data.dart';
 import 'package:muslim_deen/providers/optimized_providers.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
@@ -14,7 +14,7 @@ import 'package:muslim_deen/styles/ui_theme_helper.dart';
 import 'package:muslim_deen/widgets/optimized_prayer_list_item.dart';
 
 typedef PrayerInfoBuilder =
-    PrayerDisplayInfoData Function(PrayerNotification prayerEnum);
+    PrayerListItemData Function(PrayerNotification prayerEnum);
 
 /// Optimized prayer times section with performance improvements
 class OptimizedPrayerTimesSection extends ConsumerStatefulWidget {

@@ -10,7 +10,7 @@ import 'package:intl/intl.dart';
 
 import 'package:muslim_deen/models/app_settings.dart';
 import 'package:muslim_deen/models/custom_exceptions.dart';
-import 'package:muslim_deen/models/prayer_display_info_data.dart';
+import 'package:muslim_deen/models/prayer_list_item_data.dart';
 import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/providers/prayer_providers.dart';
 import 'package:muslim_deen/service_locator.dart';
@@ -407,7 +407,7 @@ class HomeView extends ConsumerWidget {
     return specificError;
   }
 
-  PrayerDisplayInfoData _getPrayerDisplayInfo(
+  PrayerListItemData _getPrayerDisplayInfo(
     PrayerNotification prayerEnum,
     adhan.PrayerTimes? prayerTimes,
     AppSettings appSettings, // Added appSettings parameter
@@ -419,7 +419,7 @@ class HomeView extends ConsumerWidget {
       String prayerNameStr = prayerEnum.toString().split('.').last;
       prayerNameStr =
           prayerNameStr[0].toUpperCase() + prayerNameStr.substring(1);
-      return PrayerDisplayInfoData(
+      return PrayerListItemData(
         name: prayerNameStr,
         time: null,
         prayerEnum: prayerEnum,
@@ -437,7 +437,7 @@ class HomeView extends ConsumerWidget {
       appSettings,
     );
 
-    return PrayerDisplayInfoData(
+    return PrayerListItemData(
       name: prayerDetails.displayName,
       time: time,
       prayerEnum: prayerEnum,

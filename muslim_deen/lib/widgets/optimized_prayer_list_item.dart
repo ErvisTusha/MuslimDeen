@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:muslim_deen/models/app_settings.dart';
-import 'package:muslim_deen/models/prayer_display_info_data.dart';
+import 'package:muslim_deen/models/prayer_list_item_data.dart';
 import 'package:muslim_deen/providers/optimized_providers.dart';
 import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/service_locator.dart';
@@ -15,7 +15,7 @@ import 'package:muslim_deen/views/settings_view.dart';
 
 /// Optimized prayer list item with caching and performance improvements
 class OptimizedPrayerListItem extends ConsumerStatefulWidget {
-  final PrayerDisplayInfoData prayerInfo;
+  final PrayerListItemData prayerInfo;
   final DateFormat timeFormatter;
   final bool isCurrent;
   final Brightness brightness;
@@ -383,7 +383,7 @@ class _SplashColors {
 class OptimizedPrayerListItemFactory {
   /// Create an optimized prayer list item with a unique key
   static Widget create({
-    required PrayerDisplayInfoData prayerInfo,
+    required PrayerListItemData prayerInfo,
     required DateFormat timeFormatter,
     required bool isCurrent,
     required Brightness brightness,

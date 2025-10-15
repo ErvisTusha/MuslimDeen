@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import 'package:muslim_deen/models/prayer_display_info_data.dart';
+import 'package:muslim_deen/models/prayer_list_item_data.dart';
 import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/navigation_service.dart';
@@ -11,7 +11,7 @@ import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/views/settings_view.dart'; // For navigation
 
 class PrayerListItem extends ConsumerStatefulWidget {
-  final PrayerDisplayInfoData prayerInfo;
+  final PrayerListItemData prayerInfo;
   final DateFormat timeFormatter;
   final bool isCurrent;
   final Brightness brightness;

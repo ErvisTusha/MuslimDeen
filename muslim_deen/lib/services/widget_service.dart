@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:adhan_dart/adhan_dart.dart' as adhan;
 
 import 'package:muslim_deen/models/app_settings.dart';
-import 'package:muslim_deen/models/prayer_display_info_data.dart';
+import 'package:muslim_deen/models/prayer_list_item_data.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
@@ -208,7 +208,7 @@ class WidgetService {
   }
 
   /// Get prayer display information
-  PrayerDisplayInfoData _getPrayerDisplayInfo(
+  PrayerListItemData _getPrayerDisplayInfo(
     PrayerNotification prayerEnum,
     adhan.PrayerTimes prayerTimes,
     AppSettings appSettings,
@@ -274,7 +274,7 @@ class WidgetService {
         break;
     }
 
-    return PrayerDisplayInfoData(
+    return PrayerListItemData(
       name: name,
       time: time,
       prayerEnum: prayerEnum,

@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:muslim_deen/models/app_settings.dart' show PrayerNotification;
-import 'package:muslim_deen/models/prayer_display_info_data.dart';
+import 'package:muslim_deen/models/prayer_list_item_data.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 import 'package:muslim_deen/styles/ui_theme_helper.dart';
 import 'package:muslim_deen/widgets/prayer_list_item.dart';
 
 typedef PrayerInfoBuilder =
-    PrayerDisplayInfoData Function(PrayerNotification prayerEnum);
+    PrayerListItemData Function(PrayerNotification prayerEnum);
 
 class PrayerTimesSection extends StatelessWidget {
   final bool isLoading;
@@ -72,19 +72,12 @@ class PrayerTimesSection extends StatelessWidget {
                   decoration: _buildPrayerListDecoration(colors),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(11),
-                    child: ListView.separated(
+                    child: ListView.builder(
                       controller: scrollController,
                       padding: EdgeInsets.zero,
                       itemCount: prayerOrder.length,
-                      separatorBuilder:
-                          (context, index) => Divider(
-                            color: colors.borderColor.withAlpha(
-                              colors.isDarkMode ? 70 : 100,
-                            ),
-                            height: 1,
-                            indent: 16,
-                            endIndent: 16,
-                          ),
+                      itemExtent:
+                          80.0, // Set a fixed item extent for performance
                       itemBuilder: (context, index) {
                         final prayerEnum = prayerOrder[index];
                         final prayerInfo = getPrayerDisplayInfo(prayerEnum);
