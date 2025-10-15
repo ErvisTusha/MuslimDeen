@@ -16,6 +16,7 @@ import 'package:muslim_deen/models/custom_exceptions.dart';
 import 'package:muslim_deen/models/prayer_display_info_data.dart';
 import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/accessibility_service.dart';
 import 'package:muslim_deen/services/fasting_service.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/navigation_service.dart';
@@ -105,6 +106,7 @@ class _HomeViewState extends ConsumerState<HomeView>
   @override
   void initState() {
     super.initState();
+    locator.get<AccessibilityService>().currentScrollController = _scrollController;
     _initializeServices();
     _logger.info('HomeView initialized');
     WidgetsBinding.instance.addObserver(this);
@@ -196,6 +198,7 @@ class _HomeViewState extends ConsumerState<HomeView>
     // as it's unnecessary during widget cleanup and causes ref access after disposal
 
     // Clean up UI controllers last
+    locator.get<AccessibilityService>().currentScrollController = null;
     _scrollController.dispose();
 
     super.dispose();

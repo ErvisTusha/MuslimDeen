@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:flutter/services.dart';
+import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/navigation_service.dart';
+import 'package:muslim_deen/views/home_view.dart';
+import 'package:muslim_deen/views/qibla_view.dart';
+import 'package:muslim_deen/views/tesbih_view.dart';
+import 'package:muslim_deen/views/mosque_view.dart';
+import 'package:muslim_deen/views/settings_view.dart';
 
 /// Enhanced accessibility service for MuslimDeen app
 /// Provides screen reader support, voice commands, and cognitive assistance
@@ -20,6 +27,9 @@ class AccessibilityService {
   double _speechRate = 0.8;
   double _speechVolume = 1.0;
   double _hapticFeedbackStrength = 0.5;
+  
+  // Current scroll controller for accessibility scrolling
+  ScrollController? currentScrollController;
   
   // Voice navigation commands
   static const Map<String, VoiceCommand> _voiceCommands = {
@@ -226,46 +236,79 @@ class AccessibilityService {
 
   /// Execute voice commands
   void _executeCommand(VoiceCommand command) {
+    final navigationService = locator.get<NavigationService>();
     switch (command.action) {
       case NavigationAction.prayer:
         speak('Opening prayer screen');
-        // TODO: Navigate to prayer screen
+        navigationService.navigateTo<void>(const HomeView());
         break;
       case NavigationAction.qibla:
         speak('Opening Qibla direction');
-        // TODO: Navigate to Qibla screen
+        navigationService.navigateTo<void>(const QiblaView());
         break;
       case NavigationAction.tasbih:
         speak('Opening Tasbih counter');
-        // TODO: Navigate to Tasbih screen
+        navigationService.navigateTo<void>(const TesbihView());
         break;
       case NavigationAction.mosque:
         speak('Finding nearby mosques');
-        // TODO: Navigate to mosque screen
+        navigationService.navigateTo<void>(const MosqueView());
         break;
       case NavigationAction.settings:
         speak('Opening settings');
-        // TODO: Navigate to settings screen
+        navigationService.navigateTo<void>(const SettingsView());
         break;
       case NavigationAction.back:
         speak('Going back');
-        // TODO: Navigate back
+        navigationService.goBack<void>();
         break;
       case NavigationAction.scrollDown:
         speak('Scrolling down');
-        // TODO: Scroll down
+        if (currentScrollController != null && currentScrollController!.hasClients) {
+          currentScrollController!.animateTo(
+            currentScrollController!.offset + 200.0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        } else {
+          speak('No scrollable content available');
+        }
         break;
       case NavigationAction.scrollUp:
         speak('Scrolling up');
-        // TODO: Scroll up
+        if (currentScrollController != null && currentScrollController!.hasClients) {
+          currentScrollController!.animateTo(
+            currentScrollController!.offset - 200.0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        } else {
+          speak('No scrollable content available');
+        }
         break;
       case NavigationAction.nextPage:
         speak('Next page');
-        // TODO: Go to next page
+        if (currentScrollController != null && currentScrollController!.hasClients) {
+          currentScrollController!.animateTo(
+            currentScrollController!.offset + 400.0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        } else {
+          speak('No scrollable content available');
+        }
         break;
       case NavigationAction.previousPage:
         speak('Previous page');
-        // TODO: Go to previous page
+        if (currentScrollController != null && currentScrollController!.hasClients) {
+          currentScrollController!.animateTo(
+            currentScrollController!.offset - 400.0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        } else {
+          speak('No scrollable content available');
+        }
         break;
     }
   }

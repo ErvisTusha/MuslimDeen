@@ -8,6 +8,7 @@ import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/providers/settings_notifier.dart';
 import 'package:muslim_deen/providers/settings_prayer_mixin.dart';
 import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/accessibility_service.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/navigation_service.dart';
@@ -53,6 +54,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   @override
   void initState() {
     super.initState();
+    locator.get<AccessibilityService>().currentScrollController = _scrollController;
     _logger.info('SettingsView initialized');
     _loadCurrentLocation();
 
@@ -80,6 +82,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   @override
   void dispose() {
     _logger.debug('SettingsView disposed');
+    locator.get<AccessibilityService>().currentScrollController = null;
     _scrollController.dispose();
     _audioPlayer.dispose();
     super.dispose();
