@@ -80,7 +80,9 @@ void _registerServices(bool testing) {
   locator.registerLazySingleton<ErrorHandlerService>(ErrorHandlerService.new);
   locator.registerLazySingleton<NavigationService>(NavigationService.new);
   locator.registerLazySingleton<PrayerHistoryService>(PrayerHistoryService.new);
-  locator.registerLazySingleton<PrayerAnalyticsService>(PrayerAnalyticsService.new);
+  locator.registerLazySingleton<PrayerAnalyticsService>(
+    PrayerAnalyticsService.new,
+  );
   locator.registerLazySingleton<DhikrReminderService>(DhikrReminderService.new);
   locator.registerLazySingleton<TasbihHistoryService>(TasbihHistoryService.new);
   locator.registerLazySingleton<HadithService>(HadithService.new);
@@ -145,7 +147,7 @@ void _registerServices(bool testing) {
     return WidgetService();
   });
 
-    /// FastingService depends on DatabaseService
+  /// FastingService depends on DatabaseService
   locator.registerLazySingletonAsync<FastingService>(() async {
     final databaseService = await locator.getAsync<DatabaseService>();
     final service = FastingService(databaseService);
