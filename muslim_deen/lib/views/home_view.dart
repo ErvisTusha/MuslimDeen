@@ -16,6 +16,7 @@ import 'package:muslim_deen/models/custom_exceptions.dart';
 import 'package:muslim_deen/models/prayer_display_info_data.dart';
 import 'package:muslim_deen/providers/providers.dart';
 import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/accessibility_service.dart';
 import 'package:muslim_deen/services/fasting_service.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/navigation_service.dart';
@@ -83,12 +84,14 @@ class _HomeViewState extends ConsumerState<HomeView>
   // Timer variables for periodic refreshes
   Timer? _dailyRefreshTimer;
   Timer? _periodicRefreshTimer;
-  
+
   // Optimized refresh tracking
   DateTime? _lastPrayerUpdateTime;
   String? _lastCurrentPrayer;
   String? _lastNextPrayer;
-  static const Duration _smartRefreshInterval = Duration(minutes: 5); // Check every 5 minutes instead of 1
+  static const Duration _smartRefreshInterval = Duration(
+    minutes: 5,
+  ); // Check every 5 minutes instead of 1
 
   Future<void> _initializeServices() async {
     try {
@@ -105,6 +108,8 @@ class _HomeViewState extends ConsumerState<HomeView>
   @override
   void initState() {
     super.initState();
+    locator.get<AccessibilityService>().currentScrollController =
+        _scrollController;
     _initializeServices();
     _logger.info('HomeView initialized');
     WidgetsBinding.instance.addObserver(this);
@@ -196,6 +201,7 @@ class _HomeViewState extends ConsumerState<HomeView>
     // as it's unnecessary during widget cleanup and causes ref access after disposal
 
     // Clean up UI controllers last
+    locator.get<AccessibilityService>().currentScrollController = null;
     _scrollController.dispose();
 
     super.dispose();
@@ -264,7 +270,9 @@ class _HomeViewState extends ConsumerState<HomeView>
       }
     });
 
-    _logger.info("Started smart periodic refresh timer (every ${_smartRefreshInterval.inMinutes} minutes)");
+    _logger.info(
+      "Started smart periodic refresh timer (every ${_smartRefreshInterval.inMinutes} minutes)",
+    );
   }
 
   /// Performs smart periodic refresh with better logic to avoid unnecessary updates
@@ -272,23 +280,25 @@ class _HomeViewState extends ConsumerState<HomeView>
     try {
       final appSettings = ref.read(settingsProvider);
       final now = DateTime.now();
-      
+
       // Get current prayer state without recalculating
       final currentPrayer = _prayerService.getCurrentPrayer();
       final nextPrayer = _prayerService.getNextPrayer();
-      
+
       // Only update if prayer state changed or it's been more than 30 minutes since last update
       bool shouldUpdate = false;
-      
-      if (_lastCurrentPrayer != currentPrayer || _lastNextPrayer != nextPrayer) {
+
+      if (_lastCurrentPrayer != currentPrayer ||
+          _lastNextPrayer != nextPrayer) {
         _logger.info('Prayer state changed, triggering refresh');
         shouldUpdate = true;
       } else if (_lastPrayerUpdateTime == null ||
-                 now.difference(_lastPrayerUpdateTime!) > const Duration(minutes: 30)) {
+          now.difference(_lastPrayerUpdateTime!) >
+              const Duration(minutes: 30)) {
         _logger.debug('Long time since last update, triggering refresh');
         shouldUpdate = true;
       }
-      
+
       if (shouldUpdate) {
         // Force a check to ensure we have current prayer times
         await _prayerService.recalculatePrayerTimesIfNeeded(appSettings);
@@ -299,7 +309,8 @@ class _HomeViewState extends ConsumerState<HomeView>
         _updatePrayerTimingsDisplay();
 
         // Get fresh prayer times for widget updates
-        final freshPrayerTimes = await _prayerService.calculatePrayerTimesForToday(appSettings);
+        final freshPrayerTimes = await _prayerService
+            .calculatePrayerTimesForToday(appSettings);
 
         if (mounted) {
           // Update widgets with fresh prayer times
@@ -988,7 +999,13 @@ class _HomeViewState extends ConsumerState<HomeView>
 
     // Create DateTime objects for comparison
     final nowTime = DateTime(0, 0, 0, now.hour, now.minute);
-    final maghribDateTime = DateTime(0, 0, 0, maghribTime.hour, maghribTime.minute);
+    final maghribDateTime = DateTime(
+      0,
+      0,
+      0,
+      maghribTime.hour,
+      maghribTime.minute,
+    );
 
     return nowTime.isAfter(maghribDateTime);
   }
@@ -1295,17 +1312,19 @@ class _HomeViewState extends ConsumerState<HomeView>
     bool scrollToDate = false,
     bool scrollToLocation = false,
   }) {
-    locator<NavigationService>().navigateTo<void>(
-      SettingsView(
-        scrollToDate: scrollToDate,
-        scrollToLocation: scrollToLocation,
-      ),
-      routeName: '/settings',
-    ).then((_) {
-      if (mounted) {
-        _triggerUIRefresh();
-      }
-    });
+    locator<NavigationService>()
+        .navigateTo<void>(
+          SettingsView(
+            scrollToDate: scrollToDate,
+            scrollToLocation: scrollToLocation,
+          ),
+          routeName: '/settings',
+        )
+        .then((_) {
+          if (mounted) {
+            _triggerUIRefresh();
+          }
+        });
   }
 
   void _navigateToPrayerStats() {

@@ -339,7 +339,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
           final Map<String, dynamic> decoded =
               json.decode(customTargetsJson) as Map<String, dynamic>;
           decoded.forEach((key, value) {
-            if (value is int && value > 0) {
+            if (value is int && value >= 10) {
               _customDhikrTargets[key] = value;
             }
           });
@@ -355,7 +355,7 @@ class _TesbihViewState extends ConsumerState<TesbihView>
         );
       }
 
-      if (storedTarget == null || storedTarget <= 0) {
+      if (storedTarget == null || storedTarget < 10) {
         storedTarget = AppConstants.defaultDhikrTargets[storedDhikr]!;
         _logger.warning(
           'Invalid stored target: $storedTarget, using default: $storedTarget',
@@ -814,67 +814,72 @@ class _TesbihViewState extends ConsumerState<TesbihView>
         padding: const EdgeInsets.symmetric(vertical: 40),
         color: tesbihColors.contentSurface,
         child: Center(
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox(
-                width: 300,
-                height: 300,
-                child: CircularProgressIndicator(
-                  value: _target > 0 ? (_count / _target).clamp(0.0, 1.0) : 0,
-                  strokeWidth: 8,
-                  backgroundColor: colors.borderColor.withAlpha(
-                    colors.isDarkMode ? 80 : 128,
-                  ),
-                  color: tesbihColors.counterProgress,
-                ),
-              ),
-              Container(
-                width: 280,
-                height: 280,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: tesbihColors.counterCircleBg,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.shadowColor
-                          .withAlpha(colors.isDarkMode ? 60 : 128),
-                      spreadRadius: 1,
-                      blurRadius: 8,
-                      offset: const Offset(0, 1),
+          child: Semantics(
+            label: 'Tasbih counter. Current count: $_count of $_target. Tap to increment.',
+            value: '$_count / $_target',
+            excludeSemantics: true,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 300,
+                  height: 300,
+                  child: CircularProgressIndicator(
+                    value: _target > 0 ? (_count / _target).clamp(0.0, 1.0) : 0,
+                    strokeWidth: 8,
+                    backgroundColor: colors.borderColor.withAlpha(
+                      colors.isDarkMode ? 80 : 128,
                     ),
-                  ],
+                    color: tesbihColors.counterProgress,
+                  ),
                 ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '$_count',
-                        style: AppTextStyles.currentPrayer(
-                          colors.brightness,
-                        ).copyWith(
-                          fontSize: 80,
-                          fontWeight: FontWeight.w600,
-                          color: tesbihColors.counterCountText,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "Target: $_target",
-                        style: AppTextStyles.label(colors.brightness).copyWith(
-                          fontSize: 15,
-                          color:
-                              colors.isDarkMode
-                                  ? colors.textColorSecondary.withAlpha(200)
-                                  : colors.textColorSecondary,
-                        ),
+                Container(
+                  width: 280,
+                  height: 280,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: tesbihColors.counterCircleBg,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.shadowColor
+                            .withAlpha(colors.isDarkMode ? 60 : 128),
+                        spreadRadius: 1,
+                        blurRadius: 8,
+                        offset: const Offset(0, 1),
                       ),
                     ],
                   ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '$_count',
+                          style: AppTextStyles.currentPrayer(
+                            colors.brightness,
+                          ).copyWith(
+                            fontSize: 80,
+                            fontWeight: FontWeight.w600,
+                            color: tesbihColors.counterCountText,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "Target: $_target",
+                          style: AppTextStyles.label(colors.brightness).copyWith(
+                            fontSize: 15,
+                            color:
+                                colors.isDarkMode
+                                    ? colors.textColorSecondary.withAlpha(200)
+                                    : colors.textColorSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

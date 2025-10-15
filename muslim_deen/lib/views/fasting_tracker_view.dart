@@ -23,6 +23,7 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
   Map<String, dynamic>? _ramadanInfo;
   List<FastingRecord> _currentMonthRecords = [];
   bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -50,7 +51,10 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
       final stats = await _fastingService!.getFastingStats();
       final ramadanInfo = _fastingService!.getRamadanCountdown();
       final now = DateTime.now();
-      final monthRecords = await _fastingService!.getFastingRecordsForMonth(now.year, now.month);
+      final monthRecords = await _fastingService!.getFastingRecordsForMonth(
+        now.year,
+        now.month,
+      );
 
       setState(() {
         _fastingStats = stats;
@@ -59,8 +63,10 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
-      // Handle error - could show snackbar
+      setState(() {
+        _isLoading = false;
+        _errorMessage = "Failed to load fasting data. Please try again.";
+      });
     }
   }
 
@@ -68,9 +74,41 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
     if (_fastingService == null) return;
 
     try {
-      await _fastingService!.markFastAsCompleted(DateTime.now());
-      await _loadData(); // Refresh data
+      final today = DateTime.now();
+      await _fastingService!.markFastAsCompleted(today);
+
+      // Optimistically update the UI
+      final updatedStats = await _fastingService!.getFastingStats();
+      final updatedRecords = List<FastingRecord>.from(_currentMonthRecords);
+      final recordIndex = updatedRecords.indexWhere(
+        (r) =>
+            r.date.day == today.day &&
+            r.date.month == today.month &&
+            r.date.year == today.year,
+      );
+
+      if (recordIndex != -1) {
+        updatedRecords[recordIndex] = updatedRecords[recordIndex].copyWith(
+          status: FastingStatus.completed,
+        );
+      } else {
+        // If for some reason the record wasn't in the list, add it
+        updatedRecords.add(
+          FastingRecord(
+            id: '',
+            date: today,
+            type: FastingType.voluntary,
+            status: FastingStatus.completed,
+          ),
+        );
+      }
+
       if (mounted) {
+        setState(() {
+          _fastingStats = updatedStats;
+          _currentMonthRecords = updatedRecords;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Fast marked as completed!')),
         );
@@ -90,34 +128,61 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
 
     return Scaffold(
       appBar: CustomAppBar(title: 'Fasting Tracker', brightness: brightness),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  // Ramadan Countdown Banner
-                  if ((_ramadanInfo?['isRamadan'] as bool? ?? false) || ((_ramadanInfo?['daysUntilRamadan'] as int? ?? 0) <= 30))
-                    _buildRamadanBanner(brightness),
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _errorMessage != null
+              ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 60,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.sectionTitle(brightness),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _loadData,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              )
+              : RefreshIndicator(
+                onRefresh: _loadData,
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    // Ramadan Countdown Banner
+                    if ((_ramadanInfo?['isRamadan'] as bool? ?? false) ||
+                        ((_ramadanInfo?['daysUntilRamadan'] as int? ?? 0) <=
+                            30))
+                      _buildRamadanBanner(brightness),
 
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                  // Fasting Statistics
-                  _buildFastingStats(brightness),
+                    // Fasting Statistics
+                    _buildFastingStats(brightness),
 
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                  // Quick Actions
-                  _buildQuickActions(brightness),
+                    // Quick Actions
+                    _buildQuickActions(brightness),
 
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                  // Monthly Calendar
-                  _buildMonthlyCalendar(brightness),
-                ],
+                    // Monthly Calendar
+                    _buildMonthlyCalendar(brightness),
+                  ],
+                ),
               ),
-            ),
     );
   }
 
@@ -246,7 +311,13 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color, Brightness brightness) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+    Brightness brightness,
+  ) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -259,10 +330,9 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
           const SizedBox(height: 4),
           Text(
             value,
-            style: AppTextStyles.prayerTime(brightness).copyWith(
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+            style: AppTextStyles.prayerTime(
+              brightness,
+            ).copyWith(fontWeight: FontWeight.bold, color: color),
           ),
           Text(
             title,
@@ -284,10 +354,7 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Quick Actions',
-            style: AppTextStyles.sectionTitle(brightness),
-          ),
+          Text('Quick Actions', style: AppTextStyles.sectionTitle(brightness)),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -320,10 +387,7 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'This Month',
-            style: AppTextStyles.sectionTitle(brightness),
-          ),
+          Text('This Month', style: AppTextStyles.sectionTitle(brightness)),
           const SizedBox(height: 16),
           GridView.builder(
             shrinkWrap: true,
@@ -338,12 +402,13 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
               final date = DateTime(now.year, now.month, day);
               final record = _currentMonthRecords.firstWhere(
                 (r) => r.date.day == day,
-                orElse: () => FastingRecord(
-                  id: '',
-                  date: date,
-                  type: FastingType.voluntary,
-                  status: FastingStatus.notStarted,
-                ),
+                orElse:
+                    () => FastingRecord(
+                      id: '',
+                      date: date,
+                      type: FastingType.voluntary,
+                      status: FastingStatus.notStarted,
+                    ),
               );
 
               return _buildCalendarDay(date, record, brightness);
@@ -354,10 +419,15 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
     );
   }
 
-  Widget _buildCalendarDay(DateTime date, FastingRecord record, Brightness brightness) {
-    final isToday = date.day == DateTime.now().day &&
-                   date.month == DateTime.now().month &&
-                   date.year == DateTime.now().year;
+  Widget _buildCalendarDay(
+    DateTime date,
+    FastingRecord record,
+    Brightness brightness,
+  ) {
+    final isToday =
+        date.day == DateTime.now().day &&
+        date.month == DateTime.now().month &&
+        date.year == DateTime.now().year;
 
     Color backgroundColor;
     Color textColor;
@@ -376,7 +446,10 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
         textColor = Colors.orange;
         break;
       default:
-        backgroundColor = isToday ? AppColors.accentGreen.withValues(alpha: 0.1) : Colors.transparent;
+        backgroundColor =
+            isToday
+                ? AppColors.accentGreen.withValues(alpha: 0.1)
+                : Colors.transparent;
         textColor = AppColors.textPrimary(brightness);
     }
 
@@ -385,7 +458,8 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(8),
-        border: isToday ? Border.all(color: AppColors.accentGreen, width: 2) : null,
+        border:
+            isToday ? Border.all(color: AppColors.accentGreen, width: 2) : null,
       ),
       child: Center(
         child: Text(

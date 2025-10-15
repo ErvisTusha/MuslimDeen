@@ -1,0 +1,153 @@
+[
+  {
+    "id": "MD-QA-001",
+    "title": "Invalid Tasbih Target Loaded from Storage",
+    "status": "Verified",
+    "severity": "Low",
+    "description": "The Tasbih view loads previously stored target values. The validation logic was not strict enough, allowing impractical low values (e.g., 1) to be loaded, leading to a poor user experience. The initial check only validated against values <= 0.",
+    "adb_steps": [
+      "adb shell am force-stop com.example.muslim_deen",
+      "adb shell am start -n com.example.muslim_deen/.MainActivity",
+      "sleep 5",
+      "adb shell input tap 135 2088",
+      "sleep 3",
+      "adb shell uiautomator dump",
+      "adb shell cat /storage/emulated/0/window_dump.xml"
+    ],
+    "evidence": {
+      "before": "content-desc ending in '...count: 0 of 1. Tap to increment.'",
+      "after": "content-desc ending in '...count: 0 of 33. Tap to increment.'"
+    },
+    "code_pointer": "lib/views/tesbih_view.dart, _loadPreferences()",
+    "root_cause": "Insufficient validation on data loaded from storage. The logic checked for `target <= 0` but should have checked for a more reasonable minimum, and it failed to validate the custom targets map.",
+    "fix_summary": "Updated the validation logic in `_loadPreferences` to discard any stored target (both general and custom) that is less than 10, falling back to the application default.",
+    "patch_file": "patches/0001-fix-tasbih-target-and-a11y.patch"
+  },
+  {
+    "id": "MD-QA-002",
+    "title": "Confusing Accessibility Label on Tasbih Counter",
+    "status": "Verified",
+    "severity": "Medium",
+    "description": "The main counter element on the Tasbih screen had a confusing, auto-generated accessibility label (e.g., '0%, 0\nTarget: 1'). This was caused by the accessibility framework combining the content descriptions of multiple child widgets.",
+    "adb_steps": [
+      "adb shell am force-stop com.example.muslim_deen",
+      "adb shell am start -n com.example.muslim_deen/.MainActivity",
+      "sleep 5",
+      "adb shell input tap 135 2088",
+      "sleep 3",
+      "adb shell uiautomator dump",
+      "adb shell cat /storage/emulated/0/window_dump.xml"
+    ],
+    "evidence": {
+      "before": "content-desc='0%, 0\nTarget: 1'",
+      "after": "content-desc='0 / 33, Tasbih counter. Current count: 0 of 33. Tap to increment.'"
+    },
+    "code_pointer": "lib/views/tesbih_view.dart, _buildCounterSection()",
+    "root_cause": "The parent `GestureDetector` for the counter lacked a semantic label, causing the accessibility service to aggregate the labels of its children (a `CircularProgressIndicator` and multiple `Text` widgets) into a confusing string.",
+    "fix_summary": "Wrapped the `Stack` widget inside the counter's `GestureDetector` with a `Semantics` widget. This provides a single, clear, and descriptive label for the entire element and excludes the child semantics from being read individually.",
+    "patch_file": "patches/0001-fix-tasbih-target-and-a11y.patch"
+  },
+  {
+    "id": "MD-QA-003",
+    "title": "Premature Initialization of Views Breaks Permission Flow",
+    "status": "Fixed",
+    "severity": "High",
+    "description": "All views in the main navigation `IndexedStack` are initialized on app startup. This causes `QiblaView` to request location permissions in the background before the user navigates to it, leading to a broken and confusing user experience.",
+    "adb_steps": [
+      "adb shell pm revoke com.example.muslim_deen android.permission.ACCESS_FINE_LOCATION",
+      "adb shell am force-stop com.example.muslim_deen",
+      "adb shell am start -n com.example.muslim_deen/.MainActivity",
+      "# Permission dialog appears in background, user is unaware.",
+      "sleep 5",
+      "adb shell input tap 357 2088",
+      "# App fails to navigate to Qibla view correctly."
+    ],
+    "evidence": {
+      "before": "Permission dialog is triggered invisibly on app start. Navigating to Qibla view fails to show the view or re-trigger the dialog.",
+      "after": "(Post-fix) Permission dialog is triggered only after tapping the Qibla navigation icon."
+    },
+    "code_pointer": "lib/main.dart, _MainScreenState.build()",
+    "root_cause": "The `IndexedStack` widget builds all its children at once, causing `initState` and associated permission requests to fire prematurely for non-visible views.",
+    "fix_summary": "Replaced the `IndexedStack` with a direct widget builder (`_cachedWidgets[_selectedIndex] ??= _widgetBuilders[_selectedIndex]()`) that only builds and initializes a view when it is first selected for display.",
+    "patch_file": "patches/0002-fix-qibla-permission-flow.patch"
+  },
+  {
+    "id": "MD-QA-004",
+    "title": "Poor UX on Location Permission Denial",
+    "status": "Fixed",
+    "severity": "Medium",
+    "description": "When location permission is requested and the user denies it, the app does not provide clear feedback, leaving the user on the previous screen. The helper class only checked for permission but did not handle the request/response flow.",
+    "adb_steps": [
+      "# With fix for MD-QA-003 applied",
+      "adb shell pm revoke com.example.muslim_deen android.permission.ACCESS_FINE_LOCATION",
+      "adb shell am force-stop com.example.muslim_deen",
+      "adb shell am start -n com.example.muslim_deen/.MainActivity",
+      "adb shell input tap 357 2088",
+      "# Deny the dialog using keyevents",
+      "# Observe the UI for an error message."
+    ],
+    "evidence": {
+      "before": "App remains on the previous screen with no feedback.",
+      "after": "(Post-fix) Qibla view displays an error message: 'Location permission is required to find the Qibla direction.'"
+    },
+    "code_pointer": "lib/services/location_permission_helper.dart, validateLocationAccess()",
+    "root_cause": "The `validateLocationAccess` method only checked the current permission status and returned a generic error. It did not actively request the permission or handle the different denial states (`denied` vs. `deniedForever`).",
+    "fix_summary": "Rewrote `validateLocationAccess` to include a call to `Geolocator.requestPermission()`. The method now returns different, more specific error messages based on the user's response, allowing the UI to give better feedback.",
+    "patch_file": "patches/0002-fix-qibla-permission-flow.patch"
+  },
+  {
+    "id": "MD-QA-005",
+    "title": "Silent Error Handling in Islamic Calendar",
+    "status": "Fixed",
+    "severity": "Medium",
+    "description": "In the Islamic Calendar view, if loading monthly events or moon phases fails (e.g., due to a network error or data parsing issue), the error is caught but handled silently. The user sees an empty calendar with no indication that data failed to load.",
+    "code_pointer": "lib/views/islamic_calendar_view.dart, _loadMonthlyData()",
+    "root_cause": "The `try-catch` block responsible for loading monthly data had an empty `catch` block, preventing any user-facing error feedback.",
+    "fix_summary": "Added logic to the `catch` block to set an `_errorMessage` in the widget's state. This message is then displayed to the user, informing them of the failure.",
+    "patch_file": "patches/0003-fix-islamic-calendar-ux.patch"
+  },
+  {
+    "id": "MD-QA-006",
+    "title": "Inefficient Event Filtering in Islamic Calendar",
+    "status": "Fixed",
+    "severity": "Low",
+    "description": "When filtering events by type or category, the view re-fetches all events for the month from the `IslamicEventsService` instead of filtering the list of events already held in memory.",
+    "code_pointer": "lib/views/islamic_calendar_view.dart, _searchEvents()",
+    "root_cause": "The filtering logic did not utilize the `_monthlyEvents` state variable and instead made a redundant async call for data that was already available.",
+    "fix_summary": "Refactored the `_searchEvents` method to perform filtering on the in-memory `_monthlyEvents` list when no search query is present, avoiding the unnecessary service call and improving performance.",
+    "patch_file": "patches/0003-fix-islamic-calendar-ux.patch"
+  },
+  {
+    "id": "MD-QA-007",
+    "title": "Silent Error Handling in Fasting Tracker",
+    "status": "Fixed",
+    "severity": "Medium",
+    "description": "In the Fasting Tracker view, if loading stats or records fails, the error is caught but handled silently. The user sees a perpetual loading indicator or an empty screen with no indication that data failed to load.",
+    "code_pointer": "lib/views/fasting_tracker_view.dart, _loadData()",
+    "root_cause": "The `try-catch` block responsible for loading fasting data had an empty `catch` block, preventing any user-facing error feedback.",
+    "fix_summary": "Added logic to the `catch` block to set an `_errorMessage` in the widget's state and modified the `build` method to display this error to the user.",
+    "patch_file": "patches/0004-fix-fasting-tracker-ux.patch"
+  },
+  {
+    "id": "MD-QA-008",
+    "title": "Inefficient UI Refresh in Fasting Tracker",
+    "status": "Fixed",
+    "severity": "Low",
+    "description": "After marking a fast as complete, the entire view is refreshed by re-fetching all stats and the full month's records. This is inefficient and can cause a noticeable flicker.",
+    "code_pointer": "lib/views/fasting_tracker_view.dart, _markFastAsCompleted()",
+    "root_cause": "The success handler called the generic `_loadData()` method instead of performing a more targeted local state update.",
+    "fix_summary": "Refactored `_markFastAsCompleted` to optimistically update the local state. It now only re-fetches the statistics and updates the specific record in the local list, avoiding a full data reload.",
+    "patch_file": "patches/0004-fix-fasting-tracker-ux.patch"
+  },
+  {
+    "id": "MD-QA-009",
+    "title": "Hardcoded and Stale Nisab Value in Zakat Calculator",
+    "status": "Mitigated",
+    "severity": "Critical",
+    "description": "The Zakat calculator uses a Nisab threshold derived from hardcoded gold and silver prices. These values do not update automatically and will become stale, leading to incorrect Zakat calculations. This is a critical correctness issue for a financial feature.",
+    "code_pointer": "lib/services/zakat_calculator_service.dart, _loadMarketPrices()",
+    "root_cause": "The service layer contains placeholder values for gold and silver prices and lacks a mechanism to fetch live market data from a financial API.",
+    "fix_summary": "A full fix requires integrating a live financial data API. As a temporary mitigation, a disclaimer was added to the UI in `zakat_calculator_view.dart` to inform the user that the calculated Nisab is an estimate and should be verified with a local, reliable source.",
+    "patch_file": "patches/0005-add-zakat-nisab-disclaimer.patch"
+  }
+]

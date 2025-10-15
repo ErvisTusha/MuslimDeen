@@ -17,7 +17,8 @@ class IslamicCalendarView extends ConsumerStatefulWidget {
   const IslamicCalendarView({super.key});
 
   @override
-  ConsumerState<IslamicCalendarView> createState() => _IslamicCalendarViewState();
+  ConsumerState<IslamicCalendarView> createState() =>
+      _IslamicCalendarViewState();
 }
 
 class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
@@ -31,6 +32,7 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
 
   List<Map<String, dynamic>> _monthlyEvents = [];
   Map<DateTime, String> _moonPhases = {};
+  String? _errorMessage;
 
   // Search and filter state
   String _searchQuery = '';
@@ -69,15 +71,24 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
         _selectedDate.year,
         _selectedDate.month,
       );
-      final eventMaps = events.map((event) => {
-        'date': event.gregorianDate?.toIso8601String() ?? event.getGregorianDateForYear(_selectedDate.year).toIso8601String(),
-        'name': event.title,
-        'type': event.type.name,
-        'category': event.category.name,
-        'description': event.description,
-        'significance': event.significance,
-        'tags': event.tags,
-      }).toList();
+      final eventMaps =
+          events
+              .map(
+                (event) => {
+                  'date':
+                      event.gregorianDate?.toIso8601String() ??
+                      event
+                          .getGregorianDateForYear(_selectedDate.year)
+                          .toIso8601String(),
+                  'name': event.title,
+                  'type': event.type.name,
+                  'category': event.category.name,
+                  'description': event.description,
+                  'significance': event.significance,
+                  'tags': event.tags,
+                },
+              )
+              .toList();
       setState(() {
         _monthlyEvents = eventMaps;
         _filteredEvents = eventMaps; // Initialize filtered events
@@ -90,11 +101,14 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
       );
       setState(() => _moonPhases = moonPhases);
     } catch (e) {
-      // Handle error silently for now
-      setState(() {
-        _monthlyEvents = [];
-        _filteredEvents = [];
-      });
+      // Handle error by showing a message to the user
+      if (mounted) {
+        setState(() {
+          _errorMessage = "Failed to load monthly data. Please try again.";
+          _monthlyEvents = [];
+          _filteredEvents = [];
+        });
+      }
     }
   }
 
@@ -116,7 +130,10 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
     final prayerService = ref.read(prayerServiceProvider);
     final settings = ref.read(settingsProvider);
 
-    final prayerTimes = await prayerService.calculatePrayerTimesForDate(day, settings);
+    final prayerTimes = await prayerService.calculatePrayerTimesForDate(
+      day,
+      settings,
+    );
     setState(() {
       _selectedDay = day;
       _selectedDayPrayers = {
@@ -172,7 +189,9 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
   }
 
   Future<void> _searchEvents() async {
-    if (_searchQuery.isEmpty && _selectedEventType == null && _selectedEventCategory == null) {
+    if (_searchQuery.isEmpty &&
+        _selectedEventType == null &&
+        _selectedEventCategory == null) {
       setState(() => _filteredEvents = _monthlyEvents);
       return;
     }
@@ -182,32 +201,40 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
 
       if (_searchQuery.isNotEmpty) {
         // Use the service's search functionality
-        final searchResults = await _eventsService.searchEvents(_searchQuery, year: _selectedDate.year);
-        filteredEvents = searchResults.map((event) => {
-          'date': event.gregorianDate?.toIso8601String() ?? event.getGregorianDateForYear(_selectedDate.year).toIso8601String(),
-          'name': event.title,
-          'type': event.type.name,
-          'category': event.category.name,
-          'description': event.description,
-          'significance': event.significance,
-          'tags': event.tags,
-        }).toList();
+        final searchResults = await _eventsService.searchEvents(
+          _searchQuery,
+          year: _selectedDate.year,
+        );
+        filteredEvents =
+            searchResults
+                .map(
+                  (event) => {
+                    'date':
+                        event.gregorianDate?.toIso8601String() ??
+                        event
+                            .getGregorianDateForYear(_selectedDate.year)
+                            .toIso8601String(),
+                    'name': event.title,
+                    'type': event.type.name,
+                    'category': event.category.name,
+                    'description': event.description,
+                    'significance': event.significance,
+                    'tags': event.tags,
+                  },
+                )
+                .toList();
       } else {
-        // Filter by type/category
-        final events = await _eventsService.getEventsForMonth(_selectedDate.year, _selectedDate.month);
-        filteredEvents = events
-            .where((event) =>
-                (_selectedEventType == null || event.type == _selectedEventType) &&
-                (_selectedEventCategory == null || event.category == _selectedEventCategory))
-            .map((event) => {
-          'date': event.gregorianDate?.toIso8601String() ?? event.getGregorianDateForYear(_selectedDate.year).toIso8601String(),
-          'name': event.title,
-          'type': event.type.name,
-          'category': event.category.name,
-          'description': event.description,
-          'significance': event.significance,
-          'tags': event.tags,
-        }).toList();
+        // Filter by type/category from the already loaded monthly events
+        filteredEvents =
+            _monthlyEvents
+                .where(
+                  (event) =>
+                      (_selectedEventType == null ||
+                          event['type'] == _selectedEventType!.name) &&
+                      (_selectedEventCategory == null ||
+                          event['category'] == _selectedEventCategory!.name),
+                )
+                .toList();
       }
 
       setState(() => _filteredEvents = filteredEvents);
@@ -251,19 +278,15 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
             decoration: BoxDecoration(
               color:
                   _selectedDay != null &&
-                  _selectedDay!.year == day.year &&
-                  _selectedDay!.month == day.month &&
-                  _selectedDay!.day == day.day
+                          _selectedDay!.year == day.year &&
+                          _selectedDay!.month == day.month &&
+                          _selectedDay!.day == day.day
                       ? AppColors.accentGreen.withValues(alpha: 0.3)
                       : isToday
-                      ? AppColors.primary(
-                        brightness,
-                      ).withValues(alpha: 0.2)
+                      ? AppColors.primary(brightness).withValues(alpha: 0.2)
                       : isCurrentMonth
                       ? AppColors.surface(brightness)
-                      : AppColors.surface(
-                        brightness,
-                      ).withValues(alpha: 0.5),
+                      : AppColors.surface(brightness).withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(8),
               border:
                   isToday
@@ -272,13 +295,10 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
                         width: 2,
                       )
                       : _selectedDay != null &&
-                        _selectedDay!.year == day.year &&
-                        _selectedDay!.month == day.month &&
-                        _selectedDay!.day == day.day
-                      ? Border.all(
-                        color: AppColors.accentGreen,
-                        width: 2,
-                      )
+                          _selectedDay!.year == day.year &&
+                          _selectedDay!.month == day.month &&
+                          _selectedDay!.day == day.day
+                      ? Border.all(color: AppColors.accentGreen, width: 2)
                       : null,
             ),
             child: Column(
@@ -291,13 +311,15 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
                         isCurrentMonth
                             ? AppColors.textPrimary(brightness)
                             : AppColors.textSecondary(brightness),
-                    fontWeight:
-                        isToday ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
                 if (event.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 2,
+                      vertical: 1,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.accentGreen.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(4),
@@ -316,7 +338,10 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
                   ),
                 if (moonPhase.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 2,
+                      vertical: 1,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.blue.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(4),
@@ -353,18 +378,20 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
             const SizedBox(height: 16),
             Text(
               'No events found',
-              style: AppTextStyles.sectionTitle(brightness).copyWith(
-                color: AppColors.textSecondary(brightness),
-              ),
+              style: AppTextStyles.sectionTitle(
+                brightness,
+              ).copyWith(color: AppColors.textSecondary(brightness)),
             ),
-            if (_searchQuery.isNotEmpty || _selectedEventType != null || _selectedEventCategory != null)
+            if (_searchQuery.isNotEmpty ||
+                _selectedEventType != null ||
+                _selectedEventCategory != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   'Try adjusting your search or filters',
-                  style: AppTextStyles.prayerTime(brightness).copyWith(
-                    color: AppColors.textSecondary(brightness),
-                  ),
+                  style: AppTextStyles.prayerTime(
+                    brightness,
+                  ).copyWith(color: AppColors.textSecondary(brightness)),
                 ),
               ),
           ],
@@ -395,7 +422,10 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.accentGreen.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -416,21 +446,30 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
                   event['description'] as String,
                   style: AppTextStyles.prayerTime(brightness),
                 ),
-                if (event['significance'] != null && (event['significance'] as String).isNotEmpty) ...[
+                if (event['significance'] != null &&
+                    (event['significance'] as String).isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Text(
                     'Significance: ${event['significance']}',
-                    style: AppTextStyles.prayerTime(brightness).copyWith(
-                      fontStyle: FontStyle.italic,
-                    ),
+                    style: AppTextStyles.prayerTime(
+                      brightness,
+                    ).copyWith(fontStyle: FontStyle.italic),
                   ),
                 ],
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _buildEventChip(brightness, event['type'] as String, AppColors.primary(brightness)),
+                    _buildEventChip(
+                      brightness,
+                      event['type'] as String,
+                      AppColors.primary(brightness),
+                    ),
                     const SizedBox(width: 8),
-                    _buildEventChip(brightness, event['category'] as String, AppColors.accentGreen),
+                    _buildEventChip(
+                      brightness,
+                      event['category'] as String,
+                      AppColors.accentGreen,
+                    ),
                   ],
                 ),
               ],
@@ -549,12 +588,15 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
                   decoration: InputDecoration(
                     hintText: 'Search Islamic events...',
                     prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchQuery.isNotEmpty || _selectedEventType != null || _selectedEventCategory != null
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: _clearFilters,
-                          )
-                        : null,
+                    suffixIcon:
+                        _searchQuery.isNotEmpty ||
+                                _selectedEventType != null ||
+                                _selectedEventCategory != null
+                            ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: _clearFilters,
+                            )
+                            : null,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -573,30 +615,80 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
                   child: Row(
                     children: [
                       // Event Type filters
-                      ...IslamicEventType.values.map((type) => Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: FilterChip(
-                          label: Text(type.name.toUpperCase()),
-                          selected: _selectedEventType == type,
-                          onSelected: (selected) {
-                            setState(() => _selectedEventType = selected ? type : null);
-                            _searchEvents();
-                          },
+                      ...IslamicEventType.values.map(
+                        (type) => Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: FilterChip(
+                            label: Text(type.name.toUpperCase()),
+                            selected: _selectedEventType == type,
+                            onSelected: (selected) {
+                              setState(
+                                () =>
+                                    _selectedEventType = selected ? type : null,
+                              );
+                              _searchEvents();
+                            },
+                          ),
                         ),
-                      )),
+                      ),
+                      // Error banner when data load fails
+                      if (_errorMessage != null)
+                        Container(
+                          width: double.infinity,
+                          color: Colors.red.withValues(alpha: 0.06),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                color: Colors.redAccent,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _errorMessage!,
+                                  style: AppTextStyles.prayerTime(
+                                    brightness,
+                                  ).copyWith(
+                                    color: Colors.redAccent,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.redAccent,
+                                ),
+                                onPressed: () {
+                                  setState(() => _errorMessage = null);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
                       const SizedBox(width: 8),
                       // Event Category filters
-                      ...IslamicEventCategory.values.map((category) => Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: FilterChip(
-                          label: Text(category.name.toUpperCase()),
-                          selected: _selectedEventCategory == category,
-                          onSelected: (selected) {
-                            setState(() => _selectedEventCategory = selected ? category : null);
-                            _searchEvents();
-                          },
+                      ...IslamicEventCategory.values.map(
+                        (category) => Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: FilterChip(
+                            label: Text(category.name.toUpperCase()),
+                            selected: _selectedEventCategory == category,
+                            onSelected: (selected) {
+                              setState(
+                                () =>
+                                    _selectedEventCategory =
+                                        selected ? category : null,
+                              );
+                              _searchEvents();
+                            },
+                          ),
                         ),
-                      )),
+                      ),
                     ],
                   ),
                 ),
@@ -623,10 +715,15 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
           ),
           // Calendar grid or Events list
           Expanded(
-            child: _showEventsList ? _buildEventsListView(brightness) : _buildCalendarView(brightness, days),
+            child:
+                _showEventsList
+                    ? _buildEventsListView(brightness)
+                    : _buildCalendarView(brightness, days),
           ),
           // Prayer times display (only show in calendar view)
-          if (!_showEventsList && _selectedDay != null && _selectedDayPrayers != null)
+          if (!_showEventsList &&
+              _selectedDay != null &&
+              _selectedDayPrayers != null)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -658,9 +755,9 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
                           ),
                           Text(
                             DateFormat('HH:mm').format(entry.value),
-                            style: AppTextStyles.prayerTime(brightness).copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: AppTextStyles.prayerTime(
+                              brightness,
+                            ).copyWith(fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),

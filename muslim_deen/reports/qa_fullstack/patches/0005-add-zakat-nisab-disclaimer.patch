@@ -1,0 +1,765 @@
+diff --git a/.gitignore b/.gitignore
+index 39262f8..9a3568b 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -6,4 +6,5 @@
+ # Documentation
+ muslim_deen/WIDGET_IMPLEMENTATION.md
+ muslim_deen/test_notification_persistence.md
+-*.md
+\ No newline at end of file
++*.md
++audit/
+\ No newline at end of file
+diff --git a/muslim_deen/lib/services/accessibility_service.dart b/muslim_deen/lib/services/accessibility_service.dart
+index d92996f..f439d0b 100644
+--- a/muslim_deen/lib/services/accessibility_service.dart
++++ b/muslim_deen/lib/services/accessibility_service.dart
+@@ -2,11 +2,20 @@ import 'package:flutter/material.dart';
+ import 'package:flutter_tts/flutter_tts.dart';
+ import 'package:speech_to_text/speech_to_text.dart';
+ import 'package:flutter/services.dart';
++import 'package:muslim_deen/service_locator.dart';
++import 'package:muslim_deen/services/navigation_service.dart';
++import 'package:muslim_deen/services/logger_service.dart';
++import 'package:muslim_deen/views/home_view.dart';
++import 'package:muslim_deen/views/qibla_view.dart';
++import 'package:muslim_deen/views/tesbih_view.dart';
++import 'package:muslim_deen/views/mosque_view.dart';
++import 'package:muslim_deen/views/settings_view.dart';
+ 
+ /// Enhanced accessibility service for MuslimDeen app
+ /// Provides screen reader support, voice commands, and cognitive assistance
+ class AccessibilityService {
+-  static final AccessibilityService _instance = AccessibilityService._internal();
++  static final AccessibilityService _instance =
++      AccessibilityService._internal();
+   factory AccessibilityService() => _instance;
+   AccessibilityService._internal();
+ 
+@@ -14,13 +23,13 @@ class AccessibilityService {
+   final SpeechToText _speech = SpeechToText();
+   bool _isInitialized = false;
+   bool _speechEnabled = false;
+-  
++
+   // Accessibility settings
+   bool _voiceNavigationEnabled = false;
+   double _speechRate = 0.8;
+   double _speechVolume = 1.0;
+   double _hapticFeedbackStrength = 0.5;
+-  
++
+   // Voice navigation commands
+   static const Map<String, VoiceCommand> _voiceCommands = {
+     'open prayer': VoiceCommand.action(NavigationAction.prayer),
+@@ -42,13 +51,13 @@ class AccessibilityService {
+     try {
+       // Configure TTS settings
+       await _tts.setLanguage('en-US');
+-      
++
+       // Initialize speech recognition
+       final speechAvailable = await _speech.initialize(
+         onError: (error) => print('Speech error: $error'),
+         onStatus: (status) => print('Speech status: $status'),
+       );
+-      
++
+       await _tts.setSpeechRate(_speechRate);
+       await _tts.setVolume(_speechVolume);
+       await _tts.setPitch(1.0);
+@@ -56,7 +65,7 @@ class AccessibilityService {
+ 
+       // Set speech recognition availability
+       _speechEnabled = speechAvailable;
+-      
++
+       _isInitialized = true;
+     } catch (e) {
+       // Graceful degradation if accessibility fails
+@@ -143,17 +152,23 @@ class AccessibilityService {
+           break;
+         case HapticType.success:
+           await HapticFeedback.heavyImpact();
+-          await Future<void>.delayed(Duration(milliseconds: (100 * _hapticFeedbackStrength).toInt()));
++          await Future<void>.delayed(
++            Duration(milliseconds: (100 * _hapticFeedbackStrength).toInt()),
++          );
+           await HapticFeedback.lightImpact();
+           break;
+         case HapticType.error:
+           await HapticFeedback.heavyImpact();
+-          await Future<void>.delayed(Duration(milliseconds: (150 * _hapticFeedbackStrength).toInt()));
++          await Future<void>.delayed(
++            Duration(milliseconds: (150 * _hapticFeedbackStrength).toInt()),
++          );
+           await HapticFeedback.heavyImpact();
+           break;
+         case HapticType.navigation:
+           await HapticFeedback.lightImpact();
+-          await Future<void>.delayed(Duration(milliseconds: (50 * _hapticFeedbackStrength).toInt()));
++          await Future<void>.delayed(
++            Duration(milliseconds: (50 * _hapticFeedbackStrength).toInt()),
++          );
+           break;
+       }
+     } catch (e) {
+@@ -162,7 +177,10 @@ class AccessibilityService {
+   }
+ 
+   /// Announce screen changes for blind users
+-  Future<void> announceScreenChange(String screenName, {String? description}) async {
++  Future<void> announceScreenChange(
++    String screenName, {
++    String? description,
++  }) async {
+     String announcement = 'Screen changed to $screenName';
+     if (description != null) {
+       announcement += '. $description';
+@@ -171,12 +189,17 @@ class AccessibilityService {
+   }
+ 
+   /// Read prayer times with enhanced context
+-  Future<void> announcePrayerTime(String prayerName, DateTime time, {bool isNext = false}) async {
++  Future<void> announcePrayerTime(
++    String prayerName,
++    DateTime time, {
++    bool isNext = false,
++  }) async {
+     final now = DateTime.now();
+     final formattedTime = _formatTimeForSpeech(time);
+     final String priority = isNext ? 'next prayer' : 'prayer';
+-    
+-    final announcement = '$priority: $prayerName. Time: $formattedTime${_getTimeRelation(time, now)}';
++
++    final announcement =
++        '$priority: $prayerName. Time: $formattedTime${_getTimeRelation(time, now)}';
+     await speak(announcement, important: isNext);
+   }
+ 
+@@ -205,21 +228,21 @@ class AccessibilityService {
+     replacements.forEach((original, pronunciation) {
+       enhanced = enhanced.replaceAll(original, pronunciation);
+     });
+-    
++
+     return enhanced;
+   }
+ 
+   /// Process voice commands
+   void _processVoiceCommand(String recognizedText) {
+     final lowerText = recognizedText.toLowerCase();
+-    
++
+     for (final entry in _voiceCommands.entries) {
+       if (lowerText.contains(entry.key)) {
+         _executeCommand(entry.value);
+         return;
+       }
+     }
+-    
++
+     // Command not found
+     speak('Command not recognized. Please try again.');
+   }
+@@ -229,47 +252,161 @@ class AccessibilityService {
+     switch (command.action) {
+       case NavigationAction.prayer:
+         speak('Opening prayer screen');
+-        // TODO: Navigate to prayer screen
++        _navigateTo(const HomeView(), routeName: 'HomeView');
+         break;
+       case NavigationAction.qibla:
+         speak('Opening Qibla direction');
+-        // TODO: Navigate to Qibla screen
++        _navigateTo(const QiblaView(), routeName: 'QiblaView');
+         break;
+       case NavigationAction.tasbih:
+         speak('Opening Tasbih counter');
+-        // TODO: Navigate to Tasbih screen
++        _navigateTo(const TesbihView(), routeName: 'TesbihView');
+         break;
+       case NavigationAction.mosque:
+         speak('Finding nearby mosques');
+-        // TODO: Navigate to mosque screen
++        _navigateTo(const MosqueView(), routeName: 'MosqueView');
+         break;
+       case NavigationAction.settings:
+         speak('Opening settings');
+-        // TODO: Navigate to settings screen
++        // Navigate to settings and attempt to surface notification section
++        _navigateTo(
++          const SettingsView(scrollToNotifications: true),
++          routeName: 'SettingsView',
++        );
+         break;
+       case NavigationAction.back:
+         speak('Going back');
+-        // TODO: Navigate back
++        _goBack();
+         break;
+       case NavigationAction.scrollDown:
+         speak('Scrolling down');
+-        // TODO: Scroll down
++        _scrollBy(300.0);
+         break;
+       case NavigationAction.scrollUp:
+         speak('Scrolling up');
+-        // TODO: Scroll up
++        _scrollBy(-300.0);
+         break;
+       case NavigationAction.nextPage:
+         speak('Next page');
+-        // TODO: Go to next page
++        _pageTurn(forward: true);
+         break;
+       case NavigationAction.previousPage:
+         speak('Previous page');
+-        // TODO: Go to previous page
++        _pageTurn(forward: false);
+         break;
+     }
+   }
+ 
++  /// Internal helper: navigate using NavigationService
++  void _navigateTo(Widget page, {String? routeName}) {
++    try {
++      final nav = locator<NavigationService>();
++      nav.navigateTo<dynamic>(page, routeName: routeName);
++    } catch (e, s) {
++      try {
++        locator<LoggerService>().error(
++          'Accessibility navigation failed',
++          error: e,
++          stackTrace: s,
++        );
++      } catch (_) {}
++      speak('Navigation failed.');
++    }
++  }
++
++  void _goBack() {
++    try {
++      final nav = locator<NavigationService>();
++      nav.goBack<dynamic>();
++    } catch (e, s) {
++      try {
++        locator<LoggerService>().warning(
++          'Accessibility goBack failed',
++          error: e,
++          stackTrace: s,
++        );
++      } catch (_) {}
++      speak('Cannot go back.');
++    }
++  }
++
++  /// Scrolls the primary scrollable by [offset] pixels. Positive = down, Negative = up.
++  void _scrollBy(double offset) {
++    try {
++      final context = locator<NavigationService>().navigatorKey.currentContext;
++      if (context == null) {
++        speak('Unable to scroll: no active screen.');
++        return;
++      }
++
++      final ScrollController? controller = PrimaryScrollController.of(context);
++      if (controller != null && controller.hasClients) {
++        final target = (controller.offset + offset).clamp(
++          controller.position.minScrollExtent,
++          controller.position.maxScrollExtent,
++        );
++        controller.animateTo(
++          target,
++          duration: const Duration(milliseconds: 400),
++          curve: Curves.easeInOut,
++        );
++        return;
++      }
++
++      // Fallback: try to scroll the nearest Scrollable state
++      final scrollableState = Scrollable.of(context);
++      final pos = scrollableState.position;
++      final target = (pos.pixels + offset).clamp(
++        pos.minScrollExtent,
++        pos.maxScrollExtent,
++      );
++      pos.animateTo(
++        target,
++        duration: const Duration(milliseconds: 400),
++        curve: Curves.easeInOut,
++      );
++      return;
++    } catch (e, s) {
++      try {
++        locator<LoggerService>().error(
++          'Accessibility scroll failed',
++          error: e,
++          stackTrace: s,
++        );
++      } catch (_) {}
++      speak('Scrolling failed.');
++    }
++  }
++
++  /// Emulate a page turn by scrolling by the viewport height. If [forward] is true, go to next page.
++  void _pageTurn({required bool forward}) {
++    try {
++      final context = locator<NavigationService>().navigatorKey.currentContext;
++      if (context == null) {
++        speak('No active screen to change pages.');
++        return;
++      }
++
++      final media = MediaQuery.of(context);
++      if (media.size.height == 0) {
++        speak('Cannot determine page size.');
++        return;
++      }
++
++      final double pageOffset = media.size.height * 0.9 * (forward ? 1 : -1);
++      _scrollBy(pageOffset);
++    } catch (e, s) {
++      try {
++        locator<LoggerService>().warning(
++          'Accessibility page turn failed',
++          error: e,
++          stackTrace: s,
++        );
++      } catch (_) {}
++      speak('Page turn failed.');
++    }
++  }
++
+   /// Format time for speech
+   String _formatTimeForSpeech(DateTime time) {
+     final hour = time.hour;
+@@ -280,7 +417,7 @@ class AccessibilityService {
+   /// Get time relation for context
+   String _getTimeRelation(DateTime prayerTime, DateTime now) {
+     final difference = prayerTime.difference(now);
+-    
++
+     if (difference.isNegative) {
+       return ' was ${_formatDuration(difference.abs())} ago';
+     } else if (difference.inMinutes < 60) {
+@@ -310,7 +447,9 @@ class AccessibilityService {
+   Future<void> setVoiceNavigationEnabled(bool enabled) async {
+     _voiceNavigationEnabled = enabled;
+     if (enabled) {
+-      await speak('Voice navigation enabled. Say "open prayer" or other commands to navigate.');
++      await speak(
++        'Voice navigation enabled. Say "open prayer" or other commands to navigate.',
++      );
+     } else {
+       await speak('Voice navigation disabled');
+     }
+@@ -365,14 +504,7 @@ enum NavigationAction {
+ }
+ 
+ /// Types of haptic feedback
+-enum HapticType {
+-  light,
+-  medium,
+-  heavy,
+-  success,
+-  error,
+-  navigation,
+-}
++enum HapticType { light, medium, heavy, success, error, navigation }
+ 
+ /// Enhanced widget for accessibility
+ class AccessibilityAnnouncer extends StatefulWidget {
+@@ -393,19 +525,22 @@ class AccessibilityAnnouncer extends StatefulWidget {
+   State<AccessibilityAnnouncer> createState() => _AccessibilityAnnouncerState();
+ }
+ 
+-class _AccessibilityAnnouncerState extends State<AccessibilityAnnouncer> 
++class _AccessibilityAnnouncerState extends State<AccessibilityAnnouncer>
+     with WidgetsBindingObserver, TickerProviderStateMixin {
+   final AccessibilityService _accessibility = AccessibilityService();
+-  
++
+   @override
+   void initState() {
+     super.initState();
+     WidgetsBinding.instance.addObserver(this);
+-    
++
+     // Announce when widget appears
+     WidgetsBinding.instance.addPostFrameCallback((_) {
+       if (widget.semanticLabel != null) {
+-        _accessibility.speak(widget.semanticLabel!, important: widget.important);
++        _accessibility.speak(
++          widget.semanticLabel!,
++          important: widget.important,
++        );
+       }
+     });
+   }
+@@ -462,11 +597,11 @@ class AccessibleButton extends StatelessWidget {
+           onTap: () async {
+             final accessibility = AccessibilityService();
+             await accessibility.provideHapticFeedback(hapticType);
+-            
++
+             if (onPressed != null) {
+               onPressed!();
+             }
+-            
++
+             // Announce action
+             accessibility.speak(semanticLabel);
+           },
+diff --git a/muslim_deen/lib/views/home_view.dart b/muslim_deen/lib/views/home_view.dart
+index c598c44..c78f018 100644
+--- a/muslim_deen/lib/views/home_view.dart
++++ b/muslim_deen/lib/views/home_view.dart
+@@ -1014,15 +1014,25 @@ class _HomeViewState extends ConsumerState<HomeView>
+         title: "Prayer Times",
+         brightness: brightness,
+         actions: [
+-          IconButton(
+-            icon: const Icon(Icons.brightness_2),
+-            onPressed: _navigateToMoonPhases,
+-            tooltip: 'Moon Phase Details',
++          Semantics(
++            button: true,
++            label: 'Moon Phase Details',
++            hint: 'View moon phase details and lunar calendar information',
++            child: IconButton(
++              icon: const Icon(Icons.brightness_2),
++              onPressed: _navigateToMoonPhases,
++              tooltip: 'Moon Phase Details',
++            ),
+           ),
+-          IconButton(
+-            icon: const Icon(Icons.bar_chart),
+-            onPressed: _navigateToPrayerStats,
+-            tooltip: 'Prayer Statistics',
++          Semantics(
++            button: true,
++            label: 'Prayer Statistics',
++            hint: 'View prayer completion statistics and history',
++            child: IconButton(
++              icon: const Icon(Icons.bar_chart),
++              onPressed: _navigateToPrayerStats,
++              tooltip: 'Prayer Statistics',
++            ),
+           ),
+         ],
+       ),
+@@ -1122,12 +1132,15 @@ class _HomeViewState extends ConsumerState<HomeView>
+ 
+     return Column(
+       children: [
+-        _buildLocationAndDateSection(
+-          formattedGregorian,
+-          formattedHijri,
+-          displayCity,
+-          displayCountry,
+-          colors,
++        Padding(
++          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
++          child: _buildLocationAndDateContent(
++            formattedGregorian,
++            formattedHijri,
++            displayCity,
++            displayCountry,
++            colors,
++          ),
+         ),
+         const RamadanCountdownBanner(),
+         if (_isRamadan())
+@@ -1155,67 +1168,64 @@ class _HomeViewState extends ConsumerState<HomeView>
+     );
+   }
+ 
+-  Widget _buildLocationAndDateSection(
++  Widget _buildLocationAndDateContent(
+     String formattedGregorian,
+     String formattedHijri,
+     String? displayCity,
+     String? displayCountry,
+     UIColors colors,
+   ) {
+-    return Padding(
+-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+-      child: Row(
+-        crossAxisAlignment: CrossAxisAlignment.start,
+-        children: [
+-          GestureDetector(
+-            onDoubleTap: () => _navigateToSettings(scrollToDate: true),
++    return Row(
++      crossAxisAlignment: CrossAxisAlignment.start,
++      children: [
++        GestureDetector(
++          onDoubleTap: () => _navigateToSettings(scrollToDate: true),
++          child: Column(
++            crossAxisAlignment: CrossAxisAlignment.start,
++            children: [
++              Text(
++                formattedGregorian,
++                style: AppTextStyles.date(
++                  colors.brightness,
++                ).copyWith(fontSize: 15),
++              ),
++              Text(
++                formattedHijri,
++                style: AppTextStyles.dateSecondary(
++                  colors.brightness,
++                ).copyWith(fontSize: 13),
++              ),
++            ],
++          ),
++        ),
++        const Spacer(),
++        Flexible(
++          child: GestureDetector(
++            onDoubleTap: () => _navigateToSettings(scrollToLocation: true),
+             child: Column(
+-              crossAxisAlignment: CrossAxisAlignment.start,
++              crossAxisAlignment: CrossAxisAlignment.end,
+               children: [
+-                Text(
+-                  formattedGregorian,
+-                  style: AppTextStyles.date(
+-                    colors.brightness,
+-                  ).copyWith(fontSize: 15),
+-                ),
+-                Text(
+-                  formattedHijri,
+-                  style: AppTextStyles.dateSecondary(
+-                    colors.brightness,
+-                  ).copyWith(fontSize: 13),
+-                ),
++                if (displayCity?.isNotEmpty == true)
++                  Text(
++                    displayCity!,
++                    style: AppTextStyles.locationCity(colors.brightness),
++                    textAlign: TextAlign.end,
++                    overflow: TextOverflow.ellipsis,
++                    maxLines: 2,
++                  ),
++                if (displayCountry?.isNotEmpty == true)
++                  Text(
++                    displayCountry!,
++                    style: AppTextStyles.locationCountry(colors.brightness),
++                    textAlign: TextAlign.end,
++                    overflow: TextOverflow.ellipsis,
++                    maxLines: 1,
++                  ),
+               ],
+             ),
+           ),
+-          const Spacer(),
+-          Flexible(
+-            child: GestureDetector(
+-              onDoubleTap: () => _navigateToSettings(scrollToLocation: true),
+-              child: Column(
+-                crossAxisAlignment: CrossAxisAlignment.end,
+-                children: [
+-                  if (displayCity?.isNotEmpty == true)
+-                    Text(
+-                      displayCity!,
+-                      style: AppTextStyles.locationCity(colors.brightness),
+-                      textAlign: TextAlign.end,
+-                      overflow: TextOverflow.ellipsis,
+-                      maxLines: 2,
+-                    ),
+-                  if (displayCountry?.isNotEmpty == true)
+-                    Text(
+-                      displayCountry!,
+-                      style: AppTextStyles.locationCountry(colors.brightness),
+-                      textAlign: TextAlign.end,
+-                      overflow: TextOverflow.ellipsis,
+-                      maxLines: 1,
+-                    ),
+-                ],
+-              ),
+-            ),
+-          ),
+-        ],
+-      ),
++        ),
++      ],
+     );
+   }
+ 
+diff --git a/muslim_deen/lib/views/islamic_calendar_view.dart b/muslim_deen/lib/views/islamic_calendar_view.dart
+index 1a1eb3e..4add503 100644
+--- a/muslim_deen/lib/views/islamic_calendar_view.dart
++++ b/muslim_deen/lib/views/islamic_calendar_view.dart
+@@ -635,23 +635,34 @@ class _IslamicCalendarViewState extends ConsumerState<IslamicCalendarView> {
+                       if (_errorMessage != null)
+                         Container(
+                           width: double.infinity,
+-                          color: Colors.red.withOpacity(0.06),
+-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
++                          color: Colors.red.withValues(alpha: 0.06),
++                          padding: const EdgeInsets.symmetric(
++                            horizontal: 16,
++                            vertical: 8,
++                          ),
+                           child: Row(
+                             children: [
+-                              const Icon(Icons.error_outline, color: Colors.redAccent),
++                              const Icon(
++                                Icons.error_outline,
++                                color: Colors.redAccent,
++                              ),
+                               const SizedBox(width: 8),
+                               Expanded(
+                                 child: Text(
+                                   _errorMessage!,
+-                                  style: AppTextStyles.prayerTime(brightness).copyWith(
++                                  style: AppTextStyles.prayerTime(
++                                    brightness,
++                                  ).copyWith(
+                                     color: Colors.redAccent,
+                                     fontWeight: FontWeight.w600,
+                                   ),
+                                 ),
+                               ),
+                               IconButton(
+-                                icon: const Icon(Icons.close, color: Colors.redAccent),
++                                icon: const Icon(
++                                  Icons.close,
++                                  color: Colors.redAccent,
++                                ),
+                                 onPressed: () {
+                                   setState(() => _errorMessage = null);
+                                 },
+diff --git a/muslim_deen/lib/views/zakat_calculator_view.dart b/muslim_deen/lib/views/zakat_calculator_view.dart
+index ba1badd..52aa38c 100644
+--- a/muslim_deen/lib/views/zakat_calculator_view.dart
++++ b/muslim_deen/lib/views/zakat_calculator_view.dart
+@@ -349,6 +349,11 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView> {
+               color: AppColors.accentGreen,
+             ),
+           ),
++          const SizedBox(height: 4),
++          Text(
++            '(Estimate based on approximate market prices. Please verify with a local source.)',
++            style: AppTextStyles.label(brightness).copyWith(fontSize: 10),
++          ),
+         ],
+       ),
+     );
+diff --git a/muslim_deen/lib/widgets/optimized_prayer_list_item.dart b/muslim_deen/lib/widgets/optimized_prayer_list_item.dart
+index 24a3796..da4660b 100644
+--- a/muslim_deen/lib/widgets/optimized_prayer_list_item.dart
++++ b/muslim_deen/lib/widgets/optimized_prayer_list_item.dart
+@@ -252,7 +252,7 @@ class _OptimizedPrayerListItemState
+           splashColor: splashColors.splash,
+           highlightColor: splashColors.highlight,
+           child: Container(
+-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
++            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+             decoration: BoxDecoration(
+               color: itemColors.background,
+               border: const Border(top: BorderSide(color: Colors.transparent)),
+@@ -322,15 +322,24 @@ class _OptimizedPrayerListItemState
+                         ),
+                       ),
+                     )
+-                    : Checkbox(
+-                      key: ValueKey('checkbox_$_prayerKey'),
+-                      value: _isCompleted,
+-                      onChanged:
+-                          (_isCompleted || _hasPrayerPassed())
+-                              ? (bool? value) => _toggleCompletionStatus()
+-                              : null,
+-                      activeColor: itemColors.icon,
+-                      checkColor: itemColors.background,
++                    : Semantics(
++                      button: true,
++                      label: _isCompleted
++                          ? 'Mark ${widget.prayerInfo.name} as incomplete'
++                          : 'Mark ${widget.prayerInfo.name} as completed',
++                      hint: _hasPrayerPassed() || _isCompleted
++                          ? 'Double tap to toggle prayer completion status'
++                          : 'This prayer time has not arrived yet',
++                      child: Checkbox(
++                        key: ValueKey('checkbox_$_prayerKey'),
++                        value: _isCompleted,
++                        onChanged:
++                            (_isCompleted || _hasPrayerPassed())
++                                ? (bool? value) => _toggleCompletionStatus()
++                                : null,
++                        activeColor: itemColors.icon,
++                        checkColor: itemColors.background,
++                      ),
+                     ),
+               ],
+             ),
+diff --git a/muslim_deen/lib/widgets/prayer_list_item.dart b/muslim_deen/lib/widgets/prayer_list_item.dart
+index 872ed61..b3d5946 100644
+--- a/muslim_deen/lib/widgets/prayer_list_item.dart
++++ b/muslim_deen/lib/widgets/prayer_list_item.dart
+@@ -129,7 +129,7 @@ class _PrayerListItemState extends ConsumerState<PrayerListItem> {
+         splashColor: splashColors.splash,
+         highlightColor: splashColors.highlight,
+         child: Container(
+-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
++          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+           decoration: BoxDecoration(
+             color: itemColors.background,
+             border: const Border(top: BorderSide(color: Colors.transparent)),
+@@ -183,14 +183,23 @@ class _PrayerListItemState extends ConsumerState<PrayerListItem> {
+                       ),
+                     ),
+                   )
+-                  : Checkbox(
+-                    value: _isCompleted,
+-                    onChanged:
+-                        (_isCompleted || _hasPrayerPassed())
+-                            ? (bool? value) => _toggleCompletion()
+-                            : null, // Disable checkbox for upcoming prayers
+-                    activeColor: itemColors.icon,
+-                    checkColor: itemColors.background,
++                  : Semantics(
++                    button: true,
++                    label: _isCompleted
++                        ? 'Mark ${widget.prayerInfo.name} as incomplete'
++                        : 'Mark ${widget.prayerInfo.name} as completed',
++                    hint: _hasPrayerPassed() || _isCompleted
++                        ? 'Double tap to toggle prayer completion status'
++                        : 'This prayer time has not arrived yet',
++                    child: Checkbox(
++                      value: _isCompleted,
++                      onChanged:
++                          (_isCompleted || _hasPrayerPassed())
++                              ? (bool? value) => _toggleCompletion()
++                              : null, // Disable checkbox for upcoming prayers
++                      activeColor: itemColors.icon,
++                      checkColor: itemColors.background,
++                    ),
+                   ),
+             ],
+           ),
+diff --git a/muslim_deen/lib/widgets/prayer_times_section.dart b/muslim_deen/lib/widgets/prayer_times_section.dart
+index 9910fbe..b3b80aa 100644
+--- a/muslim_deen/lib/widgets/prayer_times_section.dart
++++ b/muslim_deen/lib/widgets/prayer_times_section.dart
+@@ -47,11 +47,14 @@ class PrayerTimesSection extends StatelessWidget {
+             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+             child: Align(
+               alignment: Alignment.centerLeft,
+-              child: Text(
+-                "Prayer Times",
+-                style: AppTextStyles.sectionTitle(
+-                  colors.brightness,
+-                ).copyWith(color: colors.textColorPrimary),
++              child: Semantics(
++                header: true,
++                child: Text(
++                  "Prayer Times",
++                  style: AppTextStyles.sectionTitle(
++                    colors.brightness,
++                  ).copyWith(color: colors.textColorPrimary),
++                ),
+               ),
+             ),
+           ),
