@@ -54,7 +54,8 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   @override
   void initState() {
     super.initState();
-    locator.get<AccessibilityService>().currentScrollController = _scrollController;
+    locator.get<AccessibilityService>().currentScrollController =
+        _scrollController;
     _logger.info('SettingsView initialized');
     _loadCurrentLocation();
 
@@ -553,7 +554,9 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
             subtitle: "About this app",
             onTap: () {
               _logger.logInteraction('SettingsView', 'Open about screen');
-              locator<NavigationService>().navigateTo<void>(const AboutScreen());
+              locator<NavigationService>().navigateTo<void>(
+                const AboutScreen(),
+              );
             },
           ),
         ],
@@ -759,7 +762,8 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
 
                   if (!mounted) return;
 
-                  final result = await locator<NavigationService>().navigateTo<bool>(const CitySearchScreen());
+                  final result = await locator<NavigationService>()
+                      .navigateTo<bool>(const CitySearchScreen());
 
                   if (result == true && mounted) {
                     setState(() {});

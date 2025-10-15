@@ -13,7 +13,8 @@ import 'package:muslim_deen/views/settings_view.dart';
 /// Enhanced accessibility service for MuslimDeen app
 /// Provides screen reader support, voice commands, and cognitive assistance
 class AccessibilityService {
-  static final AccessibilityService _instance = AccessibilityService._internal();
+  static final AccessibilityService _instance =
+      AccessibilityService._internal();
   factory AccessibilityService() => _instance;
   AccessibilityService._internal();
 
@@ -21,16 +22,16 @@ class AccessibilityService {
   final SpeechToText _speech = SpeechToText();
   bool _isInitialized = false;
   bool _speechEnabled = false;
-  
+
   // Accessibility settings
   bool _voiceNavigationEnabled = false;
   double _speechRate = 0.8;
   double _speechVolume = 1.0;
   double _hapticFeedbackStrength = 0.5;
-  
+
   // Current scroll controller for accessibility scrolling
   ScrollController? currentScrollController;
-  
+
   // Voice navigation commands
   static const Map<String, VoiceCommand> _voiceCommands = {
     'open prayer': VoiceCommand.action(NavigationAction.prayer),
@@ -52,13 +53,13 @@ class AccessibilityService {
     try {
       // Configure TTS settings
       await _tts.setLanguage('en-US');
-      
+
       // Initialize speech recognition
       final speechAvailable = await _speech.initialize(
         onError: (error) => print('Speech error: $error'),
         onStatus: (status) => print('Speech status: $status'),
       );
-      
+
       await _tts.setSpeechRate(_speechRate);
       await _tts.setVolume(_speechVolume);
       await _tts.setPitch(1.0);
@@ -66,7 +67,7 @@ class AccessibilityService {
 
       // Set speech recognition availability
       _speechEnabled = speechAvailable;
-      
+
       _isInitialized = true;
     } catch (e) {
       // Graceful degradation if accessibility fails
@@ -153,17 +154,23 @@ class AccessibilityService {
           break;
         case HapticType.success:
           await HapticFeedback.heavyImpact();
-          await Future<void>.delayed(Duration(milliseconds: (100 * _hapticFeedbackStrength).toInt()));
+          await Future<void>.delayed(
+            Duration(milliseconds: (100 * _hapticFeedbackStrength).toInt()),
+          );
           await HapticFeedback.lightImpact();
           break;
         case HapticType.error:
           await HapticFeedback.heavyImpact();
-          await Future<void>.delayed(Duration(milliseconds: (150 * _hapticFeedbackStrength).toInt()));
+          await Future<void>.delayed(
+            Duration(milliseconds: (150 * _hapticFeedbackStrength).toInt()),
+          );
           await HapticFeedback.heavyImpact();
           break;
         case HapticType.navigation:
           await HapticFeedback.lightImpact();
-          await Future<void>.delayed(Duration(milliseconds: (50 * _hapticFeedbackStrength).toInt()));
+          await Future<void>.delayed(
+            Duration(milliseconds: (50 * _hapticFeedbackStrength).toInt()),
+          );
           break;
       }
     } catch (e) {
@@ -172,7 +179,10 @@ class AccessibilityService {
   }
 
   /// Announce screen changes for blind users
-  Future<void> announceScreenChange(String screenName, {String? description}) async {
+  Future<void> announceScreenChange(
+    String screenName, {
+    String? description,
+  }) async {
     String announcement = 'Screen changed to $screenName';
     if (description != null) {
       announcement += '. $description';
@@ -181,12 +191,17 @@ class AccessibilityService {
   }
 
   /// Read prayer times with enhanced context
-  Future<void> announcePrayerTime(String prayerName, DateTime time, {bool isNext = false}) async {
+  Future<void> announcePrayerTime(
+    String prayerName,
+    DateTime time, {
+    bool isNext = false,
+  }) async {
     final now = DateTime.now();
     final formattedTime = _formatTimeForSpeech(time);
     final String priority = isNext ? 'next prayer' : 'prayer';
-    
-    final announcement = '$priority: $prayerName. Time: $formattedTime${_getTimeRelation(time, now)}';
+
+    final announcement =
+        '$priority: $prayerName. Time: $formattedTime${_getTimeRelation(time, now)}';
     await speak(announcement, important: isNext);
   }
 
@@ -215,21 +230,21 @@ class AccessibilityService {
     replacements.forEach((original, pronunciation) {
       enhanced = enhanced.replaceAll(original, pronunciation);
     });
-    
+
     return enhanced;
   }
 
   /// Process voice commands
   void _processVoiceCommand(String recognizedText) {
     final lowerText = recognizedText.toLowerCase();
-    
+
     for (final entry in _voiceCommands.entries) {
       if (lowerText.contains(entry.key)) {
         _executeCommand(entry.value);
         return;
       }
     }
-    
+
     // Command not found
     speak('Command not recognized. Please try again.');
   }
@@ -264,7 +279,8 @@ class AccessibilityService {
         break;
       case NavigationAction.scrollDown:
         speak('Scrolling down');
-        if (currentScrollController != null && currentScrollController!.hasClients) {
+        if (currentScrollController != null &&
+            currentScrollController!.hasClients) {
           currentScrollController!.animateTo(
             currentScrollController!.offset + 200.0,
             duration: const Duration(milliseconds: 300),
@@ -276,7 +292,8 @@ class AccessibilityService {
         break;
       case NavigationAction.scrollUp:
         speak('Scrolling up');
-        if (currentScrollController != null && currentScrollController!.hasClients) {
+        if (currentScrollController != null &&
+            currentScrollController!.hasClients) {
           currentScrollController!.animateTo(
             currentScrollController!.offset - 200.0,
             duration: const Duration(milliseconds: 300),
@@ -288,7 +305,8 @@ class AccessibilityService {
         break;
       case NavigationAction.nextPage:
         speak('Next page');
-        if (currentScrollController != null && currentScrollController!.hasClients) {
+        if (currentScrollController != null &&
+            currentScrollController!.hasClients) {
           currentScrollController!.animateTo(
             currentScrollController!.offset + 400.0,
             duration: const Duration(milliseconds: 300),
@@ -300,7 +318,8 @@ class AccessibilityService {
         break;
       case NavigationAction.previousPage:
         speak('Previous page');
-        if (currentScrollController != null && currentScrollController!.hasClients) {
+        if (currentScrollController != null &&
+            currentScrollController!.hasClients) {
           currentScrollController!.animateTo(
             currentScrollController!.offset - 400.0,
             duration: const Duration(milliseconds: 300),
@@ -323,7 +342,7 @@ class AccessibilityService {
   /// Get time relation for context
   String _getTimeRelation(DateTime prayerTime, DateTime now) {
     final difference = prayerTime.difference(now);
-    
+
     if (difference.isNegative) {
       return ' was ${_formatDuration(difference.abs())} ago';
     } else if (difference.inMinutes < 60) {
@@ -353,7 +372,9 @@ class AccessibilityService {
   Future<void> setVoiceNavigationEnabled(bool enabled) async {
     _voiceNavigationEnabled = enabled;
     if (enabled) {
-      await speak('Voice navigation enabled. Say "open prayer" or other commands to navigate.');
+      await speak(
+        'Voice navigation enabled. Say "open prayer" or other commands to navigate.',
+      );
     } else {
       await speak('Voice navigation disabled');
     }
@@ -408,14 +429,7 @@ enum NavigationAction {
 }
 
 /// Types of haptic feedback
-enum HapticType {
-  light,
-  medium,
-  heavy,
-  success,
-  error,
-  navigation,
-}
+enum HapticType { light, medium, heavy, success, error, navigation }
 
 /// Enhanced widget for accessibility
 class AccessibilityAnnouncer extends StatefulWidget {
@@ -436,19 +450,22 @@ class AccessibilityAnnouncer extends StatefulWidget {
   State<AccessibilityAnnouncer> createState() => _AccessibilityAnnouncerState();
 }
 
-class _AccessibilityAnnouncerState extends State<AccessibilityAnnouncer> 
+class _AccessibilityAnnouncerState extends State<AccessibilityAnnouncer>
     with WidgetsBindingObserver, TickerProviderStateMixin {
   final AccessibilityService _accessibility = AccessibilityService();
-  
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    
+
     // Announce when widget appears
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.semanticLabel != null) {
-        _accessibility.speak(widget.semanticLabel!, important: widget.important);
+        _accessibility.speak(
+          widget.semanticLabel!,
+          important: widget.important,
+        );
       }
     });
   }
@@ -505,11 +522,11 @@ class AccessibleButton extends StatelessWidget {
           onTap: () async {
             final accessibility = AccessibilityService();
             await accessibility.provideHapticFeedback(hapticType);
-            
+
             if (onPressed != null) {
               onPressed!();
             }
-            
+
             // Announce action
             accessibility.speak(semanticLabel);
           },
