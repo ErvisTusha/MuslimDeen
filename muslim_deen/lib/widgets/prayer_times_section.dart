@@ -47,12 +47,19 @@ class PrayerTimesSection extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text(
-                "Prayer Times",
-                style: AppTextStyles.sectionTitle(
-                  colors.brightness,
-                ).copyWith(color: colors.textColorPrimary),
-              ),
+              child: Builder(builder: (context) {
+                // defensively pick a text color that meets contrast requirements
+                final safeColor = UIThemeHelper.contrastSafeTextColor(
+                  colors.textColorPrimary,
+                  colors.contentSurface,
+                );
+                return Text(
+                  "Prayer Times",
+                  style: AppTextStyles.sectionTitle(
+                    colors.brightness,
+                  ).copyWith(color: safeColor),
+                );
+              }),
             ),
           ),
           Expanded(
