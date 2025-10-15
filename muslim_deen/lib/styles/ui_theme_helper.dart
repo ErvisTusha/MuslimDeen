@@ -27,36 +27,44 @@ class UIThemeHelper {
   /// unchanged. Otherwise the function will pick black or white depending on
   /// which gives a higher contrast. This is a small defensive helper to avoid
   /// low-contrast text when themes or backgrounds change at runtime.
-  static Color contrastSafeTextColor(Color fg, Color background,
-      {double minRatio = 4.5}) {
-    double l1 = _luminance(fg);
-    double l2 = _luminance(background);
-    double hi = l1 > l2 ? l1 : l2;
-    double lo = l1 > l2 ? l2 : l1;
-    double ratio = (hi + 0.05) / (lo + 0.05);
+  static Color contrastSafeTextColor(
+    Color fg,
+    Color background, {
+    double minRatio = 4.5,
+  }) {
+    final double l1 = _luminance(fg);
+    final double l2 = _luminance(background);
+    final double hi = l1 > l2 ? l1 : l2;
+    final double lo = l1 > l2 ? l2 : l1;
+    final double ratio = (hi + 0.05) / (lo + 0.05);
     if (ratio >= minRatio) return fg;
 
     // try black and white and pick the best contrast
     final black = const Color(0xFF000000);
     final white = const Color(0xFFFFFFFF);
-    double rBlack = _contrastRatio(black, background);
-    double rWhite = _contrastRatio(white, background);
+    final double rBlack = _contrastRatio(black, background);
+    final double rWhite = _contrastRatio(white, background);
     return rBlack >= rWhite ? black : white;
   }
 
   static double _luminance(Color c) {
     double srgb(double v) {
-      var vv = v / 255.0;
-      return vv <= 0.03928 ? vv / 12.92 : math.pow((vv + 0.055) / 1.055, 2.4).toDouble();
+      final vv = v / 255.0;
+      return vv <= 0.03928
+          ? vv / 12.92
+          : math.pow((vv + 0.055) / 1.055, 2.4).toDouble();
     }
-    return 0.2126 * srgb(c.red.toDouble()) + 0.7152 * srgb(c.green.toDouble()) + 0.0722 * srgb(c.blue.toDouble());
+
+    return 0.2126 * srgb(c.red.toDouble()) +
+        0.7152 * srgb(c.green.toDouble()) +
+        0.0722 * srgb(c.blue.toDouble());
   }
 
   static double _contrastRatio(Color a, Color b) {
-    double la = _luminance(a);
-    double lb = _luminance(b);
-    final hi = la > lb ? la : lb;
-    final lo = la > lb ? lb : la;
+    final double la = _luminance(a);
+    final double lb = _luminance(b);
+    final double hi = la > lb ? la : lb;
+    final double lo = la > lb ? lb : la;
     return (hi + 0.05) / (lo + 0.05);
   }
 }

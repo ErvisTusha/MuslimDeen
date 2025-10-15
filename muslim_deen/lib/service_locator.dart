@@ -28,6 +28,7 @@ import 'package:muslim_deen/services/widget_service.dart';
 import 'package:muslim_deen/services/zakat_calculator_service.dart';
 import 'package:muslim_deen/services/audio_player_service.dart';
 import 'package:muslim_deen/services/prayer_analytics_service.dart';
+import 'package:muslim_deen/services/accessibility_service.dart';
 
 final GetIt locator = GetIt.instance;
 
@@ -162,6 +163,7 @@ void _registerServices(bool testing) {
 
   /// AudioPlayerService depends on CacheService
   locator.registerLazySingleton<AudioPlayerService>(AudioPlayerService.new);
+  locator.registerLazySingleton<AccessibilityService>(AccessibilityService.new);
 }
 
 /// Initialize critical services required for app to start
@@ -238,6 +240,7 @@ Future<void> _initializeHighPriorityServicesBatch(bool testing) async {
     initFutures.add(locator<WidgetService>().initialize());
   }
   initFutures.add(locator<LocationService>().init());
+  initFutures.add(locator<AccessibilityService>().initialize());
 
   if (initFutures.isNotEmpty) {
     await Future.wait(initFutures);
