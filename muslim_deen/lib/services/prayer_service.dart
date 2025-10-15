@@ -5,7 +5,6 @@ import 'package:geolocator/geolocator.dart';
 
 import 'package:muslim_deen/models/app_constants.dart';
 import 'package:muslim_deen/models/app_settings.dart';
-import 'package:muslim_deen/models/prayer_times_model.dart';
 
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/location_service.dart';
@@ -315,12 +314,6 @@ class PrayerService {
       },
     );
 
-    // Cache the result with optimized key and enhanced tracking
-    final prayerTimesModelToCache = PrayerTimesModel.fromAdhanPrayerTimes(
-      newAdhanPrayerTimes,
-      date,
-    );
-
     final cacheKey = _generateOptimizedCacheKey(
       date,
       coordinates,
@@ -329,7 +322,7 @@ class PrayerService {
     );
 
     await _prayerTimesCache.cachePrayerTimes(
-      prayerTimesModelToCache,
+      newAdhanPrayerTimes,
       coordinates,
       calculationMethod: effectiveSettings.calculationMethod,
       madhab: effectiveSettings.madhab,

@@ -125,7 +125,7 @@ class _QiblaViewState extends State<QiblaView>
       final position = await LocationPermissionHelper.getCurrentPosition();
 
       // Get Qibla direction (which is already true Qibla from the service)
-      _qiblaDirection = await _compassService.getQiblaDirection(position);
+      _qiblaDirection = await _compassService.getTrueQiblaDirection(position);
 
       // Get current city name using the helper
       _currentCity = await LocationPermissionHelper.getCityFromCoordinates(

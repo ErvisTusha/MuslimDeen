@@ -56,27 +56,8 @@ class MapService {
     int limit = 20, // Default limit for number of results
     bool useCache = true,
   }) async {
-    final String cacheKey =
-        cacheService?.generateLocationCacheKey(
-          'mosques',
-          position.latitude,
-          position.longitude,
-          radius: radius,
-        ) ??
-        'mosques_${position.latitude}_${position.longitude}_$radius'; // Fallback key if cacheService is null
-
-    if (useCache && cacheService != null) {
-      final cachedData = cacheService!.getCache<List<dynamic>>(cacheKey);
-      if (cachedData != null) {
-        _logger.info('Returning cached mosques for key: $cacheKey');
-        return cachedData
-            .map((item) => Mosque.fromJson(item as Map<String, dynamic>))
-            .toList();
-      }
-    }
-
     _logger.info(
-      'Searching for mosques (cache miss or cache disabled)',
+      'Searching for mosques',
       data: {
         'latitude': position.latitude,
         'longitude': position.longitude,
@@ -171,16 +152,6 @@ class MapService {
         );
 
         final result = mosques.take(limit).toList();
-
-        // Cache the result if cacheService is available
-        if (cacheService != null) {
-          final jsonList = result.map((mosque) => mosque.toJson()).toList();
-          cacheService!.setCache(
-            cacheKey, // Use the same cacheKey generated earlier
-            jsonList,
-            expirationMinutes: CacheService.mosquesExpirationMinutes,
-          );
-        }
 
         _logger.info('Found ${result.length} mosques nearby');
         return result;

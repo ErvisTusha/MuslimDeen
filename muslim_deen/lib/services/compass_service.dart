@@ -10,6 +10,7 @@ import 'package:muslim_deen/services/cache_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 
 /// Service to handle compass functionality and Qibla direction calculations
+
 class CompassService {
   final LoggerService _logger = locator<LoggerService>();
 
@@ -32,30 +33,11 @@ class CompassService {
   Stream<CompassEvent>? get compassEvents => FlutterCompass.events;
 
   /// Calculates the Qibla direction (bearing to Kaaba) from the device's current location.
-  Future<double?> getQiblaDirection(Position position) async {
+  Future<double> getTrueQiblaDirection(Position position) async {
     _logger.info(
-      '[DEBUG-QIBLA] Starting Qibla calculation for position: (${position.latitude}, ${position.longitude}, alt: ${position.altitude})',
+      '[DEBUG-QIBLA] Calculating true Qibla direction for position',
+      data: {'latitude': position.latitude, 'longitude': position.longitude},
     );
-
-    final cacheKey =
-        cacheService?.generateLocationCacheKey(
-          'qibla_true',
-          position.latitude,
-          position.longitude,
-        ) ??
-        () {
-          final lat = position.latitude.toStringAsFixed(4);
-          final lon = position.longitude.toStringAsFixed(4);
-          return 'qibla_true_${lat}_$lon';
-        }();
-    final cachedDirection = cacheService?.getCache<double>(cacheKey);
-
-    if (cachedDirection != null) {
-      _logger.debug(
-        '[DEBUG-QIBLA] Using cached true Qibla direction: $cachedDirection',
-      );
-      return cachedDirection;
-    }
 
     final startLatRad = _degreesToRadians(position.latitude);
     final startLngRad = _degreesToRadians(position.longitude);
@@ -77,11 +59,6 @@ class CompassService {
       '[DEBUG-QIBLA] Calculation details: y=$y, x=$x, bearingRad=$bearingRad, bearingDeg=$bearingDeg',
     );
 
-    cacheService?.setCache(
-      cacheKey,
-      result,
-      expirationMinutes: AppConstants.qiblaExpirationMinutes,
-    );
     return result;
   }
 
