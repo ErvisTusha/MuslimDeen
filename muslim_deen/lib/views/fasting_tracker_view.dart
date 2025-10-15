@@ -359,9 +359,30 @@ class _FastingTrackerViewState extends ConsumerState<FastingTrackerView> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
+<<<<<<< Updated upstream
               onPressed: _markFastAsCompleted,
               icon: const Icon(Icons.check_circle),
               label: const Text('Mark as Fasted'),
+=======
+              onPressed: _isMarking ? null : _markFastAsCompleted,
+              icon:
+                  _isMarking
+                      ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      )
+                      : const Icon(Icons.check_circle),
+              label:
+                  _isMarking
+                      ? const Text('Marking...')
+                      : const Text('Mark as Fasted'),
+>>>>>>> Stashed changes
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.accentGreen,
                 foregroundColor: Colors.white,
