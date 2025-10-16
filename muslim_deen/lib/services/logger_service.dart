@@ -16,14 +16,17 @@ class LoggerService {
   LoggerService._internal();
 
   final Logger _logger = Logger(
-    printer: PrettyPrinter(
-      methodCount: 2,
-      errorMethodCount: 8,
-      lineLength: 120,
-      colors: true,
-      printEmojis: true,
-      dateTimeFormat: DateTimeFormat.onlyTime,
-    ),
+    printer:
+        kDebugMode
+            ? SimplePrinter()
+            : PrettyPrinter(
+              methodCount: 2,
+              errorMethodCount: 8,
+              lineLength: 120,
+              colors: true,
+              printEmojis: true,
+              dateTimeFormat: DateTimeFormat.onlyTime,
+            ),
     level: kDebugMode ? Level.debug : Level.warning,
   );
 

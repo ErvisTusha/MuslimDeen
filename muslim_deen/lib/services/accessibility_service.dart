@@ -3,6 +3,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:flutter/services.dart';
 import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/navigation_service.dart';
 import 'package:muslim_deen/views/home_view.dart';
 import 'package:muslim_deen/views/qibla_view.dart';
@@ -56,8 +57,11 @@ class AccessibilityService {
 
       // Initialize speech recognition
       final speechAvailable = await _speech.initialize(
-        onError: (error) => print('Speech error: $error'),
-        onStatus: (status) => print('Speech status: $status'),
+        onError:
+            (error) => locator<LoggerService>().debug('Speech error: $error'),
+        onStatus:
+            (status) =>
+                locator<LoggerService>().debug('Speech status: $status'),
       );
 
       await _tts.setSpeechRate(_speechRate);
@@ -71,7 +75,7 @@ class AccessibilityService {
       _isInitialized = true;
     } catch (e) {
       // Graceful degradation if accessibility fails
-      print('Accessibility initialization failed: $e');
+      locator<LoggerService>().error('Accessibility initialization failed: $e');
       _isInitialized = false;
     }
   }
@@ -91,7 +95,7 @@ class AccessibilityService {
       final enhancedText = _enhanceIslamicText(text);
       await _tts.speak(enhancedText);
     } catch (e) {
-      print('TTS error: $e');
+      locator<LoggerService>().error('TTS error: $e');
     }
   }
 
@@ -108,8 +112,11 @@ class AccessibilityService {
 
     try {
       final bool available = await _speech.initialize(
-        onError: (error) => print('Speech error: $error'),
-        onStatus: (status) => print('Speech status: $status'),
+        onError:
+            (error) => locator<LoggerService>().debug('Speech error: $error'),
+        onStatus:
+            (status) =>
+                locator<LoggerService>().debug('Speech status: $status'),
       );
 
       if (!available) return null;
@@ -125,7 +132,7 @@ class AccessibilityService {
 
       return null; // Result handled in callback
     } catch (e) {
-      print('Speech recognition error: $e');
+      locator<LoggerService>().error('Speech recognition error: $e');
       return null;
     }
   }
@@ -174,7 +181,7 @@ class AccessibilityService {
           break;
       }
     } catch (e) {
-      print('Haptic feedback error: $e');
+      locator<LoggerService>().error('Haptic feedback error: $e');
     }
   }
 

@@ -37,6 +37,11 @@ SharedPreferences? _sharedPrefsCache;
 
 /// Initializes the service locator with optimized loading
 Future<void> setupLocator({bool testing = false}) async {
+  // Reset locator if already initialized (e.g., hot reload)
+  if (locator.isRegistered<LoggerService>()) {
+    await locator.reset();
+  }
+
   try {
     // Pre-load SharedPreferences for better performance
     _sharedPrefsCache ??= await SharedPreferences.getInstance();

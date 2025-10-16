@@ -29,6 +29,16 @@
 
 ## Platform Support
 - **Supported Platforms**: Android and iOS only
+- **Never run on web**: Always use `flutter run -d android` or `flutter run -d ios` for testing. Web platform is not supported and will cause database and other native service failures.
+
+## Logging and Debug Output
+- **Use LoggerService exclusively**: Never use raw `print()` or `debugPrint()` statements in production code. All logging must go through the centralized `LoggerService`.
+- **SimplePrinter for debug**: In debug mode, use `SimplePrinter()` to keep terminal output clean and focused. Save `PrettyPrinter()` with emojis for special debugging sessions only.
+- **Appropriate log levels**: Use `debug()` for verbose info, `info()` for normal flow, `warning()` for recoverable issues, `error()` for failures requiring attention.
+
+## Service Locator Management
+- **Hot reload safety**: The service locator must check if services are already registered and reset if necessary to prevent double-registration errors on hot reload.
+- **Graceful degradation**: Service initialization failures should be logged but not crash the app unless they are truly critical (e.g., Logger, Storage).
 
 ## BluePrint
 - Update blueprint.md, README.md etc with any new architectural decisions, data flows, or system interactions introduced during development.

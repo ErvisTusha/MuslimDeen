@@ -1,6 +1,8 @@
 import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:muslim_deen/service_locator.dart';
+import 'package:muslim_deen/services/logger_service.dart';
 
 /// Service to automatically detect country and apply appropriate prayer time calculation method
 class CountryCalculationService {
@@ -69,7 +71,9 @@ class CountryCalculationService {
         }
       }
     } catch (e) {
-      print('Error getting country from coordinates: $e');
+      locator<LoggerService>().error(
+        'Error getting country from coordinates: $e',
+      );
     }
 
     // Fallback to default method
@@ -111,7 +115,9 @@ class CountryCalculationService {
         }
       }
     } catch (e) {
-      print('Error fetching prayer times from API: $e');
+      locator<LoggerService>().error(
+        'Error fetching prayer times from API: $e',
+      );
     }
 
     return null;
@@ -179,7 +185,7 @@ class CountryCalculationService {
 
           final difference = (localTime.difference(apiTime)).abs();
           if (difference > tolerance) {
-            print(
+            locator<LoggerService>().debug(
               'Prayer time mismatch for $prayer: Local=${localTime.toString().substring(11, 16)}, API=$apiTimeString, Difference=${difference.inMinutes}min',
             );
             return false;
@@ -188,7 +194,7 @@ class CountryCalculationService {
       }
       return true;
     } catch (e) {
-      print('Error validating prayer times: $e');
+      locator<LoggerService>().error('Error validating prayer times: $e');
       return false;
     }
   }
