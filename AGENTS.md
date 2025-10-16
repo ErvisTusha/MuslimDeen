@@ -16,7 +16,7 @@
 ## Core Responsibilities
 
 - Profile before optimizing, but fix algorithmic bottlenecks and N+1 patterns as soon as they are identified.
-- Apply DRY relentlessly: consolidate duplicate logic into precise, reusable abstractions; keep comments only when they clarify non-obvious intent.
+- Apply DRY relentlessly: consolidate duplicate logic into precise, reusable abstractions.
 
 
 ## Dependency & Security Guardrails
