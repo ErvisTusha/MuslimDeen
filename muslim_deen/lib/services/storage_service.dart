@@ -3,7 +3,40 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 
-/// Service to handle local storage operations using SharedPreferences.
+/// Simple key-value storage service using SharedPreferences.
+///
+/// This service provides a straightforward interface for storing and retrieving
+/// primitive data types using SharedPreferences. It's designed for simple
+/// configuration and user preference storage with type safety and error handling.
+///
+/// ## Key Features
+/// - Type-safe storage for primitive data types
+/// - Generic save/get methods for flexibility
+/// - Comprehensive error handling with logging
+/// - Initialization state management
+/// - Location-specific convenience methods
+///
+/// ## Supported Data Types
+/// - String: Text data and JSON strings
+/// - int: Integer values
+/// - double: Floating-point numbers
+/// - bool: Boolean flags
+/// - List<String>: String arrays
+///
+/// ## Use Cases
+/// - User preferences and settings
+/// - App configuration data
+/// - Simple state persistence
+/// - Location coordinate storage
+///
+/// ## Dependencies
+/// - [SharedPreferences]: Persistent key-value storage
+/// - [LoggerService]: Centralized logging
+///
+/// ## Design Pattern
+/// Simple wrapper around SharedPreferences with added type safety
+/// and logging capabilities. For more complex storage needs, use
+/// [DatabaseService] for structured data storage.
 class StorageService {
   StorageService();
 
@@ -13,7 +46,25 @@ class StorageService {
 
   SharedPreferences? _prefs;
 
-  /// Initializes the SharedPreferences instance. Must be called once before using other methods.
+  /// Initializes the SharedPreferences instance for storage operations.
+  ///
+  /// This method must be called before any other storage operations to
+  /// ensure the SharedPreferences instance is properly initialized.
+  /// It implements lazy initialization to prevent multiple initializations.
+  ///
+  /// ## Initialization Process
+  /// 1. Checks if already initialized (idempotent)
+  /// 2. Gets SharedPreferences instance
+  /// 3. Logs successful initialization
+  ///
+  /// ## Error Handling
+  /// - Graceful handling of initialization failures
+  /// - Logger availability checking for test environments
+  /// - State management to prevent repeated initializations
+  ///
+  /// Thread Safety: Safe to call multiple times (idempotent)
+  ///
+  /// Performance: Blocks until initialization completes
   Future<void> init() async {
     if (_prefs == null) {
       _prefs = await SharedPreferences.getInstance();
@@ -37,8 +88,28 @@ class StorageService {
     return _prefs!;
   }
 
-  /// Saves the user's location coordinates and optional location name.
-  /// Does not affect the 'useManualLocation' flag; that should be set separately via [setUseManualLocation].
+  /// Saves user location data with coordinates and optional location name.
+  ///
+  /// This convenience method provides a streamlined way to store location
+  /// data with proper key management and type safety. It handles both
+  /// coordinate storage and optional location name storage.
+  ///
+  /// Parameters:
+  /// - [latitude]: Geographic latitude coordinate
+  /// - [longitude]: Geographic longitude coordinate
+  /// - [locationName]: Optional human-readable location name
+  ///
+  /// ## Storage Keys
+  /// - user_latitude: Stored as double
+  /// - user_longitude: Stored as double
+  /// - user_location_name: Stored as string (removed if null/empty)
+  ///
+  /// ## Data Management
+  /// - Removes location name if null or empty string provided
+  /// - Maintains separate keys for each location component
+  /// - Does not affect manual location mode flag
+  ///
+  /// Use Case: Storing user's preferred or current location
   Future<void> saveLocation(
     double latitude,
     double longitude, {

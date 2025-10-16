@@ -1,71 +1,118 @@
-name: muslim_deen
-description: "A new Flutter project."
-publish_to: 'none'
-version: 1.0.0+1
+# MuslimDeen Flutter Application Configuration
+# 
+# This file defines the project metadata, dependencies, and configuration
+# for the MuslimDeen Islamic prayer and lifestyle application. It specifies
+# the Flutter SDK requirements, lists all necessary packages, and configures
+# assets and build settings.
+# 
+# The app is designed to run on Android and iOS platforms only, as it
+# uses native services (database, notifications, location) that are not
+# supported on the web platform.
 
+name: muslim_deen
+description: "A comprehensive Islamic lifestyle app featuring prayer times, Qibla direction, mosque finder, and more."
+publish_to: 'none'  # Prevents accidental publishing to pub.dev
+version: 1.0.0+1  # Version number + build number
+
+# Flutter SDK requirements
+# Specifies the minimum Dart SDK version required for the project
+# Flutter 3.7.2 corresponds to Dart 3.0+ with enhanced null safety support
 environment:
   sdk: '>=3.7.2'
 
+# Application dependencies
+# These packages are required for the app to function properly.
+# Each dependency includes a brief description of its purpose in the app.
 dependencies:
+  # Flutter core SDK packages
   flutter:
     sdk: flutter
   flutter_localizations:
-    sdk: flutter
-  adhan_dart: '>=1.1.2'
-  geolocator: '>=14.0.2'
-  flutter_compass: '>=0.8.1'
-  hijri: '>=3.0.0'
-  shared_preferences: ^2.5.3
-  geocoding: '>=4.0.0'
-  http: '>=1.5.0'
-  url_launcher: '>=6.3.2'
-  flutter_local_notifications: '>=19.4.2'
-  logger: '>=2.6.2'
-  timezone: '>=0.10.0'
-  flutter_timezone: '>=5.0.0'
-  latlong2: '>=0.9.1'
-  get_it: '>=8.2.0'
-  flutter_riverpod: '>=3.0.3'
-  riverpod: '>=3.0.3'
-  permission_handler: '>=12.0.1'
-  audioplayers: '>=6.5.1'
-  home_widget: '>=0.8.0'
-  workmanager: '>=0.9.0'
-  vibration: '>=3.1.4'
-  sqflite: '>=2.4.1'
-  path: '>=1.9.0'
-  
-  # Enhanced Accessibility Dependencies
-  flutter_tts: '>=4.2.1'
-  speech_to_text: '>=7.3.0'
-  
-  # Path Provider
-  path_provider: '>=2.1.2'
-  
-  # Enhanced Security Dependencies
-  crypto: '>=3.0.3'
-  
-  # Date & Time Management Dependencies  
-  intl: '>=0.20.2'
+    sdk: flutter  # Required for internationalization support
 
-  uuid: any
+  # Islamic prayer calculation and hijri calendar
+  adhan_dart: '>=1.1.2'  # Prayer times calculation using Islamic methods
+  hijri: '>=3.0.0'  # Hijri (Islamic) calendar functionality
+
+  # Location and mapping services
+  geolocator: '>=14.0.2'  # GPS location tracking for prayer times
+  geocoding: '>=4.0.0'  # Converting coordinates to addresses
+  flutter_compass: '>=0.8.1'  # Qibla direction compass
+  latlong2: '>=0.9.1'  # Latitude/longitude calculations
+
+  # Data persistence and caching
+  shared_preferences: ^2.5.3  # Local storage for app settings and preferences
+  sqflite: '>=2.4.1'  # SQLite database for prayer history and records
+  path: '>=1.9.0'  # Path manipulation for database file handling
+  path_provider: '>=2.1.2'  # Access to common file system paths
+
+  # Network and HTTP operations
+  http: '>=1.5.0'  # HTTP client for mosque data and API calls
+  url_launcher: '>=6.3.2'  # Launch external URLs (maps, websites)
+
+  # Notifications and background tasks
+  flutter_local_notifications: '>=19.4.2'  # Local prayer notifications
+  workmanager: '>=0.9.0'  # Background task scheduling
+  home_widget: '>=0.8.0'  # Home screen widgets for prayer times
+
+  # Audio and media
+  audioplayers: '>=6.5.1'  # Adhan (prayer call) audio playback
+  vibration: '>=3.1.4'  # Haptic feedback for user interactions
+
+  # Date and time management
+  timezone: '>=0.10.0'  # Timezone handling for accurate prayer times
+  flutter_timezone: '>=5.0.0'  # Detect device timezone
+  intl: '>=0.20.2'  # Internationalization and date formatting
+
+  # State management and dependency injection
+  flutter_riverpod: '>=3.0.3'  # Reactive state management
+  riverpod: '>=3.0.3'  # Core Riverpod package
+
+  # Permissions handling
+  permission_handler: '>=12.0.1'  # Runtime permissions (location, notifications)
+
+  # Service locator pattern
+  get_it: '>=8.2.0'  # Dependency injection container
+
+  # Logging and debugging
+  logger: '>=2.6.2'  # Structured logging for debugging and monitoring
+
+  # Security utilities
+  crypto: '>=3.0.3'  # Cryptographic functions for data security
+
+  # Enhanced Accessibility Features
+  flutter_tts: '>=4.2.1'  # Text-to-speech for accessibility
+  speech_to_text: '>=7.3.0'  # Speech recognition for hands-free operation
+
+  # Unique identifiers
+  uuid: any  # Generate unique IDs for records
+
+# Development dependencies
+# These packages are used during development and testing but are not included
+# in the production build of the app.
 dev_dependencies:
   flutter_test:
-    sdk: flutter
-  flutter_launcher_icons: '>=0.14.4'
+    sdk: flutter  # Flutter testing framework
   integration_test:
-    sdk: flutter
+    sdk: flutter  # Integration testing support
   flutter_driver:
-    sdk: flutter
+    sdk: flutter  # UI testing framework
+  flutter_launcher_icons: '>=0.14.4'  # Generate app icons for all platforms
 
+# Flutter launcher icons configuration
+# Generates app icons for Android and iOS from a single source image
 flutter_launcher_icons:
-  android: true
-  ios: true
-  image_path: "assets/images/muslimdeen_icon.png"
+  android: true  # Generate Android icons
+  ios: true  # Generate iOS icons
+  image_path: "assets/images/muslimdeen_icon.png"  # Source image for icons
 
+# Flutter-specific configuration
 flutter:
+  # Enable Material Design components
   uses-material-design: true
   
+  # App assets
+  # These files are bundled with the app and accessible at runtime
   assets:
-    - assets/images/
-    - assets/audio/
+    - assets/images/  # App icons, mosque images, and other graphics
+    - assets/audio/  # Adhan audio files and other sound effects

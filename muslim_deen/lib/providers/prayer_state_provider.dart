@@ -1,3 +1,17 @@
+/// Advanced prayer state management with periodic updates and granular selectors
+///
+/// This file implements a comprehensive prayer state management system that provides
+/// real-time prayer tracking, automatic updates, and granular state selectors for
+/// optimal UI performance. It includes both prayer time tracking and completion
+/// status management.
+///
+/// Architecture Notes:
+/// - Uses Notifier pattern for complex state management with controlled mutations
+/// - Implements periodic updates with adaptive intervals
+/// - Provides granular selectors to prevent unnecessary widget rebuilds
+/// - Includes comprehensive error handling and logging
+/// - Separates concerns between prayer times and completion tracking
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -9,7 +23,26 @@ import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
 
-/// State class for prayer-related data
+/// Immutable state class for prayer-related data
+///
+/// This class encapsulates all prayer-related state including current/next prayers,
+/// timing information, loading states, and error handling. It's designed to be
+/// immutable and provides equality checking for efficient state comparisons.
+///
+/// State Properties:
+/// - currentPrayer: Name of the currently active prayer
+/// - nextPrayer: Name of the next upcoming prayer
+/// - nextPrayerTime: DateTime when the next prayer begins
+/// - lastUpdateTime: When the state was last updated
+/// - isLoading: Whether prayer data is being calculated
+/// - error: Any error that occurred during state updates
+/// - prayerTimes: Map of all prayer times for the day
+///
+/// Performance Considerations:
+/// - Implements proper equality operators to prevent unnecessary rebuilds
+/// - Uses immutable state pattern for predictability
+/// - Provides copyWith method for efficient state updates
+/// - Includes toString for debugging purposes
 class PrayerState {
   final String currentPrayer;
   final String nextPrayer;
@@ -29,6 +62,22 @@ class PrayerState {
     this.prayerTimes = const {},
   });
 
+  /// Creates a new PrayerState with updated values
+  ///
+  /// This method enables immutable state updates by creating a new state
+  /// instance with only the specified properties changed. It's the primary
+  /// way to update state in the notifier.
+  ///
+  /// Parameters:
+  /// - currentPrayer: New current prayer name (optional)
+  /// - nextPrayer: New next prayer name (optional)
+  /// - nextPrayerTime: New next prayer time (optional)
+  /// - lastUpdateTime: New last update timestamp (optional)
+  /// - isLoading: New loading state (optional)
+  /// - error: New error message (optional)
+  /// - prayerTimes: New prayer times map (optional)
+  ///
+  /// Returns: New PrayerState instance with updated values
   PrayerState copyWith({
     String? currentPrayer,
     String? nextPrayer,
@@ -49,6 +98,11 @@ class PrayerState {
     );
   }
 
+  /// Equality operator for state comparison
+  ///
+  /// Implements deep equality checking to determine if two PrayerState
+  /// instances are equivalent. This is crucial for Riverpod's optimization
+  /// to prevent unnecessary widget rebuilds.
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
@@ -62,6 +116,10 @@ class PrayerState {
         mapEquals(other.prayerTimes, prayerTimes);
   }
 
+  /// Hash code for state comparison
+  ///
+  /// Generates a consistent hash code based on all state properties.
+  /// Used in conjunction with the equality operator for state comparisons.
   @override
   int get hashCode {
     return Object.hash(
@@ -75,37 +133,91 @@ class PrayerState {
     );
   }
 
+  /// String representation for debugging
+  ///
+  /// Provides a human-readable representation of the state,
+  /// useful for logging and debugging purposes.
   @override
   String toString() {
     return 'PrayerState(currentPrayer: $currentPrayer, nextPrayer: $nextPrayer, nextPrayerTime: $nextPrayerTime, isLoading: $isLoading, error: $error)';
   }
 }
 
-/// Provider for prayer state management
+/// Notifier for managing prayer state with periodic updates
+///
+/// This class implements the business logic for prayer state management,
+/// including initialization, periodic updates, and error handling. It uses
+/// a timer-based approach to keep prayer times current throughout the day.
+///
+/// Architecture Pattern: Notifier (Riverpod)
+///
+/// Key Features:
+/// - Automatic periodic updates every minute
+/// - Error handling with graceful degradation
+/// - Performance optimization by checking state changes
+/// - Comprehensive logging for debugging
+/// - Manual refresh capability
+///
+/// Dependencies:
+/// - PrayerService: For prayer calculations and current/next prayer detection
+/// - LoggerService: For comprehensive logging
+/// - AppSettings: For prayer calculation parameters
+///
+/// Lifecycle:
+/// 1. build(): Creates initial empty state
+/// 2. initialize(): Sets up periodic updates and loads initial data
+/// 3. Periodic updates: Runs every minute to keep state current
+/// 4. dispose(): Cleans up timer resources
 class PrayerStateNotifier extends riverpod.Notifier<PrayerState> {
   final PrayerService _prayerService;
   final LoggerService _logger;
   Timer? _updateTimer;
 
+  /// Constructor with dependency injection
+  ///
+  /// Parameters:
+  /// - prayerService: Service for prayer calculations
+  /// - loggerService: Service for logging operations
   PrayerStateNotifier({
     required PrayerService prayerService,
     required LoggerService loggerService,
   }) : _prayerService = prayerService,
        _logger = loggerService;
 
+  /// Builds the initial prayer state
+  ///
+  /// Called by Riverpod when the provider is first created. Returns
+  /// an empty state that will be populated by the initialize method.
+  ///
+  /// Returns: Initial PrayerState with empty prayer names
   @override
   PrayerState build() {
     return const PrayerState(currentPrayer: '', nextPrayer: '');
   }
 
-  /// Initialize prayer state
+  /// Initialize prayer state with settings and start periodic updates
+  ///
+  /// This method should be called after the provider is created to
+  /// initialize the state with actual prayer data and start the
+  /// automatic update mechanism.
+  ///
+  /// Parameters:
+  /// - settings: Application settings for prayer calculations
+  ///
+  /// Side Effects:
+  /// - Updates state with current prayer information
+  /// - Starts periodic timer for automatic updates
+  /// - Logs initialization status
+  /// - Handles and logs any initialization errors
   Future<void> initialize(AppSettings settings) async {
     try {
+      // Set loading state and clear any previous errors
       state = state.copyWith(isLoading: true, error: null);
 
+      // Load initial prayer data
       await _updatePrayerState(settings);
 
-      // Start periodic updates
+      // Start periodic updates to keep prayer times current
       _startPeriodicUpdates(settings);
 
       _logger.info('Prayer state initialized');
@@ -119,6 +231,16 @@ class PrayerStateNotifier extends riverpod.Notifier<PrayerState> {
   }
 
   /// Update prayer state with current data
+  ///
+  /// Public method to manually trigger a state update. This can be
+  /// called by UI components or other services when a refresh is needed.
+  ///
+  /// Parameters:
+  /// - settings: Current application settings
+  ///
+  /// Error Handling:
+  /// - Catches and logs any errors during update
+  /// - Updates state with error information
   Future<void> updatePrayerState(AppSettings settings) async {
     try {
       await _updatePrayerState(settings);

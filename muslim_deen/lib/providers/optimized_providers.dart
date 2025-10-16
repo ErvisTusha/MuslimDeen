@@ -1,3 +1,29 @@
+/// Performance-optimized providers for the MuslimDeen application
+///
+/// This file contains high-performance provider implementations that use advanced
+/// optimization techniques to minimize unnecessary rebuilds and reduce resource
+/// consumption. These providers are designed for critical UI components that
+/// require optimal performance.
+///
+/// Key Optimization Techniques:
+/// - Granular selectors to prevent unnecessary widget rebuilds
+/// - Smart caching with configurable TTL (time-to-live)
+/// - Debounced updates to reduce state mutation frequency
+/// - Adaptive update intervals based on usage patterns
+/// - Memory-efficient state management with minimal allocations
+///
+/// Architecture Notes:
+/// - Uses Notifier pattern for controlled state mutations
+/// - Implements family modifiers for parameterized providers
+/// - Leverages Riverpod's select() for fine-grained reactivity
+/// - Includes comprehensive performance monitoring capabilities
+///
+/// When to Use These Providers:
+/// - For high-frequency UI updates (countdown timers, live prayer status)
+/// - In complex widgets with many dependent components
+/// - When battery life optimization is critical
+/// - For components that need to maintain smooth 60fps animations
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -9,25 +35,53 @@ import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
 import 'package:muslim_deen/services/prayer_history_service.dart';
 
-/// Optimized provider for prayer state with granular selectors
+/// High-performance prayer state notifier with advanced caching
+///
+/// This notifier implements multiple optimization strategies to minimize
+/// unnecessary state updates and reduce CPU usage. It's designed for
+/// components that need smooth, real-time prayer updates without impacting
+/// overall app performance.
+///
+/// Performance Optimizations:
+/// - Smart caching to prevent redundant state updates
+/// - Debounced timer to batch rapid state changes
+/// - Adaptive update intervals (30 seconds vs 1 minute)
+/// - Memory-efficient state comparison
+/// - Selective state property updates
+///
+/// Use Cases:
+/// - Live prayer countdown timers
+/// - Prayer status indicators in app bar
+/// - High-frequency prayer time widgets
+/// - Battery-conscious applications
+///
+/// Architecture Pattern: Notifier with advanced caching
 class OptimizedPrayerStateNotifier extends Notifier<OptimizedPrayerState> {
   late final PrayerService _prayerService;
   late final LoggerService _logger;
   Timer? _updateTimer;
   Timer? _debounceTimer;
 
-  // Cache for performance optimization
+  // Performance optimization: in-memory cache for frequently accessed values
   String _cachedCurrentPrayer = '';
   String _cachedNextPrayer = '';
   DateTime? _cachedNextPrayerTime;
   DateTime? _lastStateUpdate;
 
+  /// Builds the initial optimized prayer state
+  ///
+  /// Initializes services and returns a minimal state object.
+  /// Services are initialized late to avoid unnecessary initialization
+  /// if the provider is never used.
+  ///
+  /// Performance Note: Services are initialized on first access
+  /// rather than during provider creation to reduce startup time.
   @override
   OptimizedPrayerState build() {
     _prayerService = locator<PrayerService>();
     _logger = locator<LoggerService>();
 
-    // Start with empty state
+    // Start with minimal empty state to reduce initial allocation overhead
     return const OptimizedPrayerState(
       currentPrayer: '',
       nextPrayer: '',

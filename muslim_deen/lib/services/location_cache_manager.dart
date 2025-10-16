@@ -8,7 +8,41 @@ import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/cache_metrics_service.dart';
 
-/// Manages location caching with adaptive strategies and movement pattern detection
+/// Advanced location cache manager with adaptive strategies and movement pattern analysis.
+///
+/// This service provides intelligent location caching that adapts to user behavior
+/// patterns and GPS accuracy. It implements sophisticated algorithms to determine
+/// optimal cache duration based on movement patterns and location accuracy.
+///
+/// ## Key Features
+/// - Adaptive cache duration based on GPS accuracy and movement patterns
+/// - Movement pattern detection and analysis
+/// - Background cache updates and invalidation
+/// - Significant location change detection
+/// - Cache hit/miss metrics tracking
+///
+/// ## Adaptive Caching Strategy
+/// - High accuracy locations (< 50m): Longer cache duration (up to 10 minutes)
+/// - Low accuracy locations (> 500m): Shorter cache duration (as low as 1 minute)
+/// - Stationary users: Extended cache duration
+/// - Highly mobile users: Reduced cache duration
+///
+/// ## Movement Analysis
+/// - Tracks recent position history (last 10 positions)
+/// - Calculates movement score to adjust cache duration
+/// - Detects significant location changes (> 100m)
+/// - Monitors accuracy changes for cache invalidation
+///
+/// ## Dependencies
+/// - [LoggerService]: Centralized logging
+/// - [CacheMetricsService]: Performance tracking
+/// - [SharedPreferences]: Persistent cache storage
+/// - [Geolocator]: Distance calculations for movement analysis
+///
+/// ## Background Operations
+/// - Periodic cache validity checks (every 15 minutes)
+/// - Automatic cache refresh for stale entries
+/// - Persistent storage of frequently accessed locations
 class LocationCacheManager {
   final LoggerService _logger = locator<LoggerService>();
   CacheMetricsService? _metricsService;
@@ -32,7 +66,26 @@ class LocationCacheManager {
 
   LocationCacheManager();
 
-  /// Initialize the cache manager
+  /// Initializes the location cache manager and its subsystems.
+  ///
+  /// This method sets up the complete caching infrastructure including:
+  /// - SharedPreferences for persistent storage
+  /// - Loading of previously cached location data
+  /// - Background update timer for cache maintenance
+  /// - Metrics service attachment for performance tracking
+  ///
+  /// ## Initialization Process
+  /// 1. Initialize SharedPreferences for persistent storage
+  /// 2. Load any previously cached location data
+  /// 3. Start background update timer (15-minute interval)
+  /// 4. Attach metrics service for performance tracking
+  ///
+  /// ## Background Operations
+  /// - Periodic cache validity checks every 15 minutes
+  /// - Automatic refresh of stale cache entries
+  /// - Cache size monitoring and optimization
+  ///
+  /// Error Handling: Logs errors but doesn't prevent cache operation
   Future<void> init() async {
     try {
       _prefs = await SharedPreferences.getInstance();

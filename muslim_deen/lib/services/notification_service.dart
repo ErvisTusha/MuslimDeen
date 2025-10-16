@@ -13,7 +13,43 @@ import 'package:muslim_deen/services/notification_rescheduler_service.dart';
 
 import 'package:muslim_deen/services/notification_cache_service.dart';
 
-/// Service responsible for managing local notifications in the application
+/// Comprehensive notification management service for prayer reminders and dhikr alerts.
+///
+/// This service provides robust local notification functionality including prayer
+/// time alerts, dhikr reminders, permission management, and intelligent rescheduling.
+/// It implements advanced features like custom azan sounds, caching strategies,
+/// and error recovery mechanisms.
+///
+/// ## Key Features
+/// - Prayer time notifications with custom azan sounds
+/// - Dhikr/tasbih reminders with automatic rescheduling
+/// - Intelligent notification rescheduling with exponential backoff
+/// - Permission management and status tracking
+/// - Notification caching for performance optimization
+/// - Background notification response handling
+///
+/// ## Notification Types
+/// - Prayer notifications: Fajr, Dhuhr, Asr, Maghrib, Isha
+/// - Dhikr reminders: Configurable interval reminders
+/// - Each with customizable sounds and vibration patterns
+///
+/// ## Audio Customization
+/// - Custom azan sounds for standard prayers
+/// - Per-prayer audio configuration
+/// - Platform-specific audio handling (Android/iOS)
+/// - Fallback to default sounds when custom sounds unavailable
+///
+/// ## Dependencies
+/// - [FlutterLocalNotificationsPlugin]: Core notification functionality
+/// - [PermissionHandler]: Permission management
+/// - [NotificationCacheService]: Performance optimization
+/// - [NotificationReschedulerService]: Background persistence
+/// - [LoggerService]: Centralized logging
+///
+/// ## Error Handling
+/// - Intelligent rescheduling with exponential backoff
+/// - Graceful degradation when features unavailable
+/// - Comprehensive error logging without crashing
 class NotificationService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();

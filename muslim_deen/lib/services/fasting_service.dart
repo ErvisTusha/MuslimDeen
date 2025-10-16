@@ -7,7 +7,41 @@ import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/database_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 
-/// Service for managing fasting records, streaks, and Ramadan tracking
+/// Comprehensive fasting management service with streak tracking and Ramadan support.
+///
+/// This service provides complete functionality for tracking fasting activities
+/// including voluntary fasts, Ramadan fasts, streak calculations, and statistics.
+/// It implements intelligent caching and database integration for performance.
+///
+/// ## Key Features
+/// - Fasting record management with status tracking
+/// - Streak calculation (current and longest)
+/// - Ramadan date tracking and countdown
+/// - Fasting statistics and analytics
+/// - In-memory caching for performance
+///
+/// ## Fasting Types Supported
+/// - Voluntary fasts: User-initiated fasting outside Ramadan
+/// - Ramadan fasts: Obligatory fasting during Ramadan month
+/// - Different tracking and statistics for each type
+///
+/// ## Streak Tracking
+/// - Current streak: Consecutive days of completed fasts
+/// - Longest streak: Historical maximum consecutive days
+/// - Intelligent gap detection for accurate calculations
+/// - Grace period for missed days (1 day allowed)
+///
+/// ## Ramadan Features
+/// - Automatic Ramadan date detection
+/// - Countdown to Ramadan start
+/// - Current day tracking during Ramadan
+/// - Special handling for Ramadan fasts
+///
+/// ## Dependencies
+/// - [DatabaseService]: Persistent storage for fasting records
+/// - [LoggerService]: Centralized logging
+/// - [HijriCalendar]: Hijri calendar calculations for Ramadan
+/// - [Uuid]: Unique ID generation for records
 class FastingService {
   final DatabaseService _databaseService;
   final LoggerService _logger = locator<LoggerService>();
@@ -24,7 +58,30 @@ class FastingService {
 
   FastingService(this._databaseService);
 
-  /// Initialize the fasting service
+  /// Initializes the fasting service and sets up required infrastructure.
+  ///
+  /// This method prepares the service for operation by ensuring database
+  /// tables exist and loading Ramadan date information for the current
+  /// year. It implements idempotent initialization to prevent issues
+  /// with multiple calls.
+  ///
+  /// ## Initialization Process
+  /// 1. Ensures fasting_records table exists with proper indexes
+  /// 2. Loads Ramadan dates for current year
+  /// 3. Sets up internal state tracking
+  /// 4. Marks service as initialized
+  ///
+  /// ## Database Schema
+  /// - fasting_records table with comprehensive fields
+  /// - Indexes for date, type, and status queries
+  /// - Proper constraint handling for data integrity
+  ///
+  /// ## Ramadan Date Calculation
+  /// - Uses Hijri calendar for accurate Ramadan dates
+  /// - Automatically handles year transitions
+  /// - Approximate calculation (to be improved with proper library)
+  ///
+  /// Thread Safety: Safe to call multiple times (idempotent)
   Future<void> init() async {
     if (_isInitialized) return;
 

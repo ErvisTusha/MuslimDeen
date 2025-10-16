@@ -39,7 +39,43 @@ class BatchOperation {
   });
 }
 
-/// Service to handle local SQLite database operations
+/// High-performance SQLite database service with connection management and metrics.
+///
+/// This service provides comprehensive database functionality including connection
+/// pooling, performance monitoring, transaction management, and batch operations.
+/// It implements sophisticated error handling and automatic cleanup mechanisms.
+///
+/// ## Key Features
+/// - Connection management with health monitoring
+/// - Performance metrics with slow query detection
+/// - Transaction support with rollback capabilities
+/// - Batch operations for bulk data processing
+/// - Automatic schema migration and upgrades
+/// - Periodic cleanup of old data and metrics
+///
+/// ## Database Schema
+/// - settings: App configuration and preferences
+/// - prayer_history: Daily prayer completion tracking
+/// - tasbih_history: Dhikr/tasbih count tracking
+/// - user_location: Stored location preferences
+/// - fasting_records: Fasting day tracking
+///
+/// ## Performance Optimizations
+/// - Indexed queries for common access patterns
+/// - Batch operations for bulk inserts/updates
+/// - Connection pooling for concurrent access
+/// - Query performance monitoring and logging
+/// - Automatic cleanup of old data (90 days)
+///
+/// ## Dependencies
+/// - [SQFLite]: SQLite database functionality
+/// - [LoggerService]: Centralized logging
+///
+/// ## Metrics and Monitoring
+/// - Query execution time tracking
+/// - Row count monitoring
+/// - Slow query detection (>100ms)
+/// - Connection health monitoring
 class DatabaseService {
   static const String _databaseName = 'muslim_deen.db';
   static const int _databaseVersion = 4;
@@ -59,7 +95,30 @@ class DatabaseService {
   static const int _maxMetricsHistory = 100;
   Timer? _cleanupTimer;
 
-  /// Initialize the database with connection management
+  /// Initializes the database with connection management and performance monitoring.
+  ///
+  /// This method sets up the complete database infrastructure including:
+  /// - Database file creation and path management
+  /// - Schema creation or migration as needed
+  /// - Connection health monitoring
+  /// - Performance metrics initialization
+  /// - Periodic cleanup timer setup
+  ///
+  /// ## Initialization Process
+  /// 1. Get database path from platform-specific storage
+  /// 2. Open database with version management
+  /// 3. Create schema or run migrations
+  /// 4. Initialize connection monitoring
+  /// 5. Start cleanup timer for old metrics
+  ///
+  /// ## Error Handling
+  /// - Comprehensive error logging with stack traces
+  /// - Proper rethrowing for upstream error handling
+  /// - Connection state tracking for health monitoring
+  ///
+  /// Thread Safety: Safe to call multiple times (idempotent)
+  ///
+  /// Performance: Blocks until initialization completes
   Future<void> init() async {
     if (_isInitialized) return;
 

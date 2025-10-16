@@ -1,3 +1,19 @@
+/**
+ * MuslimDeen Flutter Application - Main Entry Point
+ * 
+ * This file serves as the entry point for the MuslimDeen application, a comprehensive
+ * Islamic prayer and lifestyle app. It handles the complete initialization flow,
+ * from service setup to UI rendering, with robust error handling and performance
+ * optimizations.
+ * 
+ * Key responsibilities:
+ * - Initialize services and dependencies through the service locator
+ * - Set up error handling and logging infrastructure
+ * - Configure app-wide theming and localization
+ * - Initialize permissions and background services
+ * - Provide error recovery mechanisms
+ */
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -26,13 +42,24 @@ import 'package:muslim_deen/views/zakat_calculator_view.dart';
 import 'package:muslim_deen/widgets/error_boundary.dart';
 import 'package:muslim_deen/config/app_localization_config.dart';
 
+/**
+ * Main application entry point
+ * 
+ * Initializes the entire application in a specific order:
+ * 1. Ensures Flutter bindings are ready
+ * 2. Sets up the service locator with all dependencies
+ * 3. Initializes critical services in parallel for performance
+ * 4. Sets up global error handling
+ * 5. Starts the Flutter app with proper providers
+ */
 Future<void> main() async {
+  // Ensure Flutter bindings are initialized before any async operations
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
+    // Initialize the service locator with all app dependencies
+    // This must be the first step as other services depend on it
     await setupLocator();
-
-    // Initialize enhanced accessibility
   } catch (e, s) {
     // If service locator fails, we can't use the logger, so print to console
     debugPrint('Failed to setup service locator: $e');
@@ -42,6 +69,8 @@ Future<void> main() async {
     return;
   }
 
+  // Parallel initialization of non-critical startup tasks
+  // This improves app startup performance by running independent operations concurrently
   final List<Future<void>> startupFutures = [
     _requestPermissions(),
     Future<void>(() async => tz.initializeTimeZones()),
@@ -53,6 +82,7 @@ Future<void> main() async {
   ];
 
   try {
+    // Wait for all startup operations to complete
     await Future.wait(startupFutures);
     locator<LoggerService>().info("Parallel startup operations completed.");
   } catch (e, s) {
@@ -64,6 +94,8 @@ Future<void> main() async {
     // Continue anyway - don't let startup failures crash the app
   }
 
+  // Set up global error handling for Flutter framework errors
+  // This ensures all unhandled errors are properly logged and reported
   FlutterError.onError = (details) {
     final errorHandler = locator<ErrorHandlerService>();
     errorHandler.reportError(
@@ -76,9 +108,16 @@ Future<void> main() async {
     );
   };
 
+  // Start the app with Riverpod provider scope and error boundary
   runApp(const ProviderScope(child: ErrorBoundary(child: MuslimDeenApp())));
 }
 
+/**
+ * Handles runtime permissions required by the app
+ * 
+ * Note: Location permissions are now handled by LocationService.startPermissionFlow()
+ * This function only handles notification permissions which are required at startup
+ */
 Future<void> _requestPermissions() async {
   final LoggerService logger = locator<LoggerService>();
 
@@ -86,6 +125,7 @@ Future<void> _requestPermissions() async {
     'Location permission request is now handled by LocationService.startPermissionFlow()',
   );
 
+  // Check and request notification permission
   var notificationStatus = await Permission.notification.status;
   logger.info('Initial notification permission status: $notificationStatus');
   if (!notificationStatus.isGranted) {
@@ -96,17 +136,30 @@ Future<void> _requestPermissions() async {
   }
 }
 
+/**
+ * Root application widget that configures the MaterialApp
+ * 
+ * This widget sets up the app-wide configuration including:
+ * - Theme management (light/dark mode)
+ * - Localization support for multiple languages
+ * - Navigation setup with observers
+ * - RTL (Right-to-Left) text direction support
+ * - Consistent text scaling across the app
+ */
 class MuslimDeenApp extends StatelessWidget {
   const MuslimDeenApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Log app startup for monitoring and debugging
     locator<LoggerService>().info('Application started');
 
+    // Use Consumer to rebuild when settings change (e.g., theme or language)
     return Consumer(
       builder: (context, ref, _) {
         final settingsState = ref.watch(settingsProvider);
 
+        // Convert language setting to proper Locale object
         final currentLocale = _getLocaleFromSettings(settingsState.language);
 
         return MaterialApp(
@@ -114,6 +167,7 @@ class MuslimDeenApp extends StatelessWidget {
           theme: _buildLightTheme(),
           darkTheme: _buildDarkTheme(),
           themeMode: settingsState.themeMode,
+          // Localization delegates for internationalization
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
@@ -122,17 +176,20 @@ class MuslimDeenApp extends StatelessWidget {
           home: const MainScreen(),
           locale: currentLocale,
           supportedLocales: AppLocalizationConfig.supportedLocales,
+          // Use NavigationService for programmatic navigation
           navigatorKey: locator<NavigationService>().navigatorKey,
+          // Add navigation observer for logging navigation events
           navigatorObservers: [_NavigationObserver()],
-          // Add RTL support for scroll views and other directional elements
+          // Builder wrapper for consistent UI behavior
           builder: (context, child) {
             return MediaQuery(
               data: MediaQuery.of(context).copyWith(
                 textScaler: TextScaler.linear(
                   1.0,
-                ), // Ensure consistent text scaling
+                ), // Ensure consistent text scaling across devices
               ),
               child: Directionality(
+                // Support RTL languages like Arabic
                 textDirection: AppLocalizationConfig.getTextDirection(
                   Localizations.localeOf(context),
                 ),
@@ -145,7 +202,13 @@ class MuslimDeenApp extends StatelessWidget {
     );
   }
 
-  // Extracted theme building methods for better performance
+  /**
+   * Builds the light theme configuration
+   * 
+   * Creates a comprehensive light theme with consistent colors, typography,
+   * and component styling. The theme uses the app's custom color scheme
+   * defined in AppColors for brand consistency.
+   */
   ThemeData _buildLightTheme() {
     const brightness = Brightness.light;
     return ThemeData.light().copyWith(
@@ -188,6 +251,13 @@ class MuslimDeenApp extends StatelessWidget {
     );
   }
 
+  /**
+   * Builds the dark theme configuration
+   * 
+   * Creates a comprehensive dark theme that complements the light theme
+   * with appropriate contrast and readability. Uses the same brand colors
+   * but with dark-appropriate background and surface colors.
+   */
   ThemeData _buildDarkTheme() {
     const brightness = Brightness.dark;
     return ThemeData.dark().copyWith(
@@ -249,6 +319,12 @@ class MuslimDeenApp extends StatelessWidget {
     );
   }
 
+  /**
+   * Builds a consistent text theme for the app
+   * 
+   * Ensures all text styles use the appropriate colors based on the theme
+   * brightness. This provides consistent typography across all text components.
+   */
   TextTheme _buildTextTheme(Brightness brightness) {
     return TextTheme(
       displayLarge: TextStyle(color: AppColors.textPrimary(brightness)),
@@ -264,6 +340,12 @@ class MuslimDeenApp extends StatelessWidget {
     );
   }
 
+  /**
+   * Builds a custom switch theme matching the app's design language
+   * 
+   * Provides consistent styling for toggle switches throughout the app
+   * with appropriate colors for selected and unselected states.
+   */
   SwitchThemeData _buildSwitchTheme(Brightness brightness) {
     return SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith<Color?>((states) {
@@ -282,6 +364,13 @@ class MuslimDeenApp extends StatelessWidget {
   }
 }
 
+/**
+ * Navigation observer for tracking and logging navigation events
+ * 
+ * This observer logs all navigation events (push/pop) for debugging
+ * and analytics purposes. It helps track user flow and identify
+ * navigation issues.
+ */
 class _NavigationObserver extends NavigatorObserver {
   final LoggerService _logger = locator<LoggerService>();
 
@@ -308,6 +397,13 @@ class _NavigationObserver extends NavigatorObserver {
   }
 }
 
+/**
+ * Main screen widget that manages the bottom navigation bar and tab switching
+ * 
+ * This widget is the root of the app's UI structure, managing navigation between
+ * different sections of the app. It implements lazy loading and caching for
+ * optimal performance and smooth navigation.
+ */
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -316,12 +412,14 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
+  // Default to Home tab (index 2)
   int _selectedIndex = 2;
   final LoggerService _logger = locator<LoggerService>();
   late AnimationController _animationController;
   late Animation<double> _animation;
 
   // Optimized: Use lazy initialization instead of immediate widget creation
+  // This prevents all widgets from being built at startup, improving performance
   static final List<Widget Function()> _widgetBuilders = <Widget Function()>[
     TesbihView.new,
     QiblaView.new,
@@ -334,9 +432,11 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     ZakatCalculatorView.new,
   ];
 
-  // Optimized: Weak reference caching to prevent memory leaks
+  // Optimized: Widget caching to prevent rebuilding and maintain state
+  // This ensures widgets maintain their state when switching tabs
   final Map<int, Widget> _cachedWidgets = <int, Widget>{};
 
+  // Tab names for logging and identification
   static const Map<int, String> _tabNames = <int, String>{
     0: 'Tesbih',
     1: 'Qibla',
@@ -349,6 +449,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     8: 'Zakat',
   };
 
+  // Navigation items shown in the bottom navigation bar
   static const List<_NavItemData> _navItems = [
     _NavItemData(
       icon: Icons.grain,
@@ -379,6 +480,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    // Initialize animation controller for smooth tab transitions
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 200),
       vsync: this,
@@ -392,10 +494,17 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    // Clean up animation controller to prevent memory leaks
     _animationController.dispose();
     super.dispose();
   }
 
+  /**
+   * Handles bottom navigation item taps
+   * 
+   * Logs the navigation event, updates the selected index, and triggers
+   * a subtle animation and haptic feedback for better user experience.
+   */
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return; // Prevent unnecessary rebuilds
 
@@ -413,12 +522,19 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       _selectedIndex = index;
     });
 
-    // Add subtle haptic feedback
+    // Add subtle haptic feedback for better user experience
     HapticFeedback.lightImpact();
     _animationController.reset();
     _animationController.forward();
   }
 
+  /**
+   * Handles overflow menu item taps
+   * 
+   * Items in the overflow menu (accessed via the "More" button) are
+   * mapped to their actual indices. This function handles the mapping
+   * and navigation for these items.
+   */
   void _onOverflowItemTapped(int index) {
     // Overflow items are at indices 4, 5, 6, 7, 8 (Settings, Hadith, Calendar, Fasting, Zakat)
     final actualIndex = index + 4; // Add 4 to get the real index
@@ -439,7 +555,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       _selectedIndex = actualIndex;
     });
 
-    // Add subtle haptic feedback
+    // Add subtle haptic feedback for better user experience
     HapticFeedback.lightImpact();
     _animationController.reset();
     _animationController.forward();
@@ -448,12 +564,21 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Use cached widget if available, otherwise create and cache it
       body:
           _cachedWidgets[_selectedIndex] ??= _widgetBuilders[_selectedIndex](),
       bottomNavigationBar: _buildBottomNavigationBar(context),
     );
   }
 
+  /**
+   * Builds the custom bottom navigation bar
+   * 
+   * Creates a custom bottom navigation bar with a main section for
+   * frequently accessed items and an overflow menu for less common items.
+   * The design includes shadows, borders, and proper spacing for
+   * a polished look and feel.
+   */
   Widget _buildBottomNavigationBar(BuildContext context) {
     final theme = Theme.of(context);
     final brightness = theme.brightness;
@@ -505,6 +630,12 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   }
 }
 
+/**
+ * Data class for navigation items
+ * 
+ * Holds the visual and textual information for each navigation item
+ * in the bottom navigation bar.
+ */
 class _NavItemData {
   const _NavItemData({
     required this.icon,
@@ -519,7 +650,13 @@ class _NavItemData {
   final String tooltip;
 }
 
-// Optimized navigation item widget with better animations and accessibility
+/**
+ * Optimized navigation item widget with smooth animations and accessibility support
+ * 
+ * This widget represents a single item in the bottom navigation bar with
+ * animated transitions, proper accessibility labels, and visual feedback
+ * for interactions.
+ */
 class _NavItem extends StatelessWidget {
   const _NavItem({
     required this.index,
@@ -607,7 +744,13 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-// Overflow menu button widget
+/**
+ * Overflow menu button widget
+ * 
+ * Provides access to additional app features that don't fit in the main
+ * bottom navigation bar. Displays a popup menu with icons and labels
+ * for better visual hierarchy and user experience.
+ */
 class _OverflowMenuButton extends StatelessWidget {
   const _OverflowMenuButton({
     required this.onItemSelected,
@@ -778,30 +921,42 @@ class _OverflowMenuButton extends StatelessWidget {
   }
 }
 
-/// Convert language setting string to proper Locale
+/**
+ * Convert language setting string to proper Locale
+ * 
+ * Maps the language code stored in settings to a proper Locale object
+ * with appropriate country codes for regional formatting.
+ */
 Locale _getLocaleFromSettings(String languageCode) {
   switch (languageCode) {
     case 'ar':
-      return const Locale('ar', 'SA');
+      return const Locale('ar', 'SA'); // Arabic - Saudi Arabia
     case 'ur':
-      return const Locale('ur', 'PK');
+      return const Locale('ur', 'PK'); // Urdu - Pakistan
     case 'fa':
-      return const Locale('fa', 'IR');
+      return const Locale('fa', 'IR'); // Persian - Iran
     case 'tr':
-      return const Locale('tr', 'TR');
+      return const Locale('tr', 'TR'); // Turkish - Turkey
     case 'id':
-      return const Locale('id', 'ID');
+      return const Locale('id', 'ID'); // Indonesian - Indonesia
     case 'ms':
-      return const Locale('ms', 'MY');
+      return const Locale('ms', 'MY'); // Malay - Malaysia
     case 'fr':
-      return const Locale('fr', 'FR');
+      return const Locale('fr', 'FR'); // French - France
     case 'en':
     default:
-      return const Locale('en', 'US');
+      return const Locale('en', 'US'); // English - United States (default)
   }
 }
 
-/// Fallback app shown when service locator initialization fails
+/**
+ * Fallback app shown when service locator initialization fails
+ * 
+ * This minimal UI is displayed when the app fails to initialize properly.
+ * It provides a simple error message and a retry button to attempt
+ * reinitialization. This ensures users always have some feedback
+ * even when critical services fail to start.
+ */
 class ErrorApp extends StatelessWidget {
   const ErrorApp({super.key});
 

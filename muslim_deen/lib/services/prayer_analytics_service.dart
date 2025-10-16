@@ -59,7 +59,40 @@ class PrayerTrendData {
 /// Trend direction enum
 enum TrendDirection { improving, declining, stable }
 
-/// Service for advanced prayer analytics and insights
+/// Advanced analytics service for prayer performance insights and trend analysis.
+///
+/// This singleton service provides sophisticated analysis of prayer completion
+/// data, offering insights into user behavior patterns, performance trends,
+/// and improvement recommendations. It implements statistical algorithms
+/// including linear regression for trend analysis and comprehensive performance
+/// metrics.
+///
+/// ## Key Features
+/// - Performance trend analysis with linear regression
+/// - Consistency scoring based on multiple factors
+/// - Prayer-specific completion rate analysis
+/// - Best/worst performing day identification
+/// - Personalized improvement recommendations
+/// - Monthly distribution analysis
+///
+/// ## Analytics Capabilities
+/// - Trend direction detection (improving/declining/stable)
+/// - Consistency scoring (0-100 scale)
+/// - Performance insights generation
+/// - Statistical modeling of prayer patterns
+///
+/// ## Data Models
+/// - [PrayerPerformanceData]: Individual day performance metrics
+/// - [PrayerTrendData]: Aggregate trend analysis results
+/// - [TrendDirection]: Enum for trend classification
+///
+/// ## Dependencies
+/// - [DatabaseService]: Source of prayer completion data
+/// - [LoggerService]: Operations and error logging
+///
+/// ## Singleton Pattern
+/// Ensures consistent analytics calculations across the app and prevents
+/// duplicate computation resources.
 class PrayerAnalyticsService {
   static PrayerAnalyticsService? _instance;
   final LoggerService _logger = locator<LoggerService>();
@@ -74,7 +107,26 @@ class PrayerAnalyticsService {
 
   PrayerAnalyticsService._internal();
 
-  /// Get prayer performance data for a date range
+  /// Retrieves prayer performance data for a specified date range.
+  ///
+  /// This method processes raw prayer completion data into structured
+  /// performance metrics that can be used for visualization and analysis.
+  /// It handles missing data gracefully and provides completion rates.
+  ///
+  /// Parameters:
+  /// - [startDate]: Start date for the analysis period
+  /// - [endDate]: End date for the analysis period
+  ///
+  /// Returns: List of [PrayerPerformanceData] objects, one for each day
+  ///
+  /// Data Processing:
+  /// - Converts completion lists to completion rates
+  /// - Handles missing days with zero completion
+  /// - Normalizes completion rates to 0.0-1.0 range
+  ///
+  /// Performance: Iterates through each day in the range
+  ///
+  /// Error Handling: Returns empty list on errors and logs the issue
   Future<List<PrayerPerformanceData>> getPerformanceData({
     required DateTime startDate,
     required DateTime endDate,

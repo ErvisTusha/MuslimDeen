@@ -10,6 +10,56 @@ import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
 
+/// Service for managing home screen widgets
+/// 
+/// This service provides functionality to update home screen widgets with
+/// current prayer times and other relevant information. It supports both
+/// Android and iOS platforms through the home_widget package and handles
+/// platform-specific differences gracefully.
+/// 
+/// Features:
+/// - Update home screen widgets with current/next prayer information
+/// - Support for different time formats (12/24 hour)
+/// - Support for different date formats
+/// - Theme-aware widget updates
+/// - Time remaining calculations for next prayer
+/// - Platform-specific widget handling
+/// - Graceful degradation when widgets aren't supported
+/// 
+/// Usage:
+/// ```dart
+/// final widgetService = WidgetService();
+/// await widgetService.initialize();
+/// await widgetService.updateAllWidgets(
+///   appSettings: settings,
+///   prayerTimes: prayerTimes,
+///   locationName: 'Mecca',
+/// );
+/// ```
+/// 
+/// Design Patterns:
+/// - Service: Encapsulates widget functionality
+/// - Facade: Simplifies complex widget update logic
+/// - Strategy: Different update strategies for different platforms
+/// - Observer: Reacts to prayer time changes
+/// 
+/// Performance Considerations:
+/// - Efficient data formatting and caching
+/// - Minimal widget update frequency
+/// - Platform-specific optimizations
+/// - Graceful handling of widget unavailability
+/// 
+/// Dependencies:
+/// - home_widget package: For cross-platform widget support
+/// - intl package: For date/time formatting
+/// - adhan_dart package: For prayer time calculations
+/// - PrayerService: For prayer time calculations with offsets
+/// - LoggerService: For centralized logging
+/// 
+/// Platform Support:
+/// - Android: Uses MuslimDeenWidgetProvider
+/// - iOS: Uses MuslimDeenWidgetCurrentNext
+/// - Other platforms: Graceful degradation
 class WidgetService {
   final LoggerService _logger = locator<LoggerService>();
   final PrayerService _prayerService = locator<PrayerService>();
@@ -18,6 +68,25 @@ class WidgetService {
   static const String _iOSWidgetName = 'MuslimDeenWidget';
 
   /// Initialize the widget service
+  /// 
+  /// Sets up the widget service by configuring the app group ID
+  /// for data sharing between the main app and widgets. This is
+  /// required for iOS widgets to access shared data.
+  /// 
+  /// Algorithm:
+  /// 1. Set app group ID for data sharing
+  /// 2. Log successful initialization
+  /// 3. Handle platform-specific exceptions
+  /// 
+  /// Error Handling:
+  /// - Graceful handling when widget plugin isn't available
+  /// - Logs warnings without throwing exceptions
+  /// - Continues operation without widget functionality
+  /// 
+  /// Platform Considerations:
+  /// - iOS requires app group configuration
+  /// - Android has different requirements
+  /// - Other platforms may not support widgets
   Future<void> initialize() async {
     try {
       await HomeWidget.setAppGroupId(_groupId);
@@ -37,6 +106,29 @@ class WidgetService {
   }
 
   /// Update current/next prayer widget with current prayer data
+  /// 
+  /// Updates all supported widgets with the current prayer times and
+  /// related information. This is the main entry point for widget
+  /// updates and handles the coordination of different widget types.
+  /// 
+  /// Parameters:
+  /// - [appSettings]: Application settings for formatting
+  /// - [prayerTimes]: Current prayer times
+  /// - [locationName]: Optional location name for display
+  /// 
+  /// Algorithm:
+  /// 1. Update current/next prayer widget
+  /// 2. Log successful update
+  /// 3. Handle platform-specific exceptions
+  /// 
+  /// Error Handling:
+  /// - Graceful handling when widget plugin isn't available
+  /// - Detailed error logging for debugging
+  /// - Continues operation without widget functionality
+  /// 
+  /// Performance:
+  /// - Single entry point for all widget updates
+  /// - Efficient data preparation before updates
   Future<void> updateAllWidgets({
     required AppSettings appSettings,
     required adhan.PrayerTimes prayerTimes,
@@ -66,6 +158,45 @@ class WidgetService {
   }
 
   /// Update the current/next prayer widget
+  /// 
+  /// Updates the primary home screen widget with current and next
+  /// prayer information. This widget displays the current prayer,
+  /// next prayer, time remaining, and other relevant information.
+  /// 
+  /// Parameters:
+  /// - [appSettings]: Application settings for formatting
+  /// - [prayerTimes]: Current prayer times
+  /// - [locationName]: Optional location name for display
+  /// 
+  /// Algorithm:
+  /// 1. Create time and date formatters based on user preferences
+  /// 2. Get current and next prayer from prayerTimes object
+  /// 3. Convert prayer names to display format
+  /// 4. Calculate time remaining for next prayer
+  /// 5. Prepare comprehensive widget data
+  /// 6. Save data to widget and trigger update
+  /// 
+  /// Data Structure:
+  /// - current_prayer_name: Name of current prayer
+  /// - current_prayer_time: Time of current prayer
+  /// - next_prayer_name: Name of next prayer
+  /// - next_prayer_time: Time of next prayer
+  /// - time_remaining: Time until next prayer
+  /// - formatted_date: Current date in user's format
+  /// - theme_mode: Current theme mode
+  /// - time_format: User's time format preference
+  /// - date_format: User's date format preference
+  /// - last_update: Timestamp of last update
+  /// 
+  /// Error Handling:
+  /// - Graceful handling when widget plugin isn't available
+  /// - Detailed error logging with context
+  /// - Continues operation without widget functionality
+  /// 
+  /// Performance:
+  /// - Efficient time formatting with cached formatters
+  /// - Minimal data transfer to widget
+  /// - Platform-specific optimizations
   Future<void> updateCurrentNextPrayerWidget({
     required AppSettings appSettings,
     required adhan.PrayerTimes prayerTimes,
@@ -196,6 +327,15 @@ class WidgetService {
   }
 
   /// Get date format pattern based on user preference
+  /// 
+  /// Returns the appropriate date format pattern based on the
+  /// user's selected date format option.
+  /// 
+  /// Parameters:
+  /// - [option]: The user's date format preference
+  /// 
+  /// Returns:
+  /// - DateFormat pattern string
   String _getDateFormatPattern(DateFormatOption option) {
     switch (option) {
       case DateFormatOption.dayMonthYear:
@@ -208,6 +348,18 @@ class WidgetService {
   }
 
   /// Get prayer display information
+  /// 
+  /// Gets comprehensive display information for a specific prayer,
+  /// including name, time, and icon. This includes applying any
+  /// user-configured time offsets.
+  /// 
+  /// Parameters:
+  /// - [prayerEnum]: The prayer to get information for
+  /// - [prayerTimes]: The prayer times object
+  /// - [appSettings]: Application settings for offsets
+  /// 
+  /// Returns:
+  /// - PrayerListItemData with display information
   PrayerListItemData _getPrayerDisplayInfo(
     PrayerNotification prayerEnum,
     adhan.PrayerTimes prayerTimes,
@@ -283,6 +435,15 @@ class WidgetService {
   }
 
   /// Convert adhan prayer string to PrayerNotification enum
+  /// 
+  /// Converts the prayer string from the adhan library to the
+  /// app's internal PrayerNotification enum format.
+  /// 
+  /// Parameters:
+  /// - [adhanPrayer]: The prayer string from adhan library
+  /// 
+  /// Returns:
+  /// - Corresponding PrayerNotification enum value
   PrayerNotification? _getPrayerNotificationFromAdhanPrayer(
     String adhanPrayer,
   ) {
@@ -296,6 +457,18 @@ class WidgetService {
   }
 
   /// Clear all widget data
+  /// 
+  /// Clears all data stored for widgets. This is useful when
+  /// resetting the app or when widgets need to be refreshed.
+  /// 
+  /// Algorithm:
+  /// 1. Clear widget data
+  /// 2. Log successful clearing
+  /// 3. Handle platform-specific exceptions
+  /// 
+  /// Error Handling:
+  /// - Graceful handling when widget plugin isn't available
+  /// - Logs warnings without throwing exceptions
   Future<void> clearWidgetData() async {
     try {
       // You can implement specific data clearing if needed

@@ -20,7 +20,37 @@ class StreakCacheEntry {
       DateTime.now().difference(calculatedAt) > const Duration(minutes: 5);
 }
 
-/// Service to track prayer completion history and provide statistics
+/// Service for tracking prayer completion history and providing statistical insights.
+///
+/// This singleton service manages the persistence and analysis of user prayer
+/// completion data, providing features like streak tracking, completion rates,
+/// and historical statistics. It implements intelligent caching for performance
+/// and uses optimized database queries for efficient data retrieval.
+///
+/// ## Key Features
+/// - Prayer completion tracking for each day
+/// - Streak calculation with caching optimization
+/// - Statistical analysis (weekly, monthly, completion rates)
+/// - Performance insights and trend analysis
+/// - Automatic cleanup of old history data
+///
+/// ## Performance Optimizations
+/// - Streak result caching with 5-minute expiration
+/// - Batch database queries for historical data
+/// - Cache invalidation on data changes
+/// - Optimized date range queries
+///
+/// ## Data Storage
+/// Uses the [DatabaseService] to store prayer completion data in a
+/// comma-separated format per date, enabling efficient storage and retrieval.
+///
+/// ## Dependencies
+/// - [DatabaseService]: Persistent storage for prayer history
+/// - [LoggerService]: Centralized logging for operations and errors
+///
+/// ## Singleton Pattern
+/// Implements singleton pattern to ensure data consistency across the app
+/// and prevent multiple instances from corrupting streak calculations.
 class PrayerHistoryService {
   static PrayerHistoryService? _instance;
   final LoggerService _logger = locator<LoggerService>();

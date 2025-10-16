@@ -8,17 +8,28 @@ import 'package:muslim_deen/services/storage_service.dart';
 import 'package:muslim_deen/service_locator.dart';
 
 /// Cache entry for dhikr targets
+/// 
+/// This class represents a cached entry containing dhikr targets with their
+/// calculated timestamp. It includes expiration logic to ensure cache freshness.
 class DhikrTargetsCacheEntry {
   final Map<String, int> targets;
   final DateTime calculatedAt;
 
   DhikrTargetsCacheEntry({required this.targets, required this.calculatedAt});
 
+  /// Check if the cache entry has expired
+  /// 
+  /// Returns true if the cache is older than 10 minutes, ensuring
+  /// that targets are refreshed periodically to reflect user preference changes.
   bool get isExpired =>
       DateTime.now().difference(calculatedAt) > const Duration(minutes: 10);
 }
 
 /// Cache entry for tasbih statistics
+/// 
+/// This class represents a cached entry containing aggregated tasbih statistics
+/// for a specific number of days. It includes expiration logic to balance
+/// performance with data freshness.
 class TasbihStatsCacheEntry {
   final Map<String, int> stats;
   final DateTime calculatedAt;
@@ -30,11 +41,52 @@ class TasbihStatsCacheEntry {
     required this.days,
   });
 
+  /// Check if the cache entry has expired
+  /// 
+  /// Returns true if the cache is older than 5 minutes, providing a good
+  /// balance between performance and data freshness for statistics.
   bool get isExpired =>
       DateTime.now().difference(calculatedAt) > const Duration(minutes: 5);
 }
 
 /// Service to track tasbih/dhikr counts and provide historical statistics
+/// 
+/// This service provides comprehensive functionality for tracking, storing, and
+/// analyzing tasbih (dhikr) counts over time. It implements sophisticated caching
+/// strategies to optimize performance while maintaining data accuracy.
+/// 
+/// Features:
+/// - Record individual and batch tasbih counts with transaction safety
+/// - Calculate statistics for various time periods (daily, weekly, monthly)
+/// - Track streaks and personal records
+/// - Manage custom dhikr targets
+/// - Optimize database queries with batch operations
+/// - Implement multi-level caching for frequently accessed data
+/// 
+/// Usage:
+/// ```dart
+/// final service = TasbihHistoryService();
+/// await service.recordTasbihCount('SubhanAllah', 33);
+/// final weeklyStats = await service.getWeeklyTasbihStats();
+/// ```
+/// 
+/// Design Patterns:
+/// - Singleton: Ensures consistent cache management across the app
+/// - Repository: Abstracts database operations for tasbih data
+/// - Cache-Aside: Implements caching with explicit invalidation
+/// - Command Pattern: Encapsulates database operations in transactions
+/// 
+/// Performance Considerations:
+/// - Uses database transactions for atomicity and performance
+/// - Implements multi-level caching with TTL-based expiration
+/// - Optimizes queries with batch operations and date range filtering
+/// - Limits history to 90 days to prevent database bloat
+/// - Uses periodic cache cleanup to prevent memory leaks
+/// 
+/// Threading:
+/// - All database operations are asynchronous and non-blocking
+/// - Cache cleanup runs on a separate timer
+/// - Safe for concurrent access through database transactions
 class TasbihHistoryService {
   static TasbihHistoryService? _instance;
   final LoggerService _logger = locator<LoggerService>();
@@ -49,16 +101,27 @@ class TasbihHistoryService {
   Timer? _cacheCleanupTimer;
   static const Duration _cacheCleanupInterval = Duration(minutes: 15);
 
+  /// Singleton factory constructor
+  /// 
+  /// Ensures only one instance exists to maintain cache consistency
+  /// and prevent resource conflicts.
   factory TasbihHistoryService() {
     _instance ??= TasbihHistoryService._internal();
     return _instance!;
   }
 
+  /// Internal constructor for singleton pattern
+  /// 
+  /// Initializes the cache cleanup timer to automatically remove
+  /// expired entries and prevent memory leaks.
   TasbihHistoryService._internal() {
     _startCacheCleanupTimer();
   }
 
   /// Start periodic cleanup of expired cache entries
+  /// 
+  /// Sets up a timer that runs every 15 minutes to clean up expired
+  /// cache entries, preventing memory leaks and ensuring cache freshness.
   void _startCacheCleanupTimer() {
     _cacheCleanupTimer = Timer.periodic(_cacheCleanupInterval, (_) {
       _cleanupExpiredCache();
@@ -66,6 +129,10 @@ class TasbihHistoryService {
   }
 
   /// Clean up expired cache entries
+  /// 
+  /// Iterates through all cache entries and removes those that have
+  /// expired based on their TTL. This ensures memory efficiency while
+  /// maintaining frequently used data in cache.
   void _cleanupExpiredCache() {
     // Clean dhikr targets cache
     if (_dhikrTargetsCache?.isExpired == true) {
@@ -93,6 +160,15 @@ class TasbihHistoryService {
   }
 
   /// Generate cache key for statistics
+  /// 
+  /// Creates a unique cache key based on the current date and the
+  /// number of days for which statistics are calculated.
+  /// 
+  /// Parameters:
+  /// - [days]: The number of days for the statistics calculation
+  /// 
+  /// Returns:
+  /// - A unique string key for caching the statistics
   String _generateStatsCacheKey(int days) {
     final today = DateTime.now();
     final todayKey = _getDateKey(today);
@@ -100,6 +176,16 @@ class TasbihHistoryService {
   }
 
   /// Get cached statistics if available and not expired
+  /// 
+  /// Checks the cache for existing statistics that match the requested
+  /// number of days and haven't expired. This significantly improves
+  /// performance for repeated statistics queries.
+  /// 
+  /// Parameters:
+  /// - [days]: The number of days for the statistics
+  /// 
+  /// Returns:
+  /// - Cached statistics if available and valid, null otherwise
   Map<String, int>? _getCachedStats(int days) {
     final cacheKey = _generateStatsCacheKey(days);
     final cachedEntry = _statsCache[cacheKey];
@@ -115,6 +201,13 @@ class TasbihHistoryService {
   }
 
   /// Cache statistics calculation result
+  /// 
+  /// Stores the calculated statistics in cache with a timestamp for
+  /// future retrieval. This improves performance for repeated queries.
+  /// 
+  /// Parameters:
+  /// - [stats]: The calculated statistics to cache
+  /// - [days]: The number of days the statistics cover
   void _cacheStats(Map<String, int> stats, int days) {
     final cacheKey = _generateStatsCacheKey(days);
     _statsCache[cacheKey] = TasbihStatsCacheEntry(
@@ -127,6 +220,9 @@ class TasbihHistoryService {
   }
 
   /// Invalidate caches when tasbih data changes
+  /// 
+  /// Clears all caches when tasbih data is modified to ensure
+  /// data consistency. This is called after any write operation.
   void _invalidateCaches() {
     _dhikrTargetsCache = null;
     _statsCache.clear();
@@ -134,6 +230,9 @@ class TasbihHistoryService {
   }
 
   /// Dispose of resources
+  /// 
+  /// Cleans up resources when the service is no longer needed.
+  /// Cancels the cache cleanup timer and clears all caches.
   void dispose() {
     _cacheCleanupTimer?.cancel();
     _cacheCleanupTimer = null;
@@ -141,6 +240,29 @@ class TasbihHistoryService {
   }
 
   /// Record a tasbih count for today with batch operations
+  /// 
+  /// Records a single tasbih count for the current date using a database
+  /// transaction to ensure atomicity. The operation updates existing counts
+  /// or creates new entries as needed.
+  /// 
+  /// Parameters:
+  /// - [dhikrType]: The type of dhikr (e.g., 'SubhanAllah')
+  /// - [count]: The number of counts to add
+  /// 
+  /// Algorithm:
+  /// 1. Gets existing counts for today
+  /// 2. Adds the new count to the existing total
+  /// 3. Uses batch insert for efficient database operation
+  /// 4. Invalidates caches to ensure consistency
+  /// 
+  /// Error Handling:
+  /// - Logs errors without throwing exceptions
+  /// - Includes context data for debugging
+  /// 
+  /// Performance:
+  /// - Uses database transactions for atomicity
+  /// - Batch operations minimize database round trips
+  /// - Cache invalidation ensures data consistency
   Future<void> recordTasbihCount(String dhikrType, int count) async {
     try {
       final now = DateTime.now();
@@ -173,6 +295,28 @@ class TasbihHistoryService {
   }
 
   /// Record multiple tasbih counts in a single batch operation
+  /// 
+  /// Efficiently records multiple dhikr types in a single transaction.
+  /// This is optimal for batch operations like importing data or
+  /// recording multiple dhikrs at once.
+  /// 
+  /// Parameters:
+  /// - [counts]: Map of dhikr types to their counts
+  /// 
+  /// Algorithm:
+  /// 1. Validates input (returns early if empty)
+  /// 2. Gets existing counts for today
+  /// 3. Updates all counts in a single transaction
+  /// 4. Uses batch insert for efficiency
+  /// 5. Invalidates caches
+  /// 
+  /// Performance:
+  /// - Single transaction for all updates
+  /// - Batch insert minimizes database operations
+  /// - Early return for empty input
+  /// 
+  /// Error Handling:
+  /// - Graceful error handling with detailed logging
   Future<void> recordTasbihCountsBatch(Map<String, int> counts) async {
     if (counts.isEmpty) return;
 
@@ -211,6 +355,19 @@ class TasbihHistoryService {
   }
 
   /// Get tasbih counts for a specific date
+  /// 
+  /// Retrieves the tasbih counts for a specific date from the database.
+  /// This is a direct database query with caching for frequently accessed dates.
+  /// 
+  /// Parameters:
+  /// - [date]: The date to retrieve counts for
+  /// 
+  /// Returns:
+  /// - Map of dhikr types to their counts for the specified date
+  /// 
+  /// Error Handling:
+  /// - Returns empty map on error to prevent app crashes
+  /// - Logs warnings for debugging
   Future<Map<String, int>> getTasbihCounts(DateTime date) async {
     try {
       final dateKey = _getDateKey(date);
@@ -222,11 +379,37 @@ class TasbihHistoryService {
   }
 
   /// Get tasbih counts for today
+  /// 
+  /// Convenience method to get today's tasbih counts.
+  /// 
+  /// Returns:
+  /// - Map of dhikr types to their counts for today
   Future<Map<String, int>> getTodayTasbihCounts() async {
     return getTasbihCounts(DateTime.now());
   }
 
   /// Get total tasbih counts for the last N days with caching
+  /// 
+  /// Calculates aggregated statistics for the specified number of days.
+  /// Uses caching to improve performance for repeated queries.
+  /// 
+  /// Parameters:
+  /// - [days]: The number of days to include in the calculation
+  /// 
+  /// Algorithm:
+  /// 1. Checks cache first for existing results
+  /// 2. If not cached, performs optimized database query
+  /// 3. Uses date range filtering for efficiency
+  /// 4. Aggregates results in a single pass
+  /// 5. Caches the result for future use
+  /// 
+  /// Performance:
+  /// - Multi-level caching with TTL
+  /// - Optimized query with date range filtering
+  /// - Single database query with aggregation
+  /// 
+  /// Returns:
+  /// - Map of dhikr types to their total counts over the period
   Future<Map<String, int>> getTasbihStatsForDays(int days) async {
     // Check cache first
     final cachedStats = _getCachedStats(days);
@@ -281,16 +464,44 @@ class TasbihHistoryService {
   }
 
   /// Get weekly tasbih statistics
+  /// 
+  /// Convenience method to get statistics for the last 7 days.
+  /// 
+  /// Returns:
+  /// - Map of dhikr types to their total counts over the last week
   Future<Map<String, int>> getWeeklyTasbihStats() async {
     return getTasbihStatsForDays(7);
   }
 
   /// Get monthly tasbih statistics
+  /// 
+  /// Convenience method to get statistics for the last 30 days.
+  /// 
+  /// Returns:
+  /// - Map of dhikr types to their total counts over the last month
   Future<Map<String, int>> getMonthlyTasbihStats() async {
     return getTasbihStatsForDays(30);
   }
 
   /// Get daily tasbih data for visualization (last N days)
+  /// 
+  /// Retrieves daily tasbih data for visualization purposes, such as
+  /// creating charts or heat maps. Uses batch queries for efficiency.
+  /// 
+  /// Parameters:
+  /// - [days]: The number of days to retrieve data for
+  /// 
+  /// Algorithm:
+  /// 1. Generates all date keys for the requested period
+  /// 2. Performs a single batch query to get all data
+  /// 3. Organizes results into a daily grid structure
+  /// 
+  /// Performance:
+  /// - Single batch query instead of multiple individual queries
+  /// - Efficient date key generation
+  /// 
+  /// Returns:
+  /// - Map of date keys to their respective dhikr counts
   Future<Map<String, Map<String, int>>> getDailyTasbihGrid(int days) async {
     final grid = <String, Map<String, int>>{};
     final now = DateTime.now();
@@ -318,6 +529,24 @@ class TasbihHistoryService {
   }
 
   /// Get total tasbih count for a specific dhikr type across all time
+  /// 
+  /// Calculates the total count for a specific dhikr type across all
+  /// stored history (up to 90 days). Uses batch queries for efficiency.
+  /// 
+  /// Parameters:
+  /// - [dhikrType]: The dhikr type to calculate the total for
+  /// 
+  /// Algorithm:
+  /// 1. Generates all date keys for the history period
+  /// 2. Performs a single batch query
+  /// 3. Aggregates counts for the specific dhikr type
+  /// 
+  /// Performance:
+  /// - Single batch query instead of iterative queries
+  /// - Bounded by _maxHistoryDays to prevent excessive queries
+  /// 
+  /// Returns:
+  /// - Total count for the specified dhikr type
   Future<int> getTotalTasbihCount(String dhikrType) async {
     try {
       int total = 0;
@@ -347,7 +576,28 @@ class TasbihHistoryService {
   }
 
   /// Get current tasbih streak (consecutive days with all dhikr targets completed)
-  /// Get streak data (consecutive days with all dhikr targets completed)
+  /// 
+  /// Calculates the current streak of consecutive days where all dhikr
+  /// targets were met. This is a key gamification feature to encourage
+  /// consistent dhikr practice.
+  /// 
+  /// Parameters:
+  /// - [customTargets]: Optional custom targets to use instead of defaults
+  /// 
+  /// Algorithm:
+  /// 1. Gets targets (custom or default)
+  /// 2. Checks each day backwards from today
+  /// 3. Verifies all targets are met for each day
+  /// 4. Stops at first day with incomplete targets
+  /// 5. Updates personal record if current streak is higher
+  /// 
+  /// Performance:
+  /// - Batch query to get all data at once
+  /// - Early termination when streak breaks
+  /// - Limited to 365 days for performance
+  /// 
+  /// Returns:
+  /// - Current streak in days
   Future<int> getCurrentTasbihStreak({Map<String, int>? customTargets}) async {
     final targets = customTargets ?? AppConstants.defaultDhikrTargets;
     int streak = 0;
@@ -402,16 +652,35 @@ class TasbihHistoryService {
   }
 
   /// Generate a date key in format YYYY-MM-DD
+  /// 
+  /// Creates a standardized date key for database storage and caching.
+  /// This format ensures chronological sorting and easy querying.
+  /// 
+  /// Parameters:
+  /// - [date]: The date to convert to a key
+  /// 
+  /// Returns:
+  /// - Date key in YYYY-MM-DD format
   String _getDateKey(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
   /// Get best tasbih streak (personal record)
+  /// 
+  /// Convenience method to get the user's best streak record.
+  /// 
+  /// Returns:
+  /// - Personal best streak in days
   Future<int> getBestTasbihStreak() async {
     return getTasbihStreakRecord();
   }
 
   /// Get personal record for tasbih streak
+  /// 
+  /// Retrieves the stored personal record for longest streak.
+  /// 
+  /// Returns:
+  /// - Personal record in days, 0 if none exists
   Future<int> getTasbihStreakRecord() async {
     try {
       final record = await _database.getSettings('tasbih_streak_record');
@@ -423,6 +692,21 @@ class TasbihHistoryService {
   }
 
   /// Update personal record for tasbih streak if current streak is higher
+  /// 
+  /// Updates the stored personal record if the current streak exceeds it.
+  /// This method is called automatically when calculating the current streak.
+  /// 
+  /// Parameters:
+  /// - [currentStreak]: The current streak to potentially save as a record
+  /// 
+  /// Algorithm:
+  /// 1. Gets existing record
+  /// 2. Compares with current streak
+  /// 3. Updates if current is higher
+  /// 4. Logs the new record
+  /// 
+  /// Error Handling:
+  /// - Graceful handling of storage errors
   Future<void> _updateTasbihStreakRecord(int currentStreak) async {
     try {
       final currentRecord = await getTasbihStreakRecord();
@@ -439,6 +723,24 @@ class TasbihHistoryService {
   }
 
   /// Get the current effective dhikr targets with caching
+  /// 
+  /// Retrieves the current dhikr targets, taking into account user preferences
+  /// for custom targets. Uses caching to improve performance for repeated access.
+  /// 
+  /// Algorithm:
+  /// 1. Checks cache first
+  /// 2. Determines if custom targets are enabled
+  /// 3. Loads custom targets if enabled
+  /// 4. Falls back to stored targets or defaults for missing types
+  /// 5. Caches the result
+  /// 
+  /// Performance:
+  /// - Multi-level caching with 10-minute TTL
+  /// - Efficient JSON parsing for custom targets
+  /// - Graceful fallback to defaults
+  /// 
+  /// Returns:
+  /// - Map of dhikr types to their target counts
   Future<Map<String, int>> getCurrentDhikrTargets() async {
     // Check cache first
     if (_dhikrTargetsCache != null && !_dhikrTargetsCache!.isExpired) {
@@ -495,6 +797,13 @@ class TasbihHistoryService {
   }
 
   /// Invalidate dhikr targets cache (call when settings change)
+  /// 
+  /// Explicitly invalidates the dhikr targets cache. This should be called
+  /// whenever user settings related to dhikr targets are changed.
+  /// 
+  /// Usage:
+  /// Call this method when users modify their dhikr target settings
+  /// to ensure the new targets take effect immediately.
   void invalidateDhikrTargetsCache() {
     _dhikrTargetsCache = null;
     _logger.debug('Invalidated dhikr targets cache');

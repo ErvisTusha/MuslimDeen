@@ -12,8 +12,44 @@ import 'package:muslim_deen/services/location_cache_manager.dart';
 import 'package:muslim_deen/models/custom_exceptions.dart';
 // LocationServiceException class removed
 
-/// A service that handles location-related functionality including device location,
-/// manual location settings, and location streaming.
+/// Comprehensive location management service for prayer time calculations.
+///
+/// This service provides robust location functionality including device location
+/// tracking, manual location management, permission handling, and intelligent
+/// caching strategies. It serves as the primary location provider for prayer
+/// time calculations and other location-dependent features.
+///
+/// ## Key Features
+/// - Dual location modes: Device GPS and manual user selection
+/// - Intelligent permission flow with user guidance
+/// - Multi-layer caching with adaptive strategies
+/// - Background location change detection
+/// - Graceful fallback to last known location or Mecca
+/// - Request deduplication to prevent redundant GPS queries
+///
+/// ## Caching Strategy
+/// - Short-term in-memory cache (5 minutes, accuracy-adjusted)
+/// - Enhanced cache manager with movement pattern analysis
+/// - Persistent storage for last known position
+/// - Cache invalidation on significant location changes
+///
+/// ## Permission Management
+/// - Step-by-step permission request flow
+/// - Explanation dialogs before requesting permissions
+/// - Graceful handling of denied permissions
+/// - Automatic fallback to manual location mode
+///
+/// ## Dependencies
+/// - [LocationCacheManager]: Advanced caching with movement analysis
+/// - [LoggerService]: Centralized logging
+/// - [NotificationService]: Permission coordination
+/// - [Geolocator]: GPS location functionality
+/// - [SharedPreferences]: Persistent settings storage
+///
+/// ## Error Handling
+/// - Multiple fallback layers (cache → last known → Mecca)
+/// - Comprehensive error logging without crashing
+/// - Graceful degradation when location services fail
 enum PermissionRequestState {
   notStarted,
   explanationShown,

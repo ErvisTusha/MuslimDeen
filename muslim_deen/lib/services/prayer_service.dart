@@ -14,11 +14,51 @@ import 'package:muslim_deen/services/prayer_times_precomputer.dart';
 import 'package:muslim_deen/services/cache_metrics_service.dart';
 import 'package:muslim_deen/services/country_calculation_service.dart';
 
-/// Service responsible for calculating and providing prayer times.
+/// Core service responsible for calculating and managing Islamic prayer times.
 ///
-/// It handles different calculation methods, madhabs, and user-specific offsets.
-/// It also caches the latest calculated prayer times and provides information
-/// about the current and next prayer.
+/// This service is the heart of the prayer time calculation system, providing:
+/// - Prayer time calculations using various methods (Muslim World League, Umm Al-Qura, etc.)
+/// - Support for different madhabs (Hanafi, Shafi)
+/// - User-specific time offsets for each prayer
+/// - Automatic location-based calculation method detection
+/// - Multi-layer caching for performance optimization
+/// - Background precomputation of upcoming prayer times
+/// - Graceful fallback when location services fail
+///
+/// ## Dependencies
+/// - [LocationService]: Provides current user location
+/// - [PrayerTimesCache]: Handles caching of calculated times
+/// - [PrayerTimesPrecomputer]: Background precomputation optimization
+/// - [CacheMetricsService]: Performance tracking
+/// - [CountryCalculationService]: Auto-detects calculation methods by country
+/// - [LoggerService]: Centralized logging
+///
+/// ## Performance Optimizations
+/// - Position caching for 5 minutes to reduce location queries
+/// - Parameter caching to avoid repeated calculation object creation
+/// - Prayer time reuse when calculation parameters haven't changed
+/// - Cache invalidation with 24-hour validity
+/// - Background precomputation of 7 days of prayer times
+///
+/// ## Error Handling
+/// - Falls back to Mecca coordinates when location fails
+/// - Gracefully handles unsupported calculation methods
+/// - Comprehensive error logging for debugging
+///
+/// ## Usage Example
+/// ```dart
+/// final prayerService = PrayerService(locationService, cache);
+/// await prayerService.init();
+///
+/// // Get today's prayer times
+/// final todayPrayers = await prayerService.calculatePrayerTimesForToday(settings);
+///
+/// // Get current prayer
+/// final currentPrayer = prayerService.getCurrentPrayer();
+///
+/// // Get next prayer time with user offsets
+/// final nextPrayerTime = await prayerService.getNextPrayerTime();
+/// ```
 class PrayerService {
   final LocationService _locationService;
   final PrayerTimesCache _prayerTimesCache;
@@ -52,6 +92,16 @@ class PrayerService {
 
   PrayerService(this._locationService, this._prayerTimesCache);
 
+  /// Initializes the prayer service and its dependencies.
+  ///
+  /// This method must be called before using any other methods. It:
+  /// - Initializes the location service
+  /// - Sets up the prayer times precomputer for background calculations
+  /// - Starts the cache refresh timer for periodic maintenance
+  /// - Marks the service as initialized to prevent duplicate initialization
+  ///
+  /// Threading: This method is safe to call multiple times but will only initialize once.
+  /// Performance: Initialization is asynchronous to avoid blocking the main thread.
   Future<void> init() async {
     if (_isInitialized) return;
     await _locationService.init();
@@ -67,7 +117,15 @@ class PrayerService {
     _logger.info('PrayerService initialized with enhanced caching');
   }
 
-  /// Set metrics service for performance tracking
+  /// Sets the metrics service for performance tracking and analytics.
+  ///
+  /// This optional service allows tracking cache hit rates, calculation times,
+  /// and other performance metrics. Should be called during app initialization.
+  ///
+  /// Parameters:
+  /// - [metricsService]: The service to use for tracking cache performance
+  ///
+  /// Design Pattern: Dependency injection for optional performance monitoring
   void setMetricsService(CacheMetricsService metricsService) {
     _metricsService = metricsService;
     _logger.debug('Cache metrics service attached to PrayerService');
@@ -579,6 +637,29 @@ class PrayerService {
     return _currentPrayerTimes!.timeForPrayer(nextPrayerName);
   }
 
+  /// Recalculates prayer times if settings, time, or location have changed significantly.
+  ///
+  /// This intelligent recalculation method checks various conditions to determine
+  /// if prayer times need to be recalculated, avoiding unnecessary computations:
+  ///
+  /// ## Recalculation Triggers
+  /// - First calculation (null _currentPrayerTimes)
+  /// - More than 1 hour since last calculation
+  /// - Madhab setting changed
+  /// - Calculation method changed
+  /// - Date changed (midnight crossing)
+  ///
+  /// ## Performance Strategy
+  /// - Avoids redundant calculations when parameters haven't changed
+  /// - Only recalculates when necessary to save battery and CPU
+  /// - Uses efficient comparison of calculation parameters
+  ///
+  /// Parameters:
+  /// - [settings]: Current user settings to compare against last calculation
+  ///
+  /// Side Effects: Updates service state with new prayer times if recalculation occurs
+  ///
+  /// Thread Safety: This method is thread-safe and can be called from timers or callbacks
   Future<void> recalculatePrayerTimesIfNeeded(AppSettings settings) async {
     if (!_isInitialized) await init();
     final position = await _getEffectivePosition('prayer time recalculation');

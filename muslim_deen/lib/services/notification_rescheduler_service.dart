@@ -11,8 +11,44 @@ import 'package:muslim_deen/services/notification_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
 import 'package:muslim_deen/services/storage_service.dart';
 
-/// Background service responsible for rescheduling notifications periodically
-/// to ensure they persist even when the app hasn't been opened for days
+/// Background notification persistence service for long-term reliability.
+///
+/// This service ensures that prayer and dhikr notifications persist across
+/// device restarts and extended periods when the app hasn't been opened.
+/// It uses the WorkManager plugin to schedule periodic background tasks
+/// that refresh notification schedules.
+///
+/// ## Key Features
+/// - Periodic background rescheduling of all notifications
+/// - 24-hour persistence for prayer notifications
+/// - 6-hour persistence for dhikr reminders
+/// - Graceful handling of background execution limitations
+/// - Minimal service initialization for background context
+///
+/// ## Background Tasks
+/// - Prayer notification reschedule: Every 24 hours
+/// - Dhikr reminder reschedule: Every 6 hours
+/// - Both tasks run with network connectivity requirement
+/// - Configurable constraints (battery, charging, etc.)
+///
+/// ## Reliability Strategy
+/// - Linear backoff policy for failed tasks
+/// - Automatic task replacement on app updates
+/// - Minimal dependency usage for background stability
+/// - Comprehensive error logging without crashing
+///
+/// ## Dependencies
+/// - [WorkManager]: Background task scheduling
+/// - [NotificationService]: Notification management
+/// - [PrayerService]: Prayer time calculations
+/// - [StorageService]: Settings persistence
+/// - [LoggerService]: Background logging
+///
+/// ## Background Limitations
+/// - Limited access to full app functionality
+/// - Minimal service initialization
+/// - Network connectivity requirement
+/// - Platform-specific execution constraints
 class NotificationReschedulerService {
   static const String _rescheduleTaskName = 'reschedule_notifications';
   static const String _tesbihReminderTaskName = 'reschedule_tesbih_reminder';
@@ -28,7 +64,29 @@ class NotificationReschedulerService {
       _storageService = locator<StorageService>(),
       _logger = locator<LoggerService>();
 
-  /// Initialize the background service
+  /// Initializes the background rescheduling service and registers periodic tasks.
+  ///
+  /// This method sets up the WorkManager infrastructure and registers the
+  /// periodic background tasks that ensure notification persistence:
+  ///
+  /// ## Initialization Process
+  /// 1. Initialize WorkManager with callback dispatcher
+  /// 2. Register periodic tasks for prayer and dhikr notifications
+  /// 3. Configure task constraints and backoff policies
+  /// 4. Handle initialization failures gracefully
+  ///
+  /// ## Task Configuration
+  /// - Prayer notifications: 24-hour frequency, 1-hour initial delay
+  /// - Dhikr reminders: 6-hour frequency, 30-minute initial delay
+  /// - Network connectivity required for both tasks
+  /// - Linear backoff policy with 1-hour delay
+  ///
+  /// ## Error Handling
+  /// - WorkManager initialization failures are non-critical
+  /// - Periodic task registration failures are logged
+  /// - Service remains functional even with background limitations
+  ///
+  /// Thread Safety: Safe to call multiple times (idempotent)
   Future<void> init() async {
     try {
       await Workmanager().initialize(_callbackDispatcher);

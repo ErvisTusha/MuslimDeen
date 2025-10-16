@@ -4,7 +4,43 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 
-/// Service for tracking and reporting cache performance metrics
+/// Comprehensive cache performance monitoring and analytics service.
+///
+/// This service provides detailed tracking and analysis of cache performance
+/// across all caching operations in the application. It implements both
+/// in-memory and persistent storage for metrics, with intelligent analysis
+/// and performance recommendations.
+///
+/// ## Key Features
+/// - Hit/miss ratio tracking for overall cache effectiveness
+/// - Operation-type specific metrics and analysis
+/// - Recent operation history with detailed context
+/// - Performance recommendations based on usage patterns
+/// - Persistent metrics storage across app restarts
+///
+/// ## Metrics Tracked
+/// - Total cache hits and misses
+/// - Overall hit rate calculation
+/// - Current cache size monitoring
+/// - Recent operation history (last 100 operations)
+/// - Operation-type specific performance breakdown
+///
+/// ## Analytics Capabilities
+/// - Performance summary with key metrics
+/// - Detailed reports with operation-type analysis
+/// - Automated performance recommendations
+/// - Hit rate analysis by operation type
+/// - Pattern recognition for optimization opportunities
+///
+/// ## Dependencies
+/// - [SharedPreferences]: Persistent metrics storage
+/// - [LoggerService]: Centralized logging and reporting
+///
+/// ## Performance Considerations
+/// - In-memory metrics for fast access
+/// - Bounded operation history to prevent memory leaks
+/// - Efficient persistence with minimal storage overhead
+/// - Optimized calculations for real-time metrics
 class CacheMetricsService {
   final SharedPreferences _prefs;
   final LoggerService _logger = locator<LoggerService>();

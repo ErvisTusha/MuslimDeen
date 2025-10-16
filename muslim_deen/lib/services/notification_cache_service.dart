@@ -8,7 +8,42 @@ import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/cache_metrics_service.dart';
 
-/// Service for caching notification schedules and preferences
+/// High-performance caching service for notification schedules and preferences.
+///
+/// This service provides intelligent caching of notification-related data to
+/// improve performance, reduce redundant operations, and enable offline
+/// functionality. It implements automatic cleanup, size management, and
+/// comprehensive metrics tracking.
+///
+/// ## Key Features
+/// - Notification schedule caching with validity checking
+/// - User preference caching for quick access
+/// - Notification history tracking with size limits
+/// - Performance metrics integration
+/// - Automatic cleanup of expired entries
+///
+/// ## Cache Types
+/// - Schedule Cache: Prevents redundant notification scheduling
+/// - Preferences Cache: Quick access to notification settings
+/// - History Cache: Tracks notification delivery history
+/// - Statistics Cache: Performance and usage metrics
+///
+/// ## Performance Optimizations
+/// - LRU (Least Recently Used) access tracking
+/// - Periodic cleanup of expired entries
+/// - Size limits to prevent storage bloat
+/// - Cache hit/miss metrics for monitoring
+///
+/// ## Dependencies
+/// - [SharedPreferences]: Persistent cache storage
+/// - [LoggerService]: Centralized logging
+/// - [CacheMetricsService]: Performance tracking
+///
+/// ## Cache Management
+/// - Default cache duration: 30 days
+/// - Cleanup interval: Every 6 hours
+/// - Max history entries: 100
+/// - Automatic expiration based on timestamps
 class NotificationCacheService {
   final SharedPreferences _prefs;
   final LoggerService _logger = locator<LoggerService>();

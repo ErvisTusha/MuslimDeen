@@ -8,7 +8,35 @@ import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/prayer_times_cache.dart';
 import 'package:muslim_deen/services/location_service.dart';
 
-/// Service for precomputing prayer times for upcoming days
+/// Background service for precomputing prayer times to enhance user experience.
+///
+/// This service runs in the background to calculate and cache prayer times for
+/// upcoming days, ensuring instant availability when users navigate to different
+/// dates. It implements intelligent scheduling and error handling to minimize
+/// impact on app performance and battery life.
+///
+/// ## Key Features
+/// - Automatic background precomputation of upcoming prayer times
+/// - Configurable precomputation window (7 days by default)
+/// - Intelligent scheduling to avoid interfering with app usage
+/// - Robust error handling with graceful degradation
+/// - Status tracking and monitoring capabilities
+///
+/// ## Performance Strategy
+/// - Runs 30 seconds after app startup to avoid blocking initialization
+/// - Refreshes every 6 hours to keep data fresh
+/// - Prevents concurrent precomputation to avoid resource conflicts
+/// - Uses efficient batch processing for multiple days
+///
+/// ## Dependencies
+/// - [PrayerTimesCache]: Stores precomputed prayer times
+/// - [LocationService]: Provides current location for calculations
+/// - [LoggerService]: Logs precomputation activities and errors
+///
+/// ## Background Execution
+/// The service uses Timer-based scheduling rather than platform-specific
+/// background tasks to ensure compatibility across all supported platforms
+/// while maintaining simplicity and reliability.
 class PrayerTimesPrecomputer {
   final PrayerTimesCache _prayerTimesCache;
   final LocationService _locationService;
@@ -30,7 +58,19 @@ class PrayerTimesPrecomputer {
 
   PrayerTimesPrecomputer(this._prayerTimesCache, this._locationService);
 
-  /// Initialize the precomputer
+  /// Initializes the precomputer service and schedules background tasks.
+  ///
+  /// This method sets up two timer-based operations:
+  /// 1. Initial background precompute after 30 seconds
+  /// 2. Periodic precompute every 6 hours
+  ///
+  /// The delayed initial task ensures the app can start quickly without
+  /// being blocked by prayer time calculations.
+  ///
+  /// Error Handling: Catches and logs initialization errors but doesn't
+  /// prevent the app from starting
+  ///
+  /// Thread Safety: This method is safe to call multiple times
   Future<void> init() async {
     try {
       // Schedule initial background precompute
