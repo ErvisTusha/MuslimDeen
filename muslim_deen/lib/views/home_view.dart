@@ -36,6 +36,8 @@ class HomeView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final prayerTimesAsync = ref.watch(prayerTimesProvider);
+    final isRamadanAsync = ref.watch(isRamadanProvider);
+    final fastingServiceAsync = ref.watch(fastingServiceProvider);
     final appSettings = ref.watch(settingsProvider);
     final brightness = Theme.of(context).brightness;
     final colors = UIThemeHelper.getThemeColors(brightness);
@@ -69,6 +71,11 @@ class HomeView extends ConsumerWidget {
               appSettings: appSettings,
               colors: colors,
               prayerColors: prayerColors,
+              isRamadan: isRamadanAsync.maybeWhen(
+                data: (isRamadan) => isRamadan,
+                orElse: () => false,
+              ),
+              fastingService: fastingServiceAsync.value,
               ref: ref,
             ),
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -112,6 +119,8 @@ class HomeView extends ConsumerWidget {
     required AppSettings appSettings,
     required UIColors colors,
     required PrayerItemColors prayerColors,
+    required bool isRamadan,
+    required FastingService? fastingService,
     required WidgetRef ref,
   }) {
     final now = DateTime.now();
@@ -148,9 +157,9 @@ class HomeView extends ConsumerWidget {
           ref.context,
         ),
         const RamadanCountdownBanner(),
-        if (_isRamadan(ref))
+        if (isRamadan)
           RamadanFastingCheckbox(
-            fastingService: locator<FastingService>(),
+            fastingService: fastingService,
             isAfterMaghrib: _isAfterMaghrib(ref),
           ),
         _buildCurrentNextPrayerSection(isLoading, colors, ref),
@@ -443,12 +452,6 @@ class HomeView extends ConsumerWidget {
       prayerEnum: prayerEnum,
       iconData: prayerDetails.icon,
     );
-  }
-
-  bool _isRamadan(WidgetRef ref) {
-    final fastingService = locator.get<FastingService>();
-    final ramadanInfo = fastingService.getRamadanCountdown();
-    return ramadanInfo['isRamadan'] == true;
   }
 
   bool _isAfterMaghrib(WidgetRef ref) {
