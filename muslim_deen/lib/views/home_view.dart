@@ -30,6 +30,50 @@ import 'package:muslim_deen/widgets/prayer_times_section.dart';
 import 'package:muslim_deen/widgets/ramadan_countdown_banner.dart';
 import 'package:muslim_deen/widgets/ramadan_fasting_checkbox.dart';
 
+/// Main application view displaying prayer times and Islamic information
+///
+/// This is the primary screen of the MuslimDeen app, serving as the central hub
+/// for users to access prayer times, fasting information, and navigation to other
+/// features. It implements a comprehensive dashboard with real-time updates and
+/// responsive design.
+///
+/// ## Key Features
+/// - Real-time prayer times display with current/next prayer highlighting
+/// - Ramadan fasting tracker integration
+/// - Islamic calendar information (Gregorian and Hijri dates)
+/// - Prayer countdown timer for upcoming prayers
+/// - Location-based prayer calculations
+/// - Theme-aware UI with dark/light mode support
+/// - Error handling with graceful degradation
+///
+/// ## UI Architecture
+/// - Uses ConsumerWidget for reactive state management with Riverpod
+/// - Implements responsive layout with proper spacing and typography
+/// - Follows Material Design principles with custom theming
+/// - Supports both portrait and landscape orientations
+///
+/// ## State Management
+/// - Watches multiple providers: prayerTimesProvider, isRamadanProvider, fastingServiceProvider, settingsProvider
+/// - Handles async loading states with proper error boundaries
+/// - Updates UI reactively when prayer times or settings change
+///
+/// ## Performance Optimizations
+/// - Efficient provider watching with selective rebuilds
+/// - Cached prayer calculations to minimize API calls
+/// - Lazy loading of heavy components (Ramadan banner, fasting checkbox)
+/// - Optimized list rendering for prayer times
+///
+/// ## Error Handling
+/// - Graceful handling of location/permission failures
+/// - Fallback UI when prayer calculations unavailable
+/// - User-friendly error messages with retry options
+/// - Logging for debugging without user disruption
+///
+/// ## Navigation
+/// - App bar with settings access
+/// - Prayer stats view integration
+/// - Moon phase details for astronomical information
+/// - Seamless navigation to feature-specific views
 class HomeView extends ConsumerWidget {
   const HomeView({super.key});
 

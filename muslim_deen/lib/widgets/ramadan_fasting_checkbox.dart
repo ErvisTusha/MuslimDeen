@@ -2,10 +2,74 @@ import 'package:flutter/material.dart';
 import 'package:muslim_deen/services/fasting_service.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 
-/// Ramadan Fasting Checkbox Widget
-/// Shows during Ramadan month and allows marking fast as completed after Maghrib
+/// Ramadan fasting completion checkbox widget with intelligent state management
+///
+/// This interactive widget allows users to mark their daily Ramadan fast as completed
+/// after Maghrib prayer time. It provides a seamless fasting tracking experience
+/// with automatic state detection, loading states, and error handling.
+///
+/// ## Ramadan Context
+/// - Ramadan fasting requires abstaining from food, drink, smoking, etc.
+/// - Fast is valid from Fajr to Maghrib (sunrise to sunset)
+/// - Breaking fast after Maghrib prayer is the proper Islamic practice
+/// - This widget helps track daily fasting completion
+///
+/// ## State Management
+/// - Checks fasting status on initialization and widget updates
+/// - Handles async operations with loading indicators
+/// - Updates UI reactively when fasting status changes
+/// - Persists completion status across app sessions
+/// - Manages checkbox state with proper validation
+///
+/// ## UI Behavior
+/// - Hidden when not Ramadan or before Maghrib
+/// - Shows unchecked checkbox when fast not completed
+/// - Displays checked state when fast is marked complete
+/// - Loading spinner during status updates
+/// - Smooth animations for state transitions
+///
+/// ## Data Integration
+/// - Integrates with FastingService for status persistence
+/// - Uses FastingRecord model for completion tracking
+/// - Supports different fasting statuses (completed, broken, excused)
+/// - Handles service unavailability gracefully
+///
+/// ## User Experience
+/// - Clear visual indication of fasting completion
+/// - Satisfying checkbox interaction with haptic feedback
+/// - Immediate feedback for user actions
+/// - Error handling with user-friendly messages
+/// - Contextual help and guidance
+///
+/// ## Performance Considerations
+/// - Efficient state checks with minimal service calls
+/// - Proper lifecycle management to prevent memory leaks
+/// - Optimized rebuilds with targeted state updates
+/// - Background processing for non-blocking operations
+///
+/// ## Accessibility
+/// - Screen reader friendly checkbox descriptions
+/// - Proper focus management and keyboard navigation
+/// - High contrast colors for visibility
+/// - Semantic meaning for religious functionality
+/// - Touch target sizing following accessibility guidelines
+///
+/// ## Error Handling
+/// - Graceful degradation when FastingService unavailable
+/// - User feedback for failed operations
+/// - Recovery mechanisms for transient failures
+/// - Logging for debugging and monitoring
+///
+/// ## Cultural & Religious Context
+/// - Fasting is one of the Five Pillars of Islam
+/// - Ramadan fasting purifies the soul and increases taqwa
+/// - Breaking fast with dates and water follows Sunnah
+/// - Fasting completion tracking encourages consistency
 class RamadanFastingCheckbox extends StatefulWidget {
+  /// Fasting service instance for status tracking and persistence
   final FastingService? fastingService;
+
+  /// Whether current time is after Maghrib prayer (fast can be marked complete)
   final bool isAfterMaghrib;
 
   const RamadanFastingCheckbox({

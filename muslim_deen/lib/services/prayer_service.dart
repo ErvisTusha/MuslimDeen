@@ -538,9 +538,35 @@ class PrayerService {
     return isSameDate && isSameSettings && isSameLocation;
   }
 
-  /// Gets user location based on their preference (manual or device)
-  /// and calculates today's prayer times using provided settings.
-  /// Updates the service's current prayer times state.
+  /// Calculates prayer times for today using current location and user settings
+  ///
+  /// This is the primary method for obtaining today's prayer times. It handles:
+  /// - Location detection (device GPS or manual coordinates)
+  /// - Calculation method selection based on user preferences or auto-detection
+  /// - Madhab-specific adjustments (Hanafi vs Shafi)
+  /// - User-defined time offsets for each prayer
+  /// - Caching of results for performance optimization
+  /// - Fallback to Mecca coordinates if location fails
+  ///
+  /// Design Decision: Delegates to calculatePrayerTimesForDate for consistency
+  /// and to avoid code duplication. Updates internal state for current prayer tracking.
+  ///
+  /// Parameters:
+  /// - [settings]: User preferences including calculation method, madhab, and offsets
+  ///   If null, uses default settings
+  ///
+  /// Returns: Future<adhan.PrayerTimes> with calculated prayer times for today
+  ///
+  /// Throws: Exceptions are caught internally and logged; returns fallback times
+  ///
+  /// Performance: Results are cached; subsequent calls return cached data
+  /// Threading: Safe for UI thread; all heavy computation is asynchronous
+  ///
+  /// Usage Example:
+  /// ```dart
+  /// final prayerTimes = await prayerService.calculatePrayerTimesForToday(settings);
+  /// final fajrTime = prayerTimes.fajr;
+  /// ```
   Future<adhan.PrayerTimes> calculatePrayerTimesForToday(
     AppSettings? settings,
   ) async {
@@ -580,8 +606,29 @@ class PrayerService {
   }
 
   /// Determines the current prayer based on the current time and cached prayer times.
-  /// Returns the standardized prayer name ('fajr', 'dhuhr', etc.) or 'none'.
-  /// Throws an exception if times haven't been calculated yet.
+  ///
+  /// This method analyzes the current system time against today's prayer schedule
+  /// to determine which prayer period we are currently in. It returns standardized
+  /// prayer names that match the PrayerNotification enum values.
+  ///
+  /// Design Decision: Uses cached prayer times for performance; requires prior
+  /// calculation via calculatePrayerTimesForToday(). Returns 'none' if no prayer
+  /// is currently active (between prayers).
+  ///
+  /// Returns: String prayer name ('fajr', 'dhuhr', 'asr', 'maghrib', 'isha', or 'none')
+  ///
+  /// Throws: No exceptions thrown; returns 'none' if prayer times not calculated
+  ///
+  /// Threading: Safe for UI thread; uses cached data only
+  /// Performance: O(1) lookup using adhan library's currentPrayer method
+  ///
+  /// Usage Example:
+  /// ```dart
+  /// final current = prayerService.getCurrentPrayer();
+  /// if (current != 'none') {
+  ///   print('Currently in $current prayer time');
+  /// }
+  /// ```
   String getCurrentPrayer() {
     if (_currentPrayerTimes == null) {
       _logger.warning('Attempted to get current prayer before calculation.');
@@ -591,9 +638,27 @@ class PrayerService {
   }
 
   /// Determines the next prayer based on the current time and cached prayer times.
-  /// Returns the standardized prayer name ('fajr', 'dhuhr', etc.).
-  /// Handles wrapping around from Isha to Fajr.
-  /// Throws an exception if times haven't been calculated yet.
+  ///
+  /// This method finds the upcoming prayer time, handling the daily cycle by
+  /// wrapping from Isha (last prayer) back to Fajr (first prayer of next day).
+  /// Essential for prayer countdown timers and notification scheduling.
+  ///
+  /// Design Decision: Uses cached prayer times for performance; seamlessly handles
+  /// day transitions. Returns prayer names matching PrayerNotification enum values.
+  ///
+  /// Returns: String prayer name ('fajr', 'dhuhr', 'asr', 'maghrib', 'isha')
+  ///
+  /// Throws: No exceptions thrown; returns 'none' if prayer times not calculated
+  ///
+  /// Threading: Safe for UI thread; uses cached data only
+  /// Performance: O(1) lookup using adhan library's nextPrayer method
+  ///
+  /// Usage Example:
+  /// ```dart
+  /// final next = prayerService.getNextPrayer();
+  /// final nextTime = await prayerService.getNextPrayerTime();
+  /// print('Next prayer: $next at ${nextTime?.toLocal()}');
+  /// ```
   String getNextPrayer() {
     if (_currentPrayerTimes == null) {
       _logger.warning('Attempted to get next prayer before calculation.');

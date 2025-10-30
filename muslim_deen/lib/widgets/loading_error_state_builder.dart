@@ -3,12 +3,82 @@ import 'package:geolocator/geolocator.dart';
 import '../styles/app_styles.dart';
 import '../styles/ui_theme_helper.dart';
 
-/// A builder widget that handles common loading and error states
+/// Comprehensive loading and error state management widget with retry functionality
+///
+/// This widget provides a unified, theme-aware solution for handling common UI states
+/// in the MuslimDeen application. It elegantly manages loading spinners, error displays,
+/// and success content with consistent styling and user experience patterns.
+/// - Smooth state transitions between loading, error, and success
+/// - Accessibility support with proper semantic structure
+/// - Touch-friendly retry buttons with proper sizing
+/// - Customizable loading messages for context-specific feedback
+///
+/// ## State Management
+/// - Loading State: Shows circular progress indicator with optional text
+/// - Error State: Displays error message with retry button and icon
+/// - Success State: Renders the provided child widget seamlessly
+/// - State Transitions: Smooth animations between different states
+///
+/// ## UI Architecture
+/// - Uses Column layout for vertical centering and proper spacing
+/// - Implements Material Design principles for consistency
+/// - Responsive design that works across different screen sizes
+/// - Proper padding and margins following app design system
+/// - Icon integration for visual error indication
+///
+/// ## Error Handling
+/// - Graceful error message display with user-friendly language
+/// - Retry button with clear call-to-action text
+/// - Error icon for immediate visual feedback
+/// - Callback-based retry mechanism for flexible error recovery
+/// - Null safety for optional error messages and loading text
+///
+/// ## Performance Considerations
+/// - Stateless widget for optimal rebuild performance
+/// - Minimal computation in build method
+/// - Efficient conditional rendering based on state
+/// - No expensive operations or animations
+///
+/// ## Usage Patterns
+/// - API call loading states with custom messages
+/// - Location permission requests with retry options
+/// - Data fetching operations with error recovery
+/// - Network-dependent features with offline handling
+/// - Async initialization sequences
+///
+/// ## Accessibility
+/// - Screen reader friendly loading announcements
+/// - Proper semantic structure for error states
+/// - High contrast colors for visibility
+/// - Keyboard navigation support for retry actions
+/// - Focus management for interactive elements
+///
+/// ## Integration Points
+/// - Works with FutureBuilder and StreamBuilder patterns
+/// - Compatible with Riverpod async notifiers
+/// - Supports custom error types and messages
+/// - Integrates with app-wide theme system
+/// - Follows established design system patterns
+///
+/// ## Platform Considerations
+/// - Android: Material Design spinner and button styling
+/// - iOS: Cupertino-style loading indicators when appropriate
+/// - Web: Responsive behavior and hover states
+/// - Desktop: Mouse and keyboard interaction support
 class LoadingErrorStateBuilder extends StatelessWidget {
+  /// Whether the widget is currently in a loading state
   final bool isLoading;
+
+  /// Error message to display when in error state (null for no error)
   final String? errorMessage;
+
+  /// The success content widget to display when not loading and no error
   final Widget child;
+
+  /// Callback function triggered when user taps retry button
   final VoidCallback onRetry;
+
+  /// Optional loading message to display below the spinner
   final String? loadingText;
 
   const LoadingErrorStateBuilder({

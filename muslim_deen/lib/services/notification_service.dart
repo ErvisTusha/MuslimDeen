@@ -350,6 +350,42 @@ class NotificationService {
   }
 
   /// Schedules a prayer notification with caching and intelligent rescheduling
+  ///
+  /// This method handles the complete lifecycle of scheduling a prayer notification,
+  /// including cache checking, time validation, audio configuration, and error handling.
+  /// It ensures notifications are only scheduled when enabled and handles edge cases
+  /// like past prayer times by scheduling for the next day.
+  ///
+  /// Design Decision: Uses caching to prevent redundant scheduling operations.
+  /// Automatically adjusts past prayer times to next day. Includes comprehensive
+  /// error handling and logging for debugging.
+  ///
+  /// Parameters:
+  /// - [id]: Unique notification ID (typically prayer enum index)
+  /// - [localizedTitle]: Localized notification title
+  /// - [localizedBody]: Localized notification body text
+  /// - [prayerTime]: When to show the notification
+  /// - [isEnabled]: Whether this prayer notification is enabled by user
+  /// - [appSettings]: App settings for audio and other preferences
+  ///
+  /// Returns: Future that completes when notification is scheduled
+  ///
+  /// Throws: Exceptions are caught internally and logged
+  ///
+  /// Performance: Uses caching to avoid redundant operations
+  /// Threading: Safe for UI thread; scheduling is asynchronous
+  ///
+  /// Usage Example:
+  /// ```dart
+  /// await notificationService.schedulePrayerNotification(
+  ///   id: PrayerNotification.fajr.index,
+  ///   localizedTitle: 'Fajr Prayer',
+  ///   localizedBody: 'Time for Fajr prayer',
+  ///   prayerTime: fajrTime,
+  ///   isEnabled: settings.notifications[PrayerNotification.fajr] ?? false,
+  ///   appSettings: settings,
+  /// );
+  /// ```
   Future<void> schedulePrayerNotification({
     required int id,
     required String localizedTitle,

@@ -19,9 +19,69 @@ import 'package:muslim_deen/views/city_search_screen.dart';
 import 'package:muslim_deen/widgets/custom_app_bar.dart';
 import 'package:muslim_deen/widgets/settings_ui_elements.dart';
 
+/// Comprehensive settings management view for the MuslimDeen application
+///
+/// This view provides users with complete control over all app preferences and
+/// configurations, organized into logical sections with intuitive controls.
+/// It implements advanced features like audio preview, location management,
+/// and deep linking to specific settings sections.
+///
+/// ## Key Features
+/// - Prayer calculation method selection with auto-detection
+/// - Islamic legal school (Madhab) configuration
+/// - Individual prayer notification toggles
+/// - Custom azan sound selection with audio preview
+/// - Time and date format preferences
+/// - Location management (GPS/manual coordinates)
+/// - Theme selection (system/light/dark)
+/// - Language selection for localization
+/// - Dhikr reminder configuration
+/// - Prayer time offset adjustments
+///
+/// ## UI Architecture
+/// - Uses ConsumerStatefulWidget for complex state management
+/// - Implements scroll-to-section functionality for deep linking
+/// - Features expandable sections with smooth animations
+/// - Includes audio playback controls with proper lifecycle management
+/// - Responsive design with proper spacing and accessibility
+///
+/// ## State Management
+/// - Watches settingsProvider for reactive updates
+/// - Maintains local state for UI interactions (location loading, audio preview)
+/// - Implements proper disposal of resources (audio player, scroll controller)
+/// - Handles async operations with loading states and error handling
+///
+/// ## Audio Features
+/// - Preview azan sounds before selection
+/// - Platform-specific audio handling (Android/iOS differences)
+/// - Proper audio session management to avoid conflicts
+/// - Fallback to default sounds when custom audio unavailable
+///
+/// ## Navigation & Deep Linking
+/// - Supports scrolling to specific sections via constructor parameters
+/// - Global keys for precise scroll positioning
+/// - Smooth scroll animations for better UX
+/// - Maintains scroll position during configuration changes
+///
+/// ## Error Handling
+/// - Graceful handling of location permission denials
+/// - Audio playback error recovery
+/// - Settings persistence failure handling
+/// - User-friendly error messages with actionable guidance
+///
+/// ## Performance Considerations
+/// - Lazy loading of audio resources
+/// - Efficient scroll position calculations
+/// - Minimal rebuilds through proper key usage
+/// - Resource cleanup to prevent memory leaks
 class SettingsView extends ConsumerStatefulWidget {
+  /// Whether to scroll to notifications section on load
   final bool scrollToNotifications;
+
+  /// Whether to scroll to location section on load
   final bool scrollToLocation;
+
+  /// Whether to scroll to date section on load
   final bool scrollToDate;
 
   const SettingsView({

@@ -2,7 +2,56 @@ import 'package:flutter/material.dart';
 import 'package:hijri/hijri_calendar.dart';
 import 'package:muslim_deen/styles/app_styles.dart';
 
-/// Widget to display a banner during the last 10 nights of Ramadan
+/// Ramadan countdown banner widget for the last 10 nights of Ramadan
+///
+/// This widget displays a special promotional banner during the final 10 nights
+/// of Ramadan (21st to 30th of Ramadan), highlighting the significance of these
+/// blessed nights with visual emphasis and countdown information.
+///
+/// ## Islamic Significance
+/// - Last 10 nights of Ramadan contain Laylatul Qadr (Night of Power)
+/// - Odd nights (21st, 23rd, 25th, 27th, 29th) are most likely for Laylatul Qadr
+/// - Encourages increased worship and Quran recitation during these nights
+/// - Builds anticipation for Eid ul-Fitr celebration
+///
+/// ## UI Design
+/// - Gradient background using Islamic green color palette
+/// - Circular icon container with subtle transparency
+/// - Moon icon representing Ramadan nights
+/// - Clear typography hierarchy for countdown information
+/// - Subtle shadow effects for depth and elevation
+/// - Rounded corners following Material Design principles
+///
+/// ## Content Logic
+/// - Automatically calculates current Hijri date
+/// - Only displays during Ramadan month (9th Islamic month)
+/// - Shows countdown from current night to 30th of Ramadan
+/// - Highlights odd-numbered nights with special messaging
+/// - Uses localized text for accessibility
+///
+/// ## Performance Considerations
+/// - Stateless widget for optimal rebuild performance
+/// - Minimal computation in build method
+/// - Efficient conditional rendering (returns SizedBox.shrink when not applicable)
+/// - No expensive operations or animations
+///
+/// ## Cultural & Religious Context
+/// - Ramadan is the 9th month of the Islamic lunar calendar
+/// - Last 10 nights are considered most blessed
+/// - Laylatul Qadr is better than 1000 months of worship
+/// - Muslims increase worship, Quran reading, and prayers during these nights
+///
+/// ## Usage Context
+/// - Displayed prominently in the home screen during Ramadan
+/// - Provides spiritual motivation and awareness
+/// - Encourages religious observance and celebration
+/// - Creates festive atmosphere leading to Eid
+///
+/// ## Accessibility
+/// - High contrast text for screen reader compatibility
+/// - Semantic meaning for religious content
+/// - Proper color contrast ratios
+/// - Screen reader friendly descriptions
 class RamadanCountdownBanner extends StatelessWidget {
   const RamadanCountdownBanner({super.key});
 
