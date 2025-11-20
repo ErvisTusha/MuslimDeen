@@ -83,6 +83,7 @@ class HomeView extends ConsumerWidget {
     final isRamadanAsync = ref.watch(isRamadanProvider);
     final fastingServiceAsync = ref.watch(fastingServiceProvider);
     final appSettings = ref.watch(settingsProvider);
+    final locationInfoAsync = ref.watch(locationInfoProvider);
     final brightness = Theme.of(context).brightness;
     final colors = UIThemeHelper.getThemeColors(brightness);
     final prayerColors = _getPrayerItemColors(colors);
@@ -110,8 +111,14 @@ class HomeView extends ConsumerWidget {
             (prayerTimes) => _buildMainContent(
               isLoading: false,
               prayerTimes: prayerTimes,
-              displayCity: "Mecca", // Replace with actual city
-              displayCountry: "Saudi Arabia", // Replace with actual country
+              displayCity: locationInfoAsync.maybeWhen(
+                data: (locationInfo) => locationInfo.displayCity,
+                orElse: () => "Loading location...",
+              ),
+              displayCountry: locationInfoAsync.maybeWhen(
+                data: (locationInfo) => locationInfo.displayCountry,
+                orElse: () => "",
+              ),
               appSettings: appSettings,
               colors: colors,
               prayerColors: prayerColors,

@@ -62,8 +62,9 @@ Future<void> main() async {
     await setupLocator();
   } catch (e, s) {
     // If service locator fails, we can't use the logger, so print to console
-    debugPrint('Failed to setup service locator: $e');
-    debugPrint('Stack trace: $s');
+    // This is a critical failure that prevents app startup
+    print('Failed to setup service locator: $e');
+    print('Stack trace: $s');
     // Try to run the app anyway with minimal setup
     runApp(const ErrorApp());
     return;

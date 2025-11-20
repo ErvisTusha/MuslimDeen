@@ -797,6 +797,8 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                   );
                   Navigator.pop(dialogContext);
                   await _locationService.setUseManualLocation(false);
+                  // Force refresh location cache to get fresh location
+                  await _locationService.refreshLocationCache();
                   _loadCurrentLocation();
                   if (mounted) {
                     setState(() {});

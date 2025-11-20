@@ -22,7 +22,6 @@
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 
 import 'package:muslim_deen/services/cache_metrics_service.dart';
 import 'package:muslim_deen/services/cache_service.dart';
@@ -88,7 +87,10 @@ Future<void> setupLocator({bool testing = false}) async {
   } catch (e) {
     // If SharedPreferences fails, continue anyway
     // Storage is not critical for app functionality
-    debugPrint('Failed to load SharedPreferences: $e');
+    locator<LoggerService>().error(
+      'Failed to load SharedPreferences',
+      error: e,
+    );
   }
 
   try {
@@ -96,7 +98,7 @@ Future<void> setupLocator({bool testing = false}) async {
     // This phase only registers service factories, doesn't initialize them
     _registerServices(testing);
   } catch (e) {
-    debugPrint('Failed to register services: $e');
+    locator<LoggerService>().error('Failed to register services', error: e);
     rethrow; // Re-throw as registration failures are critical
   }
 
@@ -105,7 +107,10 @@ Future<void> setupLocator({bool testing = false}) async {
     // These services are essential for the app to function properly
     await _initializeCriticalServices();
   } catch (e) {
-    debugPrint('Failed to initialize critical services: $e');
+    locator<LoggerService>().error(
+      'Failed to initialize critical services',
+      error: e,
+    );
     rethrow; // Re-throw as critical service failures prevent app from running
   }
 
@@ -114,7 +119,10 @@ Future<void> setupLocator({bool testing = false}) async {
   try {
     await _initializeHighPriorityServicesBatch(testing);
   } catch (e) {
-    debugPrint('Failed to initialize high priority services: $e');
+    locator<LoggerService>().error(
+      'Failed to initialize high priority services',
+      error: e,
+    );
     // Continue anyway - don't let this crash the app
   }
 
@@ -263,7 +271,10 @@ Future<void> _initializeCriticalServices() async {
     // DatabaseService is critical for storing prayer records, settings, etc.
     await locator<DatabaseService>().init();
   } catch (e) {
-    debugPrint('Failed to initialize DatabaseService: $e');
+    locator<LoggerService>().error(
+      'Failed to initialize DatabaseService',
+      error: e,
+    );
     rethrow; // Database is critical - rethrow to stop app startup
   }
 
@@ -271,7 +282,10 @@ Future<void> _initializeCriticalServices() async {
     // StorageService is important for user preferences and app data
     await locator<StorageService>().init();
   } catch (e) {
-    debugPrint('Failed to initialize StorageService: $e');
+    locator<LoggerService>().error(
+      'Failed to initialize StorageService',
+      error: e,
+    );
     // Continue anyway - storage is not critical for basic functionality
   }
 
@@ -279,7 +293,10 @@ Future<void> _initializeCriticalServices() async {
     // AudioPlayerService for prayer notifications and audio features
     await locator<AudioPlayerService>().init();
   } catch (e) {
-    debugPrint('Failed to initialize AudioPlayerService: $e');
+    locator<LoggerService>().error(
+      'Failed to initialize AudioPlayerService',
+      error: e,
+    );
     // Continue anyway - audio is not critical for basic functionality
   }
 
@@ -289,7 +306,10 @@ Future<void> _initializeCriticalServices() async {
       'Critical services initialized in ${stopwatch.elapsedMilliseconds}ms',
     );
   } catch (e) {
-    debugPrint('Logger not available for critical services message: $e');
+    locator<LoggerService>().error(
+      'Logger not available for critical services message',
+      error: e,
+    );
   }
 }
 

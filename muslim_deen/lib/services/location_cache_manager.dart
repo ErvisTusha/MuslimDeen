@@ -55,10 +55,10 @@ class LocationCacheManager {
 
   // Adaptive caching parameters
 
-  static const Duration _maxCacheDuration = Duration(minutes: 30);
+  static const Duration _maxCacheDuration = Duration(minutes: 15); // Reduced from 30 to 15 minutes
   static const Duration _minCacheDuration = Duration(minutes: 1);
   static const int _maxMovementHistorySize = 10;
-  static const double _movementThreshold = 100.0; // meters
+  static const double _movementThreshold = 50.0; // Reduced from 100.0 to 50.0 meters for urban mobility
 
   // Background update timer
   Timer? _backgroundUpdateTimer;
@@ -244,30 +244,35 @@ class LocationCacheManager {
 
   /// Calculate adaptive cache duration based on accuracy and movement patterns
   Duration _calculateAdaptiveCacheDuration(String cacheKey, Position position) {
-    // Base duration on accuracy
+    // Base duration on accuracy - more conservative for prayer app users who may be moving
     Duration baseDuration;
     if (position.accuracy < 50) {
-      baseDuration = const Duration(minutes: 10); // High accuracy
+      baseDuration = const Duration(minutes: 5); // Reduced from 10 to 5 minutes
     } else if (position.accuracy < 100) {
-      baseDuration = const Duration(minutes: 5); // Medium accuracy
+      baseDuration = const Duration(minutes: 3); // Reduced from 5 to 3 minutes
     } else {
-      baseDuration = const Duration(minutes: 2); // Low accuracy
+      baseDuration = const Duration(minutes: 2); // Keep 2 minutes for low accuracy
     }
 
-    // Adjust based on movement patterns
+    // Adjust based on movement patterns - be more aggressive in reducing cache for movement
     final movementHistory = _movementHistory[cacheKey];
     if (movementHistory != null && movementHistory.length >= 2) {
       final movementScore = _calculateMovementScore(movementHistory);
 
-      // Reduce cache duration for high movement
+      // Reduce cache duration for high movement - more aggressive reduction
       if (movementScore > 0.7) {
         baseDuration = Duration(
-          milliseconds: (baseDuration.inMilliseconds * 0.5).round(),
+          milliseconds: (baseDuration.inMilliseconds * 0.3).round(), // Reduced from 0.5 to 0.3
+        );
+      } else if (movementScore > 0.4) {
+        // Moderate movement - slight reduction
+        baseDuration = Duration(
+          milliseconds: (baseDuration.inMilliseconds * 0.6).round(),
         );
       } else if (movementScore < 0.3) {
-        // Increase cache duration for low movement
+        // Low movement - slight increase but cap at 10 minutes
         baseDuration = Duration(
-          milliseconds: (baseDuration.inMilliseconds * 1.5).round(),
+          milliseconds: min(baseDuration.inMilliseconds * 1.2, Duration(minutes: 10).inMilliseconds).round(),
         );
       }
     }
@@ -330,8 +335,8 @@ class LocationCacheManager {
       // Consider it significant if distance exceeds threshold or accuracy changes significantly
       final accuracyChange =
           (newPosition.accuracy - cachedLocation.accuracy).abs();
-      final significantDistance = distance > _movementThreshold;
-      final significantAccuracyChange = accuracyChange > 50; // 50 meters
+      final significantDistance = distance > _movementThreshold; // Now 50m instead of 100m
+      final significantAccuracyChange = accuracyChange > 25; // Reduced from 50 to 25 meters
 
       return significantDistance || significantAccuracyChange;
     } catch (e, s) {

@@ -14,14 +14,13 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:adhan_dart/adhan_dart.dart' as adhan;
-import 'package:adhan_dart/adhan_dart.dart' show Coordinates;
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+
 import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/prayer_service.dart';
 import 'package:muslim_deen/providers/providers.dart';
-
-import 'package:muslim_deen/services/cache_service.dart';
 
 /// Location provider for device GPS coordinates
 ///
@@ -65,12 +64,78 @@ final locationProvider = FutureProvider<Position>((ref) async {
   return await locationService.getLocation();
 });
 
+/// Location information provider with geocoding for city/country display
+///
+/// This provider extends the basic location provider by performing reverse
+/// geocoding to convert GPS coordinates into human-readable location names.
+/// It provides city and country information for display in the UI.
+///
+/// Provider Type: FutureProvider<LocationInfo>
+///
+/// Why FutureProvider was chosen:
+/// - Location retrieval and geocoding are asynchronous operations
+/// - Provides automatic loading and error state handling
+/// - Handles geocoding failures gracefully with fallbacks
+/// - Reacts to location changes automatically
+///
+/// State Lifecycle:
+/// - Loading: Retrieving GPS coordinates and performing geocoding
+/// - Data: LocationInfo object with coordinates, city, and country
+/// - Error: Location unavailable or geocoding failed
+///
+/// Dependencies:
+/// - locationProvider (for GPS coordinates)
+/// - Geocoding package (for reverse geocoding)
+///
+/// Error Handling:
+/// - Geocoding failures fall back to coordinate display
+/// - Network issues are handled gracefully
+/// - Invalid coordinates return coordinate-only info
+///
+/// Usage Example:
+/// ```dart
+/// final locationInfoAsync = ref.watch(locationInfoProvider);
+/// return locationInfoAsync.when(
+///   data: (info) => Text('${info.city}, ${info.country}'),
+///   loading: () => CircularProgressIndicator(),
+///   error: (error, stack) => Text('Location unavailable'),
+/// );
+/// ```
+final locationInfoProvider = FutureProvider<LocationInfo>((ref) async {
+  final position = await ref.watch(locationProvider.future);
+
+  try {
+    // Perform reverse geocoding to get city and country
+    final placemarks = await placemarkFromCoordinates(
+      position.latitude,
+      position.longitude,
+    );
+
+    if (placemarks.isNotEmpty) {
+      final placemark = placemarks.first;
+      return LocationInfo(
+        position: position,
+        city: placemark.locality ?? placemark.subAdministrativeArea,
+        country: placemark.country,
+      );
+    }
+  } catch (e) {
+    // If geocoding fails, return coordinates-only info
+  }
+
+  // Fallback to coordinates-only if geocoding fails
+  return LocationInfo(
+    position: position,
+    city: null,
+    country: null,
+  );
+});
+
 /// Prayer times provider with caching strategy
 ///
 /// This provider calculates prayer times for the current day based on the user's
-/// location and settings. It implements a two-tier caching strategy:
-/// 1. Memory cache for immediate access
-/// 2. Persistent cache for offline functionality
+/// location and settings. It relies on PrayerService's internal caching mechanism
+/// which provides location-aware caching with PrayerTimesCache.
 ///
 /// Provider Type: FutureProvider<adhan.PrayerTimes>
 ///
@@ -81,21 +146,20 @@ final locationProvider = FutureProvider<Position>((ref) async {
 /// - Reacts to location and settings changes
 ///
 /// Caching Strategy:
-/// 1. First checks for cached prayer times based on current settings and location
-/// 2. If cache hit, returns cached data immediately (performance optimization)
-/// 3. If cache miss, calculates prayer times using the prayer service
-/// 4. Caches the calculated times for future use
+/// - PrayerService uses PrayerTimesCache with location-aware keys
+/// - Cache keys include coordinates rounded to 4 decimal places
+/// - Automatic cache invalidation on location changes
+/// - Background precomputation for upcoming days
 ///
 /// Dependencies:
-/// - PrayerService (for calculation)
+/// - PrayerService (for calculation and caching)
 /// - settingsProvider (for calculation parameters)
 /// - locationProvider (for geographical coordinates)
-/// - CacheService (for caching strategy)
 ///
 /// State Lifecycle:
 /// - Loading: Calculating prayer times or checking cache
 /// - Data: PrayerTimes object with all prayer times for the day
-/// - Error: Location unavailable, calculation failed, or cache errors
+/// - Error: Location unavailable, calculation failed, or service errors
 ///
 /// Rebuild Triggers:
 /// - Location changes (new coordinates)
@@ -114,25 +178,9 @@ final locationProvider = FutureProvider<Position>((ref) async {
 final prayerTimesProvider = FutureProvider<adhan.PrayerTimes>((ref) async {
   final prayerService = locator<PrayerService>();
   final settings = ref.watch(settingsProvider);
-  final cacheService = locator<CacheService>();
-  final location = await ref.watch(locationProvider.future);
-
-  // Check for cached prayer times first for performance optimization
-  final cachedPrayerTimes = await cacheService.getCachedPrayerTimes(
-    settings,
-    Coordinates(location.latitude, location.longitude),
-  );
-  if (cachedPrayerTimes != null) {
-    return cachedPrayerTimes;
-  }
-
-  // If no cached data, fetch from network/calculate
-  final prayerTimes = await prayerService.calculatePrayerTimesForToday(
-    settings,
-  );
-
-  // Cache the new prayer times for future use
-  await cacheService.cachePrayerTimes(prayerTimes);
+  
+  // PrayerService handles caching internally with location-aware PrayerTimesCache
+  final prayerTimes = await prayerService.calculatePrayerTimesForToday(settings);
 
   return prayerTimes;
 });
@@ -230,3 +278,30 @@ final nextPrayerProvider = Provider<String>((ref) {
     error: (error, stackTrace) => 'Error',
   );
 });
+
+/// Data class for location information including geocoded city and country
+class LocationInfo {
+  final Position position;
+  final String? city;
+  final String? country;
+
+  const LocationInfo({
+    required this.position,
+    this.city,
+    this.country,
+  });
+
+  /// Returns a display-friendly city name, falling back to coordinates if geocoding failed
+  String get displayCity {
+    if (city != null && city!.isNotEmpty) {
+      return city!;
+    }
+    // Fallback to coordinates if geocoding failed
+    return '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
+  }
+
+  /// Returns a display-friendly country name, or empty string if not available
+  String get displayCountry {
+    return country ?? '';
+  }
+}

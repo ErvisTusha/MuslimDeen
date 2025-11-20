@@ -97,7 +97,7 @@ class LocationService {
   // Enhanced location tracking
   final String _lastLocationCacheKey = 'device_location';
   Timer? _locationChangeDetector;
-  static const Duration _locationChangeCheckInterval = Duration(minutes: 2);
+  static const Duration _locationChangeCheckInterval = Duration(minutes: 1); // Reduced from 2 to 1 minute
 
   Stream<bool> get locationStatus =>
       _locationStatusController?.stream ?? Stream.value(false);
