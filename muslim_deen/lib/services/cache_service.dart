@@ -122,6 +122,35 @@ class CacheService {
     }
   }
 
+  /// Clear all cache entries starting with a specific prefix
+  Future<void> clearByPrefix(String prefix) async {
+    try {
+      final keys = _prefs.getKeys();
+      int count = 0;
+      for (final key in keys) {
+        if (key.startsWith(prefix)) {
+          await _prefs.remove(key);
+          _accessTimes.remove(key);
+          _accessCounts.remove(key);
+          count++;
+        }
+      }
+      _logger.info('Cache cleared with prefix: $prefix ($count entries)');
+    } catch (e, s) {
+      _logger.error('Error clearing cache by prefix', error: e, stackTrace: s);
+    }
+  }
+
+  /// Get all keys starting with a specific prefix
+  List<String> getKeysByPrefix(String prefix) {
+    try {
+      return _prefs.getKeys().where((key) => key.startsWith(prefix)).toList();
+    } catch (e, s) {
+      _logger.error('Error getting keys by prefix', error: e, stackTrace: s);
+      return [];
+    }
+  }
+
   /// Clean up expired cache entries
   Future<void> _cleanupExpiredEntries() async {
     try {

@@ -1,0 +1,28 @@
+Analyzing muslim_deen...                                        
+
+  error - The getter 'languageCode' isn't defined for the type 'AppSettings' - lib\app.dart:26:18 - undefined_getter
+   info - Closure should be a tearoff - lib\main.dart:102:30 - unnecessary_lambdas
+  error - The name 'PrayerParametersService' isn't a type, so it can't be used as a type argument - lib\service_locator.dart:78:33 - non_type_as_type_argument
+  error - Undefined name 'PrayerParametersService' - lib\service_locator.dart:79:5 - undefined_identifier
+  error - The getter 'new' isn't defined for the type 'InvalidType' - lib\service_locator.dart:79:29 - undefined_getter
+  error - The name 'NotificationCacheService' isn't a type, so it can't be used as a type argument - lib\service_locator.dart:95:35 - non_type_as_type_argument
+  error - Undefined name 'NotificationCacheService' - lib\service_locator.dart:96:7 - undefined_identifier
+  error - The getter 'new' isn't defined for the type 'InvalidType' - lib\service_locator.dart:96:32 - undefined_getter
+  error - The name 'NotificationReschedulerService' isn't a type, so it can't be used as a type argument - lib\service_locator.dart:99:35 - non_type_as_type_argument
+  error - Undefined name 'NotificationReschedulerService' - lib\service_locator.dart:100:7 - undefined_identifier
+  error - The getter 'new' isn't defined for the type 'InvalidType' - lib\service_locator.dart:100:38 - undefined_getter
+warning - The value of the field '_maxHistoryEntries' isn't used - lib\services\notification_cache_service.dart:25:20 - unused_field
+warning - Unused import: 'package:shared_preferences/shared_preferences.dart' - lib\services\notification_service.dart:6:8 - unused_import
+warning - The operand can't be 'null', so the condition is always 'true' - lib\services\notification_service.dart:540:23 - unnecessary_null_comparison
+warning - The '!' will have no effect because the receiver can't be null - lib\services\notification_service.dart:541:26 - unnecessary_non_null_assertion
+warning - The operand can't be 'null', so the condition is always 'true' - lib\services\notification_service.dart:563:23 - unnecessary_null_comparison
+warning - The '!' will have no effect because the receiver can't be null - lib\services\notification_service.dart:564:26 - unnecessary_non_null_assertion
+  error - Undefined class 'PrayerParametersService' - lib\services\prayer_service.dart:26:9 - undefined_class
+  error - Undefined class 'PrayerParametersService' - lib\services\prayer_service.dart:52:5 - undefined_class
+  error - The name 'PrayerParametersService' isn't a type, so it can't be used as a type argument - lib\services\prayer_service.dart:55:41 - non_type_as_type_argument
+  error - Undefined class 'PrayerParametersService' - lib\services\prayer_times_precomputer.dart:16:9 - undefined_class
+  error - Undefined class 'PrayerParametersService' - lib\services\prayer_times_precomputer.dart:36:5 - undefined_class
+  error - The name 'PrayerParametersService' isn't a type, so it can't be used as a type argument - lib\services\prayer_times_precomputer.dart:38:41 - non_type_as_type_argument
+  error - Too many positional arguments: 0 expected, but 1 found - test\services\notification_scheduling_test.dart:68:45 - extra_positional_arguments_could_be_named
+
+24 issues found. (ran in 3.4s)

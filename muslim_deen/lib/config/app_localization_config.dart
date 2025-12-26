@@ -60,17 +60,40 @@ class AppLocalizationConfig {
       case 'ar':
         // Use Arabic-Indic digits for Arabic
         return number.toString().replaceAllMapped(
-          RegExp(r'[0-9]'), 
-          (match) => String.fromCharCode(int.parse(match.group(0)!) + 0x0660)
+          RegExp(r'[0-9]'),
+          (match) => String.fromCharCode(int.parse(match.group(0)!) + 0x0660),
         );
       case 'fa':
         // Use Persian digits for Persian
         return number.toString().replaceAllMapped(
           RegExp(r'[0-9]'),
-          (match) => String.fromCharCode(int.parse(match.group(0)!) + 0x06F0)
+          (match) => String.fromCharCode(int.parse(match.group(0)!) + 0x06F0),
         );
       default:
         return number.toString();
+    }
+  }
+
+  // Convert language setting string to proper Locale
+  static Locale getLocaleFromSettings(String languageCode) {
+    switch (languageCode) {
+      case 'ar':
+        return const Locale('ar', 'SA');
+      case 'ur':
+        return const Locale('ur', 'PK');
+      case 'fa':
+        return const Locale('fa', 'IR');
+      case 'tr':
+        return const Locale('tr', 'TR');
+      case 'id':
+        return const Locale('id', 'ID');
+      case 'ms':
+        return const Locale('ms', 'MY');
+      case 'fr':
+        return const Locale('fr', 'FR');
+      case 'en':
+      default:
+        return const Locale('en', 'US');
     }
   }
 }
@@ -79,6 +102,8 @@ class AppLocalizationConfig {
 extension LocaleExtensions on Locale {
   String get displayName => AppLocalizationConfig.getLanguageDisplayName(this);
   bool get isRTL => AppLocalizationConfig.isRTLLanguage(this);
-  TextDirection get textDirection => AppLocalizationConfig.getTextDirection(this);
-  String formatNumber(int number) => AppLocalizationConfig.formatNumber(number, this);
+  TextDirection get textDirection =>
+      AppLocalizationConfig.getTextDirection(this);
+  String formatNumber(int number) =>
+      AppLocalizationConfig.formatNumber(number, this);
 }

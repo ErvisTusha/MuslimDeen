@@ -8,11 +8,13 @@ import 'package:muslim_deen/service_locator.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/prayer_times_cache.dart';
 import 'package:muslim_deen/services/location_service.dart';
+import 'package:muslim_deen/services/prayer_parameters_service.dart';
 
 /// Service for precomputing prayer times for upcoming days
 class PrayerTimesPrecomputer {
   final PrayerTimesCache _prayerTimesCache;
   final LocationService _locationService;
+  final PrayerParametersService _parametersService;
   final LoggerService _logger = locator<LoggerService>();
 
   // Precomputation settings
@@ -29,7 +31,12 @@ class PrayerTimesPrecomputer {
   bool _isPrecomputing = false;
   DateTime? _lastPrecomputeTime;
 
-  PrayerTimesPrecomputer(this._prayerTimesCache, this._locationService);
+  PrayerTimesPrecomputer(
+    this._prayerTimesCache,
+    this._locationService, {
+    PrayerParametersService? parametersService,
+  }) : _parametersService =
+           parametersService ?? locator<PrayerParametersService>();
 
   /// Initialize the precomputer
   Future<void> init() async {
@@ -145,7 +152,7 @@ class PrayerTimesPrecomputer {
     AppSettings settings,
   ) async {
     // Get calculation parameters
-    final params = _getCalculationParams(settings);
+    final params = _parametersService.getParameters(settings);
 
     // Calculate prayer times
     final prayerTimes = adhan.PrayerTimes(
@@ -169,73 +176,7 @@ class PrayerTimesPrecomputer {
     );
   }
 
-  /// Get calculation parameters based on settings
-  adhan.CalculationParameters _getCalculationParams(AppSettings settings) {
-    final calculationMethod = settings.calculationMethod;
-    final madhab = settings.madhab;
-
-    adhan.CalculationParameters params;
-
-    switch (calculationMethod) {
-      case 'MuslimWorldLeague':
-        params =
-            adhan.CalculationMethod.muslimWorldLeague()
-                as adhan.CalculationParameters;
-        break;
-      case 'NorthAmerica':
-        params =
-            adhan.CalculationMethod.northAmerica()
-                as adhan.CalculationParameters;
-        break;
-      case 'Egyptian':
-        params =
-            adhan.CalculationMethod.egyptian() as adhan.CalculationParameters;
-        break;
-      case 'UmmAlQura':
-        params =
-            adhan.CalculationMethod.ummAlQura() as adhan.CalculationParameters;
-        break;
-      case 'Karachi':
-        params =
-            adhan.CalculationMethod.karachi() as adhan.CalculationParameters;
-        break;
-      case 'Tehran':
-        params =
-            adhan.CalculationMethod.tehran() as adhan.CalculationParameters;
-        break;
-      case 'Dubai':
-        params = adhan.CalculationMethod.dubai() as adhan.CalculationParameters;
-        break;
-      case 'MoonsightingCommittee':
-        params =
-            adhan.CalculationMethod.moonsightingCommittee()
-                as adhan.CalculationParameters;
-        break;
-      case 'Kuwait':
-        params =
-            adhan.CalculationMethod.kuwait() as adhan.CalculationParameters;
-        break;
-      case 'Qatar':
-        params = adhan.CalculationMethod.qatar() as adhan.CalculationParameters;
-        break;
-      case 'Singapore':
-        params =
-            adhan.CalculationMethod.singapore() as adhan.CalculationParameters;
-        break;
-      default:
-        params =
-            adhan.CalculationMethod.muslimWorldLeague()
-                as adhan.CalculationParameters;
-    }
-
-    params.madhab =
-        (madhab.toLowerCase() == 'hanafi')
-            ? adhan.Madhab.hanafi
-            : adhan.Madhab.shafi;
-    params.highLatitudeRule = adhan.HighLatitudeRule.twilightAngle;
-
-    return params;
-  }
+  // No longer needed, logic moved to PrayerParametersService
 
   /// Force immediate precompute
   Future<void> forcePrecompute() async {

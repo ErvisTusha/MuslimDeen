@@ -22,11 +22,16 @@ class NotificationReschedulerService {
   final StorageService _storageService;
   final LoggerService _logger;
 
-  NotificationReschedulerService()
-    : _notificationService = locator<NotificationService>(),
-      _prayerService = locator<PrayerService>(),
-      _storageService = locator<StorageService>(),
-      _logger = locator<LoggerService>();
+  NotificationReschedulerService({
+    NotificationService? notificationService,
+    PrayerService? prayerService,
+    StorageService? storageService,
+    LoggerService? logger,
+  }) : _notificationService =
+           notificationService ?? locator<NotificationService>(),
+       _prayerService = prayerService ?? locator<PrayerService>(),
+       _storageService = storageService ?? locator<StorageService>(),
+       _logger = logger ?? locator<LoggerService>();
 
   /// Initialize the background service
   Future<void> init() async {

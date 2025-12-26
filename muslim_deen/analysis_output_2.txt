@@ -1,0 +1,11 @@
+Analyzing muslim_deen...                                        
+
+   info - Closure should be a tearoff - lib\main.dart:102:30 - unnecessary_lambdas
+warning - The value of the field '_maxHistoryEntries' isn't used - lib\services\notification_cache_service.dart:25:20 - unused_field
+warning - Unused import: 'package:shared_preferences/shared_preferences.dart' - lib\services\notification_service.dart:6:8 - unused_import
+warning - The operand can't be 'null', so the condition is always 'true' - lib\services\notification_service.dart:540:23 - unnecessary_null_comparison
+warning - The '!' will have no effect because the receiver can't be null - lib\services\notification_service.dart:541:26 - unnecessary_non_null_assertion
+warning - The operand can't be 'null', so the condition is always 'true' - lib\services\notification_service.dart:563:23 - unnecessary_null_comparison
+warning - The '!' will have no effect because the receiver can't be null - lib\services\notification_service.dart:564:26 - unnecessary_non_null_assertion
+
+7 issues found. (ran in 2.7s)

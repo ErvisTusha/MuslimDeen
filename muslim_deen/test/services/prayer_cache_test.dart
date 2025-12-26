@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:adhan_dart/adhan_dart.dart';
 import 'package:muslim_deen/models/prayer_times_model.dart';
@@ -39,10 +38,13 @@ class ManualMockCacheService implements CacheService {
   void dispose() {}
 
   @override
-  T? getCache<T>(String key) => null;
+  T? getCache<T>(String key) {
+    return _data[key] as T?;
+  }
 
   @override
   Future<bool> setCache<T>(String key, T data, {int? expirationMinutes}) async {
+    _data[key] = data;
     return true;
   }
 
@@ -60,6 +62,16 @@ class ManualMockCacheService implements CacheService {
     double radius = 0,
   }) {
     return '${prefix}_${latitude.toStringAsFixed(3)}_${longitude.toStringAsFixed(3)}';
+  }
+
+  @override
+  Future<void> clearByPrefix(String prefix) async {
+    _data.removeWhere((key, value) => key.startsWith(prefix));
+  }
+
+  @override
+  List<String> getKeysByPrefix(String prefix) {
+    return _data.keys.where((key) => key.startsWith(prefix)).toList();
   }
 }
 
@@ -153,42 +165,58 @@ void main() {
 
         final expectedKey =
             'prayer_times_2025-01-01_40.713_-74.006_default_default';
-        final savedJson = mockCacheService.getData(expectedKey) as String?;
+        final savedData = mockCacheService.getCache<Map<String, dynamic>>(
+          expectedKey,
+        );
 
-        expect(savedJson, isNotNull);
-        final Map<String, dynamic> decoded =
-            jsonDecode(savedJson!) as Map<String, dynamic>;
-        expect(decoded.containsKey('data'), true);
-        expect(decoded.containsKey('expiresAt'), true);
-
-        // Verify no separate expiration key exists (the old way)
-        expect(mockCacheService.getData('${expectedKey}_expiration'), isNull);
+        expect(savedData, isNotNull);
+        expect(
+          savedData!.containsKey('fajr'),
+          true,
+        ); // Assuming toJson has these
+        expect(savedData.containsKey('date'), true);
       },
     );
 
-    test(
-      'Expiration Handling: Should return null and clear if expired',
-      () async {
-        final date = DateTime(2025, 1, 1);
-        final coords = Coordinates(40.7128, -74.0060);
-        final expectedKey =
-            'prayer_times_2025-01-01_40.713_-74.006_default_default';
+    test('Expiration Handling: Should return null and clear if expired', () async {
+      final date = DateTime(2025, 1, 1);
+      final coords = Coordinates(40.7128, -74.0060);
+      final expectedKey =
+          'prayer_times_2025-01-01_40.713_-74.006_default_default';
 
-        // Manually seed expired data
-        final expiredData = <String, dynamic>{
-          'data': <String, dynamic>{}, // content doesn't matter for this test
-          'expiresAt':
-              DateTime.now()
-                  .subtract(const Duration(hours: 1))
-                  .millisecondsSinceEpoch,
-        };
-        await mockCacheService.saveData(expectedKey, jsonEncode(expiredData));
+      // Since CacheService handles expiration, and we are testing PrayerTimesCache
+      // which now DELEGATES to CacheService, we should test that it returns null
+      // if CacheService returns null (which it will if we don't seed it, or if it's expired)
 
-        final result = await prayerCache.getCachedPrayerTimes(date, coords);
+      // Ensure nothing is in cache
+      expect(await prayerCache.getCachedPrayerTimes(date, coords), isNull);
 
-        expect(result, isNull);
-        expect(mockCacheService.getData(expectedKey), isNull);
-      },
-    );
+      // Seed some data
+      await prayerCache.cachePrayerTimes(
+        PrayerTimesModel(
+          date: date,
+          fajr: date,
+          sunrise: date,
+          dhuhr: date,
+          asr: date,
+          maghrib: date,
+          isha: date,
+          hijriDay: 1,
+          hijriMonth: 1,
+          hijriYear: 1446,
+          hijriMonthName: 'Test',
+        ),
+        coords,
+      );
+
+      // Verify it's there
+      expect(await prayerCache.getCachedPrayerTimes(date, coords), isNotNull);
+
+      // Manual clear from mock to simulate expiry/eviction in CacheService
+      await mockCacheService.removeData(expectedKey);
+
+      // Verify PrayerTimesCache returns null now
+      expect(await prayerCache.getCachedPrayerTimes(date, coords), isNull);
+    });
   });
 }

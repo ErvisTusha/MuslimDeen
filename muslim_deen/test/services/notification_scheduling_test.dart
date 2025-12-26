@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:muslim_deen/services/notification_cache_service.dart';
+import 'package:muslim_deen/services/cache_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/service_locator.dart';
 
@@ -65,7 +66,8 @@ void main() {
     }
     locator.registerSingleton<LoggerService>(mockLogger);
 
-    cacheService = NotificationCacheService(prefs);
+    final cache = CacheService(prefs);
+    cacheService = NotificationCacheService(cacheService: cache);
   });
 
   group('NotificationCacheService Tests', () {

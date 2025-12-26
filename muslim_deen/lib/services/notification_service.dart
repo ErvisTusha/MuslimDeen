@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart';
 
 import 'package:muslim_deen/models/app_settings.dart';
@@ -17,8 +16,8 @@ import 'package:muslim_deen/services/notification_cache_service.dart';
 class NotificationService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
-  final LoggerService _logger = locator<LoggerService>();
-  NotificationCacheService? _cacheService;
+  final LoggerService _logger;
+  final NotificationCacheService _cacheService;
 
   bool _isInitialized = false;
   NotificationPermissionStatus _permissionStatus =
@@ -32,7 +31,11 @@ class NotificationService {
   static const int _maxRescheduleAttempts = 3;
   static const Duration _rescheduleDelay = Duration(minutes: 5);
 
-  NotificationService();
+  NotificationService({
+    LoggerService? logger,
+    NotificationCacheService? cacheService,
+  }) : _logger = logger ?? locator<LoggerService>(),
+       _cacheService = cacheService ?? locator<NotificationCacheService>();
 
   /// Whether notifications are blocked
   bool get isBlocked =>
@@ -43,20 +46,7 @@ class NotificationService {
   Stream<NotificationPermissionStatus> get permissionStatusStream =>
       _permissionStatusController.stream;
 
-  /// Initialize notification cache
-  Future<void> _initNotificationCache() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _cacheService = NotificationCacheService(prefs);
-      _logger.info('Notification cache initialized');
-    } catch (e, s) {
-      _logger.error(
-        'Error initializing notification cache',
-        error: e,
-        stackTrace: s,
-      );
-    }
-  }
+  // Removed manual _initNotificationCache logic
 
   /// Handle notification response when app is in foreground
   void _onNotificationResponse(NotificationResponse response) {
@@ -181,21 +171,7 @@ class NotificationService {
     }
   }
 
-  /// Initialize background rescheduling service
-  Future<void> _initBackgroundRescheduling() async {
-    try {
-      final rescheduler = NotificationReschedulerService();
-      await rescheduler.init();
-      _logger.info('Background notification rescheduling initialized');
-    } catch (e, s) {
-      _logger.warning(
-        'Failed to initialize background rescheduling - notifications will still work but may not persist across device restarts',
-        error: e,
-        stackTrace: s,
-      );
-      // Don't rethrow - background rescheduling is not critical for basic notification functionality
-    }
-  }
+  // Removed manual _initBackgroundRescheduling logic
 
   /// Cancels all notifications
   Future<void> cancelAllNotifications() async {
@@ -290,7 +266,7 @@ class NotificationService {
   /// Reschedule all notifications (called on app start and boot)
   Future<void> rescheduleAllNotifications() async {
     try {
-      final rescheduler = NotificationReschedulerService();
+      final rescheduler = locator<NotificationReschedulerService>();
       await rescheduler.rescheduleAllNotifications();
       _logger.info('All notifications rescheduled on app start');
     } catch (e, s) {
@@ -328,7 +304,7 @@ class NotificationService {
       // Check cache first to avoid redundant scheduling
       final cacheKey =
           'prayer_${id}_${DateTime.now().day}_${DateTime.now().month}';
-      final cachedSchedule = _cacheService?.getCachedNotificationSchedule(
+      final cachedSchedule = _cacheService.getCachedNotificationSchedule(
         cacheKey,
       );
 
@@ -398,7 +374,7 @@ class NotificationService {
         'cachedAt': DateTime.now().toIso8601String(),
       };
 
-      await _cacheService?.cacheNotificationSchedule(cacheKey, scheduleData);
+      await _cacheService.cacheNotificationSchedule(cacheKey, scheduleData);
 
       // Track notification for intelligent rescheduling
       _lastNotificationTimes[id] = scheduledTime;
@@ -481,7 +457,7 @@ class NotificationService {
       // Check cache first to avoid redundant scheduling
       final cacheKey =
           'tesbih_${id}_${DateTime.now().day}_${DateTime.now().month}';
-      final cachedSchedule = _cacheService?.getCachedNotificationSchedule(
+      final cachedSchedule = _cacheService.getCachedNotificationSchedule(
         cacheKey,
       );
 
@@ -546,7 +522,7 @@ class NotificationService {
         'cachedAt': DateTime.now().toIso8601String(),
       };
 
-      await _cacheService?.cacheNotificationSchedule(cacheKey, scheduleData);
+      await _cacheService.cacheNotificationSchedule(cacheKey, scheduleData);
 
       _logger.info('Scheduled tesbih notification', data: {'id': id});
     } catch (e, s) {
@@ -560,19 +536,17 @@ class NotificationService {
 
   /// Cache notification preferences
   Future<void> cacheNotificationPreferences(AppSettings settings) async {
-    if (_cacheService != null) {
-      await _cacheService!.cacheNotificationPreferences(settings);
-    }
+    await _cacheService.cacheNotificationPreferences(settings);
   }
 
   /// Get cached notification preferences
   Map<String, dynamic>? getCachedNotificationPreferences() {
-    return _cacheService?.getCachedNotificationPreferences();
+    return _cacheService.getCachedNotificationPreferences();
   }
 
   /// Get notification cache statistics
   Map<String, dynamic> getNotificationCacheStatistics() {
-    final cacheStats = _cacheService?.getCacheStatistics() ?? {};
+    final cacheStats = _cacheService.getCacheStatistics();
     final rescheduleStats = {
       'activeNotifications': _lastNotificationTimes.length,
       'rescheduleAttempts': _notificationRescheduleAttempts,
@@ -583,9 +557,7 @@ class NotificationService {
 
   /// Clear notification cache
   Future<void> clearNotificationCache() async {
-    if (_cacheService != null) {
-      await _cacheService!.clearAllNotificationCache();
-    }
+    await _cacheService.clearAllNotificationCache();
   }
 
   /// Initializes the notification service
@@ -614,11 +586,7 @@ class NotificationService {
       _isInitialized = true;
       _logger.info('NotificationService initialized successfully.');
 
-      // Initialize background rescheduling
-      await _initBackgroundRescheduling();
-
-      // Initialize notification cache
-      await _initNotificationCache();
+      // Initialize notification cache - already handled by DI
     } catch (e, s) {
       _isInitialized = false;
       _logger.error(
@@ -631,7 +599,7 @@ class NotificationService {
 
   /// Dispose of resources
   void dispose() {
-    _cacheService?.dispose();
+    _cacheService.dispose();
     _logger.info('NotificationService disposed');
   }
 }

@@ -14,6 +14,7 @@ import 'package:muslim_deen/services/prayer_times_cache.dart';
 import 'package:muslim_deen/services/prayer_times_precomputer.dart';
 import 'package:muslim_deen/services/cache_metrics_service.dart';
 import 'package:muslim_deen/services/country_calculation_service.dart';
+import 'package:muslim_deen/services/prayer_parameters_service.dart';
 
 /// Service responsible for calculating and providing prayer times.
 ///
@@ -23,6 +24,7 @@ import 'package:muslim_deen/services/country_calculation_service.dart';
 class PrayerService {
   final LocationService _locationService;
   final PrayerTimesCache _prayerTimesCache;
+  final PrayerParametersService _parametersService;
   PrayerTimesPrecomputer? _precomputer;
   CacheMetricsService? _metricsService;
 
@@ -45,14 +47,24 @@ class PrayerService {
     minutes: AppConstants.positionCacheDurationMinutes,
   );
 
-  PrayerService(this._locationService, this._prayerTimesCache);
+  PrayerService(
+    this._prayerTimesCache, {
+    LocationService? locationService,
+    PrayerParametersService? parametersService,
+  }) : _locationService = locationService ?? locator<LocationService>(),
+       _parametersService =
+           parametersService ?? locator<PrayerParametersService>();
 
   Future<void> init() async {
     if (_isInitialized) return;
     await _locationService.init();
 
     // Initialize precomputer
-    _precomputer = PrayerTimesPrecomputer(_prayerTimesCache, _locationService);
+    _precomputer = PrayerTimesPrecomputer(
+      _prayerTimesCache,
+      _locationService,
+      parametersService: _parametersService,
+    );
     await _precomputer!.init();
 
     _isInitialized = true;
@@ -118,89 +130,10 @@ class PrayerService {
       calculationMethod = settings!.calculationMethod;
     }
 
-    final madhab = settings?.madhab ?? 'hanafi';
-    final cacheKey = '$calculationMethod-$madhab';
-
-    // Return cached parameters if available
-    if (_paramCache.containsKey(cacheKey)) {
-      return _paramCache[cacheKey]!;
-    }
-
-    adhan.CalculationParameters params;
-
-    switch (calculationMethod) {
-      case 'MuslimWorldLeague':
-        params =
-            adhan.CalculationMethod.muslimWorldLeague()
-                as adhan.CalculationParameters;
-        break;
-      case 'NorthAmerica':
-        params =
-            adhan.CalculationMethod.northAmerica()
-                as adhan.CalculationParameters;
-        break;
-      case 'Egyptian':
-        params =
-            adhan.CalculationMethod.egyptian() as adhan.CalculationParameters;
-        break;
-      case 'UmmAlQura':
-        params =
-            adhan.CalculationMethod.ummAlQura() as adhan.CalculationParameters;
-        break;
-      case 'Karachi':
-        params =
-            adhan.CalculationMethod.karachi() as adhan.CalculationParameters;
-        break;
-      case 'Tehran':
-        params =
-            adhan.CalculationMethod.tehran() as adhan.CalculationParameters;
-        break;
-      case 'Dubai':
-        params = adhan.CalculationMethod.dubai() as adhan.CalculationParameters;
-        break;
-      case 'MoonsightingCommittee':
-        params =
-            adhan.CalculationMethod.moonsightingCommittee()
-                as adhan.CalculationParameters;
-        break;
-      case 'Kuwait':
-        params =
-            adhan.CalculationMethod.kuwait() as adhan.CalculationParameters;
-        break;
-      case 'Qatar':
-        params = adhan.CalculationMethod.qatar() as adhan.CalculationParameters;
-        break;
-      case 'Singapore':
-        params =
-            adhan.CalculationMethod.singapore() as adhan.CalculationParameters;
-        break;
-      case 'Turkey':
-        _logger.warning(
-          "Warning: 'Turkey' calculation method selected, but not directly supported by adhan_dart. Falling back to MuslimWorldLeague.",
-        );
-        params =
-            adhan.CalculationMethod.muslimWorldLeague()
-                as adhan.CalculationParameters;
-        break;
-      default:
-        _logger.warning(
-          "Unsupported calculation method '$calculationMethod', using MuslimWorldLeague.",
-        );
-        params =
-            adhan.CalculationMethod.muslimWorldLeague()
-                as adhan.CalculationParameters;
-    }
-
-    params.madhab =
-        (madhab.toLowerCase() == 'hanafi')
-            ? adhan.Madhab.hanafi
-            : adhan.Madhab.shafi;
-    params.highLatitudeRule = adhan.HighLatitudeRule.twilightAngle;
-
-    // Cache the parameters for future use
-    _paramCache[cacheKey] = params;
-
-    return params;
+    return _parametersService.getParameters(
+      settings?.copyWith(calculationMethod: calculationMethod) ??
+          AppSettings.defaults.copyWith(calculationMethod: calculationMethod),
+    );
   }
 
   /// performs the calculation, updates service state, caches the result, and returns the prayer times.

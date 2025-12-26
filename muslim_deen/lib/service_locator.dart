@@ -13,6 +13,9 @@ import 'package:muslim_deen/services/fasting_service.dart';
 import 'package:muslim_deen/services/hadith_service.dart';
 import 'package:muslim_deen/services/islamic_events_service.dart';
 import 'package:muslim_deen/services/location_cache_manager.dart';
+import 'package:muslim_deen/services/prayer_parameters_service.dart';
+import 'package:muslim_deen/services/notification_cache_service.dart';
+import 'package:muslim_deen/services/notification_rescheduler_service.dart';
 import 'package:muslim_deen/services/location_service.dart';
 import 'package:muslim_deen/services/logger_service.dart';
 import 'package:muslim_deen/services/map_service.dart';
@@ -28,6 +31,7 @@ import 'package:muslim_deen/services/widget_service.dart';
 import 'package:muslim_deen/services/zakat_calculator_service.dart';
 import 'package:muslim_deen/services/audio_player_service.dart';
 import 'package:muslim_deen/services/prayer_analytics_service.dart';
+import 'package:muslim_deen/services/accessibility_service.dart';
 
 final GetIt locator = GetIt.instance;
 
@@ -75,19 +79,31 @@ void _registerServices(bool testing) {
   locator.registerLazySingleton<LoggerService>(LoggerService.new);
   locator.registerLazySingleton<DatabaseService>(DatabaseService.new);
   locator.registerLazySingleton<StorageService>(StorageService.new);
+  locator.registerLazySingleton<PrayerParametersService>(
+    PrayerParametersService.new,
+  );
   locator.registerLazySingleton<LocationService>(LocationService.new);
   locator.registerLazySingleton<ErrorHandlerService>(ErrorHandlerService.new);
   locator.registerLazySingleton<NavigationService>(NavigationService.new);
   locator.registerLazySingleton<PrayerHistoryService>(PrayerHistoryService.new);
-  locator.registerLazySingleton<PrayerAnalyticsService>(PrayerAnalyticsService.new);
+  locator.registerLazySingleton<PrayerAnalyticsService>(
+    PrayerAnalyticsService.new,
+  );
   locator.registerLazySingleton<DhikrReminderService>(DhikrReminderService.new);
   locator.registerLazySingleton<TasbihHistoryService>(TasbihHistoryService.new);
   locator.registerLazySingleton<HadithService>(HadithService.new);
   locator.registerLazySingleton<MoonPhasesService>(MoonPhasesService.new);
   locator.registerLazySingleton<IslamicEventsService>(IslamicEventsService.new);
+  locator.registerLazySingleton<AccessibilityService>(AccessibilityService.new);
 
   if (!testing) {
+    locator.registerLazySingleton<NotificationCacheService>(
+      NotificationCacheService.new,
+    );
     locator.registerLazySingleton<NotificationService>(NotificationService.new);
+    locator.registerLazySingleton<NotificationReschedulerService>(
+      NotificationReschedulerService.new,
+    );
   }
 
   // Register async services with optimized dependency resolution
@@ -123,9 +139,8 @@ void _registerServices(bool testing) {
 
   /// PrayerService depends on LocationService and async PrayerTimesCache
   locator.registerLazySingletonAsync<PrayerService>(() async {
-    final locationService = locator<LocationService>();
     final prayerTimesCache = await locator.getAsync<PrayerTimesCache>();
-    return PrayerService(locationService, prayerTimesCache);
+    return PrayerService(prayerTimesCache);
   });
 
   locator.registerLazySingletonAsync<CompassService>(() async {
@@ -144,7 +159,7 @@ void _registerServices(bool testing) {
     return WidgetService();
   });
 
-    /// FastingService depends on DatabaseService
+  /// FastingService depends on DatabaseService
   locator.registerLazySingletonAsync<FastingService>(() async {
     final databaseService = await locator.getAsync<DatabaseService>();
     final service = FastingService(databaseService);
@@ -238,6 +253,7 @@ Future<void> _initializeHighPriorityServicesBatch(bool testing) async {
     initFutures.add(locator<WidgetService>().initialize());
   }
   initFutures.add(locator<LocationService>().init());
+  initFutures.add(locator<AccessibilityService>().initialize());
 
   if (initFutures.isNotEmpty) {
     await Future.wait(initFutures);
