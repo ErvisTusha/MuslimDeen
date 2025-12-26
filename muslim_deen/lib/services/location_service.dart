@@ -10,9 +10,13 @@ import 'package:muslim_deen/services/notification_service.dart';
 import 'package:muslim_deen/services/location_cache_manager.dart';
 
 import 'package:muslim_deen/models/custom_exceptions.dart';
-// LocationServiceException class removed
 
-/// A service that handles location-related functionality including device location,
+/// A service that handles location-related functionality including:
+///   - Movement pattern detection for adaptive accuracy
+///   - Integrated permission flow with dialogs
+///   - Automatic geocoding with caching
+///   - Persistent location history
+/// device location,
 /// manual location settings, and location streaming.
 enum PermissionRequestState {
   notStarted,

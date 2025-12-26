@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:geolocator/geolocator.dart';
@@ -61,8 +62,25 @@ class LocationCacheManager {
 
       final cacheJson = _prefs!.getString('location_cache');
       if (cacheJson != null) {
-        // Implementation would deserialize cache from JSON
-        _logger.debug('Location cache loaded from storage');
+        final Map<String, dynamic> decoded =
+            jsonDecode(cacheJson) as Map<String, dynamic>;
+        decoded.forEach((key, value) {
+          try {
+            _locationCache[key] = CachedLocation.fromJson(
+              value as Map<String, dynamic>,
+            );
+            _lastAccessTimes[key] = DateTime.now();
+          } catch (e) {
+            _logger.warning(
+              'Error parsing cached location for key $key',
+              error: e,
+            );
+          }
+        });
+        _logger.debug(
+          'Location cache loaded from storage',
+          data: {'entries': _locationCache.length},
+        );
       }
     } catch (e, s) {
       _logger.error('Error loading persisted cache', error: e, stackTrace: s);
@@ -74,12 +92,22 @@ class LocationCacheManager {
     try {
       if (_prefs == null) return;
 
-      // Implementation would serialize cache to JSON
+      final Map<String, dynamic> cacheData = {};
+      _locationCache.forEach((key, value) {
+        if (value.isValid) {
+          cacheData[key] = value.toJson();
+        }
+      });
+
+      await _prefs!.setString('location_cache', jsonEncode(cacheData));
       await _prefs!.setString(
         'location_cache_last_update',
         DateTime.now().toIso8601String(),
       );
-      _logger.debug('Location cache persisted to storage');
+      _logger.debug(
+        'Location cache persisted to storage',
+        data: {'entries': cacheData.length},
+      );
     } catch (e, s) {
       _logger.error('Error persisting cache', error: e, stackTrace: s);
     }
@@ -390,5 +418,14 @@ class CachedLocation {
       'cacheDurationMinutes': cacheDuration.inMinutes,
       'accuracy': accuracy,
     };
+  }
+
+  factory CachedLocation.fromJson(Map<String, dynamic> json) {
+    return CachedLocation(
+      position: Position.fromMap(json['position'] as Map<String, dynamic>),
+      timestamp: DateTime.parse(json['timestamp'] as String),
+      cacheDuration: Duration(minutes: json['cacheDurationMinutes'] as int),
+      accuracy: (json['accuracy'] as num).toDouble(),
+    );
   }
 }

@@ -45,12 +45,6 @@ class PrayerService {
     minutes: AppConstants.positionCacheDurationMinutes,
   );
 
-  // Enhanced cache management
-  Timer? _cacheRefreshTimer;
-  final Map<String, DateTime> _cacheInvalidationTimes = {};
-  static const Duration _cacheRefreshInterval = Duration(hours: 12);
-  static const Duration _cacheValidityDuration = Duration(hours: 24);
-
   PrayerService(this._locationService, this._prayerTimesCache);
 
   Future<void> init() async {
@@ -61,9 +55,6 @@ class PrayerService {
     _precomputer = PrayerTimesPrecomputer(_prayerTimesCache, _locationService);
     await _precomputer!.init();
 
-    // Start cache refresh timer
-    _startCacheRefreshTimer();
-
     _isInitialized = true;
     _logger.info('PrayerService initialized with enhanced caching');
   }
@@ -72,70 +63,6 @@ class PrayerService {
   void setMetricsService(CacheMetricsService metricsService) {
     _metricsService = metricsService;
     _logger.debug('Cache metrics service attached to PrayerService');
-  }
-
-  /// Start periodic cache refresh timer
-  void _startCacheRefreshTimer() {
-    _cacheRefreshTimer?.cancel();
-    _cacheRefreshTimer = Timer.periodic(_cacheRefreshInterval, (_) {
-      _refreshCacheIfNeeded();
-    });
-  }
-
-  /// Refresh cache if needed based on invalidation times
-  Future<void> _refreshCacheIfNeeded() async {
-    try {
-      final now = DateTime.now();
-      final keysToRefresh = <String>[];
-
-      for (final entry in _cacheInvalidationTimes.entries) {
-        if (now.difference(entry.value) > _cacheValidityDuration) {
-          keysToRefresh.add(entry.key);
-        }
-      }
-
-      if (keysToRefresh.isNotEmpty) {
-        _logger.info(
-          'Refreshing expired cache entries',
-          data: {'count': keysToRefresh.length},
-        );
-
-        for (final key in keysToRefresh) {
-          await _refreshCacheEntry(key);
-          _cacheInvalidationTimes.remove(key);
-        }
-      }
-    } catch (e, s) {
-      _logger.error('Error refreshing cache', error: e, stackTrace: s);
-    }
-  }
-
-  /// Refresh a specific cache entry
-  Future<void> _refreshCacheEntry(String cacheKey) async {
-    try {
-      // Parse cache key to extract date, location, and settings
-      final parts = cacheKey.split('_');
-      if (parts.length < 6) return;
-
-      final dateStr = '${parts[1]}-${parts[2]}-${parts[3]}';
-      final date = DateTime.parse(dateStr);
-      final method = parts.length > 6 ? parts[6] : 'MuslimWorldLeague';
-      final madhab = parts.length > 7 ? parts[7] : 'hanafi';
-
-      final settings = AppSettings(calculationMethod: method, madhab: madhab);
-
-      // Recalculate and cache prayer times
-      await calculatePrayerTimesForDate(date, settings);
-
-      _logger.debug('Cache entry refreshed', data: {'key': cacheKey});
-    } catch (e, s) {
-      _logger.error(
-        'Error refreshing cache entry',
-        error: e,
-        stackTrace: s,
-        data: {'key': cacheKey},
-      );
-    }
   }
 
   /// Generate optimized cache key with better hit rate
@@ -159,27 +86,38 @@ class PrayerService {
   /// Creates CalculationParameters based on the provided settings with caching.
   /// Falls back to defaults if settings are null or invalid.
   /// Automatically detects country-specific calculation method if not specified.
-  Future<adhan.CalculationParameters> _getCalculationParams(AppSettings? settings, {Position? position}) async {
+  Future<adhan.CalculationParameters> _getCalculationParams(
+    AppSettings? settings, {
+    Position? position,
+  }) async {
     String calculationMethod;
-    
-    if (settings?.calculationMethod == 'Auto' || settings?.calculationMethod == null) {
+
+    if (settings?.calculationMethod == 'Auto' ||
+        settings?.calculationMethod == null) {
       // Auto-detect calculation method based on location
       calculationMethod = 'MuslimWorldLeague'; // default
       if (position != null) {
         try {
-          calculationMethod = await CountryCalculationService.getCalculationMethodForCoordinates(
-            position.latitude, 
-            position.longitude,
+          calculationMethod =
+              await CountryCalculationService.getCalculationMethodForCoordinates(
+                position.latitude,
+                position.longitude,
+              );
+          _logger.info(
+            'Auto-detected calculation method',
+            data: {'method': calculationMethod},
           );
-          _logger.info('Auto-detected calculation method', data: {'method': calculationMethod});
         } catch (e) {
-          _logger.warning('Failed to auto-detect calculation method, using default', error: e);
+          _logger.warning(
+            'Failed to auto-detect calculation method, using default',
+            error: e,
+          );
         }
       }
     } else {
       calculationMethod = settings!.calculationMethod;
     }
-    
+
     final madhab = settings?.madhab ?? 'hanafi';
     final cacheKey = '$calculationMethod-$madhab';
 
@@ -264,6 +202,7 @@ class PrayerService {
 
     return params;
   }
+
   /// performs the calculation, updates service state, caches the result, and returns the prayer times.
   Future<adhan.PrayerTimes> _calculateAndPersistPrayerTimes(
     DateTime date,
@@ -322,9 +261,6 @@ class PrayerService {
       calculationMethod: effectiveSettings.calculationMethod,
       madhab: effectiveSettings.madhab,
     );
-
-    // Track cache invalidation time
-    _cacheInvalidationTimes[cacheKey] = DateTime.now();
 
     _metricsService?.recordHit(cacheKey, 'prayer_times');
     _logger.info(
@@ -402,7 +338,10 @@ class PrayerService {
 
     if (cachedTimes != null) {
       // Use cached prayer times - reconstruct adhan.PrayerTimes
-      final currentParams = await _getCalculationParams(effectiveSettings, position: position);
+      final currentParams = await _getCalculationParams(
+        effectiveSettings,
+        position: position,
+      );
       final adhanPrayerTimes = adhan.PrayerTimes(
         coordinates: coordinates,
         date: date.toUtc(),
@@ -417,9 +356,6 @@ class PrayerService {
       _lastCalculationMethodString = effectiveSettings.calculationMethod;
       _lastAppSettingsUsed = effectiveSettings;
 
-      // Update cache invalidation time for LRU
-      _cacheInvalidationTimes[cacheKey] = DateTime.now();
-
       _metricsService?.recordHit(cacheKey, 'prayer_times');
       _logger.debug('Prayer times loaded from cache with optimized key');
       return adhanPrayerTimes;
@@ -428,7 +364,10 @@ class PrayerService {
     _metricsService?.recordMiss(cacheKey, 'prayer_times');
 
     // Calculate new prayer times
-    final currentParams = await _getCalculationParams(effectiveSettings, position: position);
+    final currentParams = await _getCalculationParams(
+      effectiveSettings,
+      position: position,
+    );
     return await _calculateAndPersistPrayerTimes(
       date,
       position,
@@ -572,7 +511,10 @@ class PrayerService {
     if (!_isInitialized) await init();
     final position = await _getEffectivePosition('prayer time recalculation');
 
-    final currentSettingsParams = await _getCalculationParams(settings, position: position);
+    final currentSettingsParams = await _getCalculationParams(
+      settings,
+      position: position,
+    );
     final String currentMethodNameString = settings.calculationMethod;
     final nowUtc = DateTime.now().toUtc();
 
@@ -791,7 +733,7 @@ class PrayerService {
   /// Get cache statistics
   Map<String, dynamic> getCacheStatistics() {
     return {
-      'cacheEntries': _cacheInvalidationTimes.length,
+      'cacheEntries': 0, // Invalidation times handled by cache manager now
       'parameterCacheSize': _paramCache.length,
       'positionCacheValid':
           _cachedPosition != null &&
@@ -804,7 +746,6 @@ class PrayerService {
 
   /// Dispose of resources
   void dispose() {
-    _cacheRefreshTimer?.cancel();
     _precomputer?.dispose();
     _logger.info('PrayerService disposed');
   }

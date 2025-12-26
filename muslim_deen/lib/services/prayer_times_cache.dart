@@ -8,12 +8,13 @@ import 'package:muslim_deen/services/logger_service.dart';
 /// Specialized cache for prayer times to reduce API calls and calculations
 class PrayerTimesCache {
   static const String _cacheKeyPrefix = 'prayer_times_';
-  static const int _cacheDurationHours = 6; // Extended from 30 days to 6 hours
+  static const int _cacheDurationHours =
+      12; // Extended from 6h to 12h for better daily coverage
   static const int _maxCacheSize = 100; // Maximum number of cached entries
 
   final CacheService _cacheService;
   final LoggerService _logger;
-  
+
   // Track cache keys for size management
   final List<String> _cacheKeys = [];
   final Map<String, DateTime> _cacheTimestamps = {};
@@ -21,14 +22,19 @@ class PrayerTimesCache {
   PrayerTimesCache(this._cacheService, this._logger);
 
   /// Generate a more specific cache key for a specific date, location, and calculation parameters
-  String _generateCacheKey(DateTime date, Coordinates coordinates, {String? calculationMethod, String? madhab}) {
-    // Format as prayer_times_YYYY-MM-DD_HH_LAT_LON_METHOD_MADHAB
-    // Including hour for more granular caching
+  String _generateCacheKey(
+    DateTime date,
+    Coordinates coordinates, {
+    String? calculationMethod,
+    String? madhab,
+  }) {
+    // Format as prayer_times_YYYY-MM-DD_LAT_LON_METHOD_MADHAB
+    // Using daily precision to align with PrayerService and improve hit rates
     final dateStr =
-        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}_${date.hour.toString().padLeft(2, '0')}';
-    // Use a fixed number of decimal places for latitude and longitude to ensure key consistency.
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    // Use consistent precision with PrayerService (3 decimals)
     final locationStr =
-        '${coordinates.latitude.toStringAsFixed(4)}_${coordinates.longitude.toStringAsFixed(4)}';
+        '${coordinates.latitude.toStringAsFixed(3)}_${coordinates.longitude.toStringAsFixed(3)}';
     final methodStr = calculationMethod ?? 'default';
     final madhabStr = madhab ?? 'default';
     return '$_cacheKeyPrefix${dateStr}_$locationStr\_$methodStr\_$madhabStr';
@@ -48,32 +54,29 @@ class PrayerTimesCache {
         calculationMethod: calculationMethod,
         madhab: madhab,
       );
-      
+
       // Manage cache size
       await _manageCacheSize();
 
-      final Map<String, dynamic> prayerTimesJson = prayerTimes.toJson();
-      // Manually handle expiration like the old CacheService.setCache
+      // Consolidate data and expiration into a single write to halve I/O cost
       final int expirationTimestamp =
           DateTime.now()
               .add(Duration(hours: _cacheDurationHours))
               .millisecondsSinceEpoch;
 
-      await _cacheService.saveData(
-        cacheKey,
-        jsonEncode(prayerTimesJson),
-      ); // Save data
-      await _cacheService.saveData(
-        '${cacheKey}_expiration',
-        expirationTimestamp,
-      ); // Save expiration
+      final Map<String, dynamic> cacheData = {
+        'data': prayerTimes.toJson(),
+        'expiresAt': expirationTimestamp,
+      };
+
+      await _cacheService.saveData(cacheKey, jsonEncode(cacheData));
 
       // Track this key for size management
       _cacheKeys.add(cacheKey);
       _cacheTimestamps[cacheKey] = DateTime.now();
 
       _logger.debug(
-        'Cached prayer times for ${prayerTimes.date} with key $cacheKey until ${DateTime.fromMillisecondsSinceEpoch(expirationTimestamp)}',
+        'Cached prayer times for ${prayerTimes.date} with consolidated key $cacheKey until ${DateTime.fromMillisecondsSinceEpoch(expirationTimestamp)}',
       );
 
       // Clean up old cached entries
@@ -82,20 +85,25 @@ class PrayerTimesCache {
       _logger.error('Error caching prayer times', error: e, stackTrace: s);
     }
   }
-  
+
   /// Manage cache size by removing oldest entries
   Future<void> _manageCacheSize() async {
     if (_cacheKeys.length >= _maxCacheSize) {
       // Sort keys by timestamp (oldest first)
       final sortedKeys = List<String>.from(_cacheKeys);
       sortedKeys.sort((a, b) {
-        final timeA = _cacheTimestamps[a] ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final timeB = _cacheTimestamps[b] ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final timeA =
+            _cacheTimestamps[a] ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final timeB =
+            _cacheTimestamps[b] ?? DateTime.fromMillisecondsSinceEpoch(0);
         return timeA.compareTo(timeB);
       });
-      
+
       // Remove oldest entries (10% of cache or 1 entry, whichever is larger)
-      final removeCount = (_maxCacheSize * 0.1).ceil().clamp(1, _maxCacheSize ~/ 2);
+      final removeCount = (_maxCacheSize * 0.1).ceil().clamp(
+        1,
+        _maxCacheSize ~/ 2,
+      );
       for (int i = 0; i < removeCount && i < sortedKeys.length; i++) {
         final keyToRemove = sortedKeys[i];
         await _cacheService.removeData(keyToRemove);
@@ -103,8 +111,10 @@ class PrayerTimesCache {
         _cacheKeys.remove(keyToRemove);
         _cacheTimestamps.remove(keyToRemove);
       }
-      
-      _logger.debug('Removed $removeCount oldest cache entries to maintain size limit');
+
+      _logger.debug(
+        'Removed $removeCount oldest cache entries to maintain size limit',
+      );
     }
   }
 
@@ -123,32 +133,28 @@ class PrayerTimesCache {
         madhab: madhab,
       );
 
-      // Manually handle expiration like the old CacheService.getCache
-      final int? expirationTimestamp =
-          _cacheService.getData('${cacheKey}_expiration') as int?;
+      final String? jsonData = _cacheService.getData(cacheKey) as String?;
+      if (jsonData == null) return null;
+
+      final Map<String, dynamic> cacheData =
+          jsonDecode(jsonData) as Map<String, dynamic>;
+      final int? expirationTimestamp = cacheData['expiresAt'] as int?;
+
       if (expirationTimestamp == null ||
           expirationTimestamp < DateTime.now().millisecondsSinceEpoch) {
-        await _cacheService.removeData(cacheKey); // Remove data
-        await _cacheService.removeData(
-          '${cacheKey}_expiration',
-        ); // Remove expiration
+        await _cacheService.removeData(cacheKey);
         _cacheKeys.remove(cacheKey);
         _cacheTimestamps.remove(cacheKey);
         _logger.debug(
-          'Cached prayer times for $date with key $cacheKey expired or not found.',
+          'Cached prayer times expired or not found for key $cacheKey.',
         );
         return null;
       }
 
-      final String? jsonData = _cacheService.getData(cacheKey) as String?;
-      if (jsonData == null) {
-        return null;
-      }
-
       final Map<String, dynamic> prayerTimesJson =
-          jsonDecode(jsonData) as Map<String, dynamic>;
+          cacheData['data'] as Map<String, dynamic>;
       _logger.debug(
-        'Retrieved cached prayer times for $date with key $cacheKey',
+        'Retrieved consolidated cached prayer times for key $cacheKey',
       );
       return PrayerTimesModel.fromJson(prayerTimesJson);
     } catch (e, s) {
